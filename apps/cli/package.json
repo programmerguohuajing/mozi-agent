@@ -14,8 +14,8 @@
   "dependencies": {
     "@mozi/core": "workspace:*",
     "@mozi/shared": "workspace:*",
-    "@mozi/config": "workspace:*",
-    "@mozi/tui": "workspace:*",
+    "@mozi/providers": "workspace:*",
+    "@mozi/tools": "workspace:*",
     "commander": "^12.1.0"
   }
 }

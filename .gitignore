@@ -20,6 +20,9 @@ coverage/
 .mozi/
 *.local.json
 
+# Benchmark runtime workspaces (results/ IS committed as public score data)
+benchmark/.work/
+
 # Desktop / mobile builds
 apps/mobile/.expo/
 apps/desktop/release/
@@ -41,3 +44,7 @@ Thumbs.db
 
 # Turbo cache
 .turbo/
+
+# VitePress cache
+website/.vitepress/cache/
+website/.vitepress/dist/

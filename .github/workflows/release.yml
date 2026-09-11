@@ -1,0 +1,52 @@
+name: Release
+
+# M5 发布流水线（changesets）：
+#  - PR 携带 .changeset/*.md → merge 后本工作流开/更新 Version PR（统一升版 + CHANGELOG）
+#  - 维护者合并 Version PR → 打 tag → 发布 npm + GitHub Release
+#  版本节奏由维护者通过 changeset 决定，本工作流不产生未经声明的版本变更。
+on:
+  push:
+    branches: [master]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Changesets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test before release
+        run: pnpm test
+
+      - name: Create / merge version PR & publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm changeset publish
+          commit: 'chore(release): 版本更新'
+          title: 'chore(release): 版本更新（changesets）'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,89 @@
+{
+  "summary": {
+    "mode": "smoke",
+    "model": null,
+    "date": "2026-09-11T10:44:33.106Z",
+    "total": 5,
+    "passed": 4,
+    "successRate": 0.8,
+    "avgDurationMs": 226,
+    "avgSteps": 0,
+    "totalInputTokens": 0,
+    "totalOutputTokens": 0,
+    "totalCostUsd": 0,
+    "totalApprovals": 0,
+    "byLevel": {
+      "L3": {
+        "total": 5,
+        "passed": 4
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "l3-debug-closure",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 212,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l3-debug-mutation",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 213,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "测试数量异常：\n✔ 小计计算正确 (0.9438ms)\n✔ 不得修改传入的数据（幂等） (0.1322ms)\n✔ 两次调用结果一致 (0.0742ms)\n✔ 空购物车 (0.0636ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 81.5179\n\n"
+    },
+    {
+      "id": "l3-debug-promise-order",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 287,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l3-debug-regex-greedy",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 198,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l3-debug-sort-comparator",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 218,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    }
+  ]
+}

@@ -1,1 +1,1 @@
-﻿export const PKG = '@mozi/config'
+﻿export const PKG = '@mozi/config';

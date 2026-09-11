@@ -1,0 +1,89 @@
+{
+  "summary": {
+    "mode": "smoke",
+    "model": null,
+    "date": "2026-09-11T10:44:12.946Z",
+    "total": 5,
+    "passed": 0,
+    "successRate": 0,
+    "avgDurationMs": 196,
+    "avgSteps": 0,
+    "totalInputTokens": 0,
+    "totalOutputTokens": 0,
+    "totalCostUsd": 0,
+    "totalApprovals": 0,
+    "byLevel": {
+      "L3": {
+        "total": 5,
+        "passed": 0
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "l3-debug-closure",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 193,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/cjs/loader:1520\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\l3-debug-closure\\test'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)\n    at Module._load (node:internal/modules/cjs/loader:1294:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.18.0\n✖ test (46.3671ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 54.4359\n\n✖ failing tests:\n\ntest at test:1:1\n✖ test (46.3671ms)\n  'test failed'\n\nl3-debug-closure: FAIL（测试未全绿）\n"
+    },
+    {
+      "id": "l3-debug-mutation",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 180,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/cjs/loader:1520\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\l3-debug-mutation\\test'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)\n    at Module._load (node:internal/modules/cjs/loader:1294:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.18.0\n✖ test (43.6201ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 48.3604\n\n✖ failing tests:\n\ntest at test:1:1\n✖ test (43.6201ms)\n  'test failed'\n\nl3-debug-mutation: FAIL（测试未全绿）\n"
+    },
+    {
+      "id": "l3-debug-promise-order",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 201,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/cjs/loader:1520\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\l3-debug-promise-order\\test'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)\n    at Module._load (node:internal/modules/cjs/loader:1294:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.18.0\n✖ test (50.4714ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 55.6846\n\n✖ failing tests:\n\ntest at test:1:1\n✖ test (50.4714ms)\n  'test failed'\n\nl3-debug-promise-order: FAIL（测试未全绿）\n"
+    },
+    {
+      "id": "l3-debug-regex-greedy",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 226,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/cjs/loader:1520\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\l3-debug-regex-greedy\\test'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)\n    at Module._load (node:internal/modules/cjs/loader:1294:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.18.0\n✖ test (50.5514ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 56.6295\n\n✖ failing tests:\n\ntest at test:1:1\n✖ test (50.5514ms)\n  'test failed'\n\nl3-debug-regex-greedy: FAIL（测试未全绿）\n"
+    },
+    {
+      "id": "l3-debug-sort-comparator",
+      "level": "L3",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 180,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/cjs/loader:1520\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\l3-debug-sort-comparator\\test'\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1517:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1095:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1122:12)\n    at Module._load (node:internal/modules/cjs/loader:1294:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: []\n}\n\nNode.js v24.18.0\n✖ test (41.791ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 46.3203\n\n✖ failing tests:\n\ntest at test:1:1\n✖ test (41.791ms)\n  'test failed'\n\nl3-debug-sort-comparator: FAIL（测试未全绿）\n"
+    }
+  ]
+}

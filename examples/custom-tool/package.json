@@ -1,0 +1,17 @@
+{
+  "name": "@mozi/example-custom-tool",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Extend Mozi with your own tools (工具扩展示例).",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@mozi/core": "workspace:*",
+    "@mozi/policy": "workspace:*",
+    "@mozi/providers": "workspace:*",
+    "@mozi/shared": "workspace:*",
+    "@mozi/tools": "workspace:*"
+  }
+}

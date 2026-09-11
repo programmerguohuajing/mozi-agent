@@ -1,0 +1,19 @@
+{
+  "name": "@mozi/benchmark",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mozi eval suite: 30 tasks (L1-L4), deterministic smoke mode + live scoring runner.",
+  "scripts": {
+    "bench": "node runner/run.mjs --mode smoke",
+    "smoke": "node runner/run.mjs --mode smoke",
+    "live": "node runner/run.mjs --mode live"
+  },
+  "dependencies": {
+    "@mozi/core": "workspace:*",
+    "@mozi/policy": "workspace:*",
+    "@mozi/providers": "workspace:*",
+    "@mozi/shared": "workspace:*",
+    "@mozi/tools": "workspace:*"
+  }
+}

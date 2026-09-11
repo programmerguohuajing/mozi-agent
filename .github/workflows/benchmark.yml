@@ -1,0 +1,80 @@
+name: Benchmark
+
+# M5 评测体系：
+#  - smoke（默认，零 API 成本）：setup → 参考解 → 断言，验证评测集自洽，每日跑
+#  - live（需 MOZI_BENCH_* secrets）：真实模型跑分，结果提交回 benchmark/results/
+on:
+  schedule:
+    - cron: '0 2 * * *' # 每日 UTC 02:00（北京时间 10:00）
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '运行模式'
+        type: choice
+        default: smoke
+        options: [smoke, live]
+
+jobs:
+  smoke:
+    name: 评测集自洽（smoke）
+    if: ${{ github.event_name == 'schedule' || inputs.mode == 'smoke' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Run smoke
+        run: node benchmark/runner/run.mjs --mode smoke
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-smoke-${{ github.run_id }}
+          path: benchmark/results/
+          retention-days: 30
+
+  live:
+    name: 真实模型跑分（live）
+    if: ${{ inputs.mode == 'live' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      MOZI_BENCH_BASE_URL: ${{ secrets.MOZI_BENCH_BASE_URL }}
+      MOZI_BENCH_API_KEY: ${{ secrets.MOZI_BENCH_API_KEY }}
+      MOZI_BENCH_MODEL: ${{ vars.MOZI_BENCH_MODEL || 'deepseek-chat' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Run live eval
+        run: node benchmark/runner/run.mjs --mode live --max-ms 600000
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "mozi-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add benchmark/results/ || true
+          if git diff --cached --quiet; then
+            echo "no new results"
+          else
+            git commit -m "chore(benchmark): 记录 $(date -u +%F) live 跑分结果"
+            git push
+          fi
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-live-${{ github.run_id }}
+          path: benchmark/results/
+          retention-days: 90

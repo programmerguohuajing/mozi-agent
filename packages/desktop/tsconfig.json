@@ -3,18 +3,24 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mozi/protocol": ["../protocol/dist/index.d.ts"],
+      "@mozi/tools": ["../tools/dist/index.d.ts"],
+      "@mozi/providers": ["../providers/dist/index.d.ts"],
+      "@mozi/sandbox": ["../sandbox/dist/index.d.ts"],
+      "@mozi/mcp-client": ["../mcp-client/dist/index.d.ts"],
+      "@mozi/policy": ["../policy/dist/index.d.ts"]
+    }
   },
   "include": ["src"],
+  "exclude": ["src/**/__tests__/**", "src/renderer/**"],
   "references": [
-    {
-      "path": "../shared"
-    },
-    {
-      "path": "../core"
-    },
-    {
-      "path": "../protocol"
-    }
+    { "path": "../shared" },
+    { "path": "../core" },
+    { "path": "../protocol" },
+    { "path": "../tools" },
+    { "path": "../providers" }
   ]
 }

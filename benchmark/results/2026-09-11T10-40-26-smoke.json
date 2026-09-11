@@ -1,0 +1,154 @@
+{
+  "summary": {
+    "mode": "smoke",
+    "model": null,
+    "date": "2026-09-11T10:40:26.947Z",
+    "total": 10,
+    "passed": 9,
+    "successRate": 0.9,
+    "avgDurationMs": 237,
+    "avgSteps": 0,
+    "totalInputTokens": 0,
+    "totalOutputTokens": 0,
+    "totalCostUsd": 0,
+    "totalApprovals": 0,
+    "byLevel": {
+      "L2": {
+        "total": 10,
+        "passed": 9
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "l2-cache-layer",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 1287,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-config-env",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 100,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-error-middleware",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 115,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-i18n-baseline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 119,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-logging-module",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 122,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-pagination",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 104,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-rate-limit",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 201,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-user-model",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 115,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/esm/resolve:271\r\n    throw new ERR_MODULE_NOT_FOUND(\r\n          ^\r\n\r\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\models\\user.js' imported from D:\\codex\\mozi\\benchmark\\.work\\l2-user-model\\db.js\r\n    at finalizeResolution (node:internal/modules/esm/resolve:271:11)\r\n    at moduleResolve (node:internal/modules/esm/resolve:865:10)\r\n    at defaultResolve (node:internal/modules/esm/resolve:992:11)\r\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)\r\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)\r\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)\r\n    at #resolve (node:internal/modules/esm/loader:683:17)\r\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)\r\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)\r\n    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {\r\n  code: 'ERR_MODULE_NOT_FOU"
+    },
+    {
+      "id": "l2-validation-pipeline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 105,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-webhook-sign",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 103,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    }
+  ]
+}

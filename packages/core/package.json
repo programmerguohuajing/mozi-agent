@@ -22,6 +22,8 @@
     "@mozi/config": "workspace:*",
     "@mozi/policy": "workspace:*",
     "@mozi/tools": "workspace:*",
-    "@mozi/providers": "workspace:*"
+    "@mozi/providers": "workspace:*",
+    "@mozi/sandbox": "workspace:*",
+    "@mozi/mcp-client": "workspace:*"
   }
 }

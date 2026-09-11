@@ -4,7 +4,7 @@
   "description": "Electron desktop app (main + renderer).",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/main/electron-main.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -14,12 +14,25 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "vite",
+    "electron": "electron ./dist/main/electron-main.js",
+    "build:renderer": "vite build"
   },
   "dependencies": {
     "@mozi/shared": "workspace:*",
     "@mozi/core": "workspace:*",
-    "@mozi/protocol": "workspace:*"
+    "@mozi/protocol": "workspace:*",
+    "@mozi/tools": "workspace:*",
+    "@mozi/providers": "workspace:*"
+  },
+  "optionalDependencies": {
+    "electron": "^33.0.0"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.0"
   }
 }

@@ -1,1 +1,1 @@
-﻿export const PKG = '@mozi/tui'
+﻿export const PKG = '@mozi/tui';

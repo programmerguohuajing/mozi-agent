@@ -1,0 +1,154 @@
+{
+  "summary": {
+    "mode": "smoke",
+    "model": null,
+    "date": "2026-09-11T10:42:04.658Z",
+    "total": 10,
+    "passed": 9,
+    "successRate": 0.9,
+    "avgDurationMs": 226,
+    "avgSteps": 0,
+    "totalInputTokens": 0,
+    "totalOutputTokens": 0,
+    "totalCostUsd": 0,
+    "totalApprovals": 0,
+    "byLevel": {
+      "L2": {
+        "total": 10,
+        "passed": 9
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "l2-cache-layer",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 1267,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-config-env",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 103,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-error-middleware",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 99,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-i18n-baseline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 102,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-logging-module",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 91,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "file:///D:/codex/mozi/benchmark/tasks/L2/l2-logging-module/asserts/check.mjs:34\r\nassert.ok(!captured.some((l) => l.includes('d0')), '绾у埆浣庝簬璁惧畾涓嶈緭鍑?);\r\n                                                   ^^^^^^^^^^^^^^^^^\r\n\r\nSyntaxError: Invalid or unexpected token\r\n    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)\r\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)\r\n    at #translate (node:internal/modules/esm/loader:434:20)\r\n    at afterLoad (node:internal/modules/esm/loader:502:29)\r\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)\r\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)\r\n    at afterResolve (node:internal/modules/esm/loader:607:52)\r\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12)\r\n    at node:internal/modules/esm/loader:632:32\r\n    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)\r\n\r\nNode.js v24.18.0\r\n"
+    },
+    {
+      "id": "l2-pagination",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 96,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-rate-limit",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 187,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-user-model",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 109,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-validation-pipeline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 106,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-webhook-sign",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 99,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    }
+  ]
+}

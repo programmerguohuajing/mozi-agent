@@ -3,12 +3,15 @@ packages:
   - "apps/*"
   - "benchmark"
   - "examples/*"
+  - "website"
 
+# pnpm v11: 允许哪些依赖执行安装脚本（下载 / 链接原生二进制）。true = 允许。
+# biome / esbuild 需要原生二进制；electron 为 M4 预留。
 allowBuilds:
-  '@biomejs/biome': set this to true or false
+  "@biomejs/biome": true
+  esbuild: true
+  electron: true
 
-# pnpm v10+: 允许执行安装脚本的依赖（biome 原生二进制）
-onlyBuiltDependencies:
-  - "@biomejs/biome"
-  - "esbuild"
-  - "electron"
+# 关闭「运行脚本前的依赖状态校验」：它会隐式执行 pnpm install，
+# 一旦有构建脚本被忽略即 exit 1，会连带 pnpm build / test / lint 一起失败。
+verifyDepsBeforeRun: false

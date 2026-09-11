@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist/renderer",
+    "composite": true,
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@mozi/protocol": ["../protocol/dist/index.d.ts"],
+      "@mozi/shared": ["../shared/dist/index.d.ts"],
+      "@mozi/core": ["../core/dist/index.d.ts"],
+      "@mozi/providers": ["../providers/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts"],
+  "exclude": ["src/**/__tests__/**"],
+  "references": [{ "path": "../shared" }, { "path": "../core" }, { "path": "../protocol" }]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@mozi/example-embed-minimal",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Embed the Mozi engine in ~50 lines (差异卖点的门面示例).",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@mozi/core": "workspace:*",
+    "@mozi/providers": "workspace:*",
+    "@mozi/shared": "workspace:*"
+  }
+}

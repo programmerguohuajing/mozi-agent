@@ -1,0 +1,154 @@
+{
+  "summary": {
+    "mode": "smoke",
+    "model": null,
+    "date": "2026-09-11T10:41:01.153Z",
+    "total": 10,
+    "passed": 7,
+    "successRate": 0.7,
+    "avgDurationMs": 235,
+    "avgSteps": 0,
+    "totalInputTokens": 0,
+    "totalOutputTokens": 0,
+    "totalCostUsd": 0,
+    "totalApprovals": 0,
+    "byLevel": {
+      "L2": {
+        "total": 10,
+        "passed": 7
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "l2-cache-layer",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 1286,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-config-env",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 107,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-error-middleware",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 97,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "file:///D:/codex/mozi/benchmark/tasks/L2/l2-error-middleware/asserts/check.mjs:6\r\nimport { join } from 'node:path';\r\n         ^^^^\r\n\r\nSyntaxError: Identifier 'join' has already been declared\r\n    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)\r\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)\r\n    at #translate (node:internal/modules/esm/loader:434:20)\r\n    at afterLoad (node:internal/modules/esm/loader:502:29)\r\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)\r\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)\r\n    at afterResolve (node:internal/modules/esm/loader:607:52)\r\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12)\r\n    at node:internal/modules/esm/loader:632:32\r\n    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)\r\n\r\nNode.js v24.18.0\r\n"
+    },
+    {
+      "id": "l2-i18n-baseline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 109,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-logging-module",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 101,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "file:///D:/codex/mozi/benchmark/tasks/L2/l2-logging-module/asserts/check.mjs:6\r\nimport { join } from 'node:path';\r\n         ^^^^\r\n\r\nSyntaxError: Identifier 'join' has already been declared\r\n    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)\r\n    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)\r\n    at #translate (node:internal/modules/esm/loader:434:20)\r\n    at afterLoad (node:internal/modules/esm/loader:502:29)\r\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)\r\n    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)\r\n    at afterResolve (node:internal/modules/esm/loader:607:52)\r\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12)\r\n    at node:internal/modules/esm/loader:632:32\r\n    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)\r\n\r\nNode.js v24.18.0\r\n"
+    },
+    {
+      "id": "l2-pagination",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 120,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-rate-limit",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 205,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-user-model",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "fail",
+      "durationMs": 104,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": "node:internal/modules/esm/resolve:271\r\n    throw new ERR_MODULE_NOT_FOUND(\r\n          ^\r\n\r\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\\codex\\mozi\\benchmark\\.work\\models\\user.js' imported from D:\\codex\\mozi\\benchmark\\.work\\l2-user-model\\db.js\r\n    at finalizeResolution (node:internal/modules/esm/resolve:271:11)\r\n    at moduleResolve (node:internal/modules/esm/resolve:865:10)\r\n    at defaultResolve (node:internal/modules/esm/resolve:992:11)\r\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)\r\n    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)\r\n    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)\r\n    at #resolve (node:internal/modules/esm/loader:683:17)\r\n    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)\r\n    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)\r\n    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {\r\n  code: 'ERR_MODULE_NOT_FOU"
+    },
+    {
+      "id": "l2-validation-pipeline",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 111,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    },
+    {
+      "id": "l2-webhook-sign",
+      "level": "L2",
+      "mode": "smoke",
+      "status": "pass",
+      "durationMs": 110,
+      "steps": null,
+      "toolCalls": null,
+      "approvals": null,
+      "usage": null,
+      "finishReason": null,
+      "error": null
+    }
+  ]
+}

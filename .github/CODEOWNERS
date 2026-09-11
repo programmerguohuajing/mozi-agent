@@ -1,0 +1,17 @@
+# CODEOWNERS
+# 默认所有者：仓库维护者
+*       @programmerguohuajing
+
+# 引擎核心：架构级变更需要维护者评审
+/packages/core/     @programmerguohuajing
+
+# 安全相关：策略 / 沙箱 / 审批
+/packages/policy/   @programmerguohuajing
+/packages/sandbox/  @programmerguohuajing
+
+# 共享契约：DTO 变更影响全仓
+/packages/shared/   @programmerguohuajing
+
+# CI 与发布流水线
+/.github/           @programmerguohuajing
+/.changeset/        @programmerguohuajing

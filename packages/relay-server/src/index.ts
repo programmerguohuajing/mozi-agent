@@ -1,1 +1,1 @@
-﻿export const PKG = '@mozi/relay-server'
+﻿export const PKG = '@mozi/relay-server';

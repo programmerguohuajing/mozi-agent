@@ -1,11 +1,11 @@
 {
   "$schema": "https://unpkg.com/@changesets/config/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "mozi/mozi" }],
+  "changelog": ["@changesets/changelog-github", { "repo": "programmerguohuajing/mozi-agent" }],
   "commit": false,
   "fixed": [],
   "linked": [],
-  "access": "restricted",
-  "baseBranch": "main",
+  "access": "public",
+  "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mozi/mobile", "@mozi/desktop"]
+  "ignore": ["@mozi/mobile", "@mozi/desktop", "@mozi/benchmark", "@mozi/example-embed-minimal", "@mozi/example-custom-tool", "@mozi/website"]
 }

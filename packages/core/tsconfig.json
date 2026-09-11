@@ -3,9 +3,15 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mozi/sandbox": ["../sandbox/dist/index.d.ts"],
+      "@mozi/mcp-client": ["../mcp-client/dist/index.d.ts"]
+    }
   },
   "include": ["src"],
+  "exclude": ["src/**/__tests__/**"],
   "references": [
     {
       "path": "../shared"
@@ -21,6 +27,12 @@
     },
     {
       "path": "../providers"
+    },
+    {
+      "path": "../sandbox"
+    },
+    {
+      "path": "../mcp-client"
     }
   ]
 }

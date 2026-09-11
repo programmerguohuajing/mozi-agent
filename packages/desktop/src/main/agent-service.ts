@@ -21,7 +21,7 @@ import {
   createEngineAsync,
 } from '@mozi/core';
 import type { ProviderRegistry } from '@mozi/providers';
-import type { AgentEvent, PolicyMode, RunInput, SessionConfig } from '@mozi/shared';
+import type { AgentEvent, CostLimits, PolicyMode, RunInput, SessionConfig } from '@mozi/shared';
 import type {
   ApprovalTicketView,
   DashboardStats,
@@ -70,6 +70,8 @@ export interface AgentServiceOptions {
   sandboxLevel?: 0 | 1 | 2 | 3;
   /** 是否启用子智能体（默认 true）。 */
   enableSubAgents?: boolean;
+  /** 成本上限（注入后引擎每 turn.completed 评估并发出 cost.warning）。 */
+  costLimits?: CostLimits;
 }
 
 /** 会话项目名：取 workspace 末段。 */
@@ -466,6 +468,7 @@ export class AgentService {
       systemPrompt: this.opts.systemPrompt,
       sandboxLevel: this.opts.sandboxLevel,
       enableSubAgents: this.opts.enableSubAgents,
+      costLimits: this.opts.costLimits,
       // 子智能体桥接事件 / 审批事件经宿主通道即时送达（M12 §12.8）。
       // 审批事件在 executeOne 阻塞前上抛，此处立刻登记 pending，
       // 使 UI 能在生成器仍在等待审批时调用 resolveApproval。

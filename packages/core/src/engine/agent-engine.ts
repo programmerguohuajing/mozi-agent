@@ -10,6 +10,7 @@ import {
   type AgentError,
   type AgentEvent,
   type AssistantMessage,
+  type CostLimits,
   ErrorCodes,
   MoziError,
   type PolicyMode,
@@ -20,6 +21,7 @@ import {
   type TokenUsage,
   type ToolCall,
   type ToolResult,
+  checkSessionCost,
   toMoziError,
 } from '@mozi/shared';
 import type { BrowserAccess, MemoryAccess, ToolRegistry, VisionAccess, Workspace } from '@mozi/tools';
@@ -110,6 +112,8 @@ export interface EngineDeps {
   hooks?: HookRunner;
   /** M18 已加载的钩子清单（供 HookRunner.run 过滤事件）。 */
   resolvedHooks?: ResolvedHook[];
+  /** 成本上限（TUI/CLI 可注入 costLimits；默认从 settings 读取）。 */
+  costLimits?: CostLimits;
 }
 
 export class AgentEngine {
@@ -383,6 +387,22 @@ export class AgentEngine {
           steps: step + 1,
           ts: now(),
         });
+
+        // ── 成本预警（turn 粒度评估会话级；UI 订阅 cost.warning 展示）──
+        if (this.deps.costLimits) {
+          const warn = checkSessionCost(session.usage, this.deps.costLimits);
+          if (warn) {
+            yield {
+              type: 'cost.warning',
+              scope: warn.scope,
+              costUsd: warn.costUsd,
+              limitUsd: warn.limitUsd,
+              percent: warn.percent,
+              message: warn.message,
+              ts: now(),
+            };
+          }
+        }
       }
     } catch (err) {
       const e = toMoziError(err);

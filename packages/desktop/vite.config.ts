@@ -18,7 +18,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@mozi/protocol': path.resolve(__dirname, '../protocol/src/index.ts'),
+      // 仅渲染层实际用到的运行时入口（LoopbackChannel）；其余均为类型，避免
+      // 把 protocol 的 node:crypto 依赖（remote/crypto-box）拉进浏览器构建。
+      '@mozi/protocol': path.resolve(__dirname, '../protocol/src/loopback.ts'),
       '@mozi/shared': path.resolve(__dirname, '../shared/src/index.ts'),
     },
   },

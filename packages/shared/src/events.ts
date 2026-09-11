@@ -60,6 +60,16 @@ export type AgentEvent =
   | { type: 'task.completed'; reason: TaskCompleteReason; ts: string }
   | { type: 'error'; error: AgentError; recoverable: boolean; ts: string }
   | { type: 'internal.debug'; message: string; data?: unknown; ts: string }
+  // 成本预警（会话级 / 按天级；UI 订阅后以醒目样式展示）
+  | {
+      type: 'cost.warning';
+      scope: 'session' | 'day';
+      costUsd: number;
+      limitUsd: number;
+      percent: number;
+      message: string;
+      ts: string;
+    }
   // v1.2 新增：MCP 客户端事件（M8 §8.15）
   | {
       type: 'mcp.server.status';

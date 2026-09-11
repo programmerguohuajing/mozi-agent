@@ -15,6 +15,7 @@ import { Dashboard } from './components/Dashboard.js';
 import { SettingsPanel } from './components/SettingsPanel.js';
 import { SubAgentPanel } from './components/SubAgentPanel.js';
 import { AnnotationOverlay } from './components/AnnotationOverlay.js';
+import { TokenCounter } from './components/TokenCounter.js';
 import type { DashboardStats } from '@mozi/protocol';
 
 /** preload 暴露的 API（window.mozi）。 */
@@ -178,6 +179,13 @@ export function App({ api }: { api: MoziApi }): React.ReactElement {
           <span className="ml-auto text-neutral-500">
             {activeView ? `状态：${activeView.state}` : '未选择会话'}
           </span>
+          {activeView ? (
+            <TokenCounter
+              usage={activeView.usage}
+              running={activeView.state === 'running'}
+              {...(costLimits.perSessionUsd != null ? { costLimitUsd: costLimits.perSessionUsd } : {})}
+            />
+          ) : null}
         </header>
 
         <div className="min-h-0 flex-1">

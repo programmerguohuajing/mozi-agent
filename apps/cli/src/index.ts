@@ -131,6 +131,9 @@ function renderEvent(ev: AgentEvent): void {
     case 'error':
       console.error(`\n❌ error: ${ev.error.code} ${ev.error.message}`);
       break;
+    case 'cost.warning':
+      console.warn(`\n💰 ${ev.message}`);
+      break;
     default:
       break;
   }

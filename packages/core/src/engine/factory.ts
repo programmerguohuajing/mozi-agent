@@ -5,7 +5,7 @@ import type { ProviderRegistry } from '@mozi/providers';
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { type AgentEvent, type PolicyMode, defaultConfig, type SandboxRunner } from '@mozi/shared';
+import { type AgentEvent, type CostLimits, type PolicyMode, defaultConfig, type SandboxRunner, checkSessionCost } from '@mozi/shared';
 import { createSandbox } from '@mozi/sandbox';
 import { McpBridge, type McpServerEntry } from '@mozi/mcp-client';
 import { Workspace, createBuiltinRegistry, type BrowserAccess, type MemoryAccess, type VisionAccess } from '@mozi/tools';
@@ -58,6 +58,8 @@ export interface CreateEngineOptions {
   visionService?: VisionAccess;
   /** 内置浏览器服务（桌面端注入 BrowserService；不传则 browser 工具返回不可用错误）。 */
   browserAccess?: BrowserAccess;
+  /** 成本上限（注入后引擎每 turn.completed 评估并发出 cost.warning 事件）。 */
+  costLimits?: CostLimits;
   /** 只读/CI 模式：忽略项目级 hooks（§18.5 防线 4）。默认跟随 unattended。 */
   headless?: boolean;
 }
@@ -159,6 +161,7 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     memoryAccess: memoryAccessFrom(memoryStore),
     visionAccess: visionService,
     browserAccess: opts.browserAccess,
+    costLimits: opts.costLimits,
     hooks,
     resolvedHooks,
   };

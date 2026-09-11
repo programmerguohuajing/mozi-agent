@@ -162,9 +162,13 @@ export function applyEngineEvent(state: UiState, sessionId: string, event: Agent
   }
 
   // ── 用量 ──
-  if (event.type === 'turn.completed' || event.type === 'token.usage') {
+  // token.usage 是实时增量（turn 进行中也触发），只更新 usage，不改 state；
+  // turn.completed 是轮次结束，更新 usage 且置 idle。
+  if (event.type === 'turn.completed') {
     next.usage = event.usage;
     next.state = 'idle';
+  } else if (event.type === 'token.usage') {
+    next.usage = event.usage;
   }
 
   const produced = eventToRenderItems(event);

@@ -195,6 +195,14 @@ export function eventToRenderItems(event: AgentEvent): RenderItem[] {
           ts,
         },
       ];
+    case 'token.usage':
+      // 实时 token 增量（provider 流级粒度，比 turn.completed 更细）——不生成卡片，
+      // 由 store 直接更新 SessionView.usage（供 TokenCounter 实时展示）。
+      return [];
+    case 'cost.warning':
+      return [
+        { kind: 'notice', id: nextId('cost-warn'), level: 'warn', text: `💰 ${event.message}`, ts },
+      ];
     case 'error':
       return [
         { kind: 'notice', id: nextId('err'), level: 'error', text: `${event.error.code}: ${event.error.message}`, ts },

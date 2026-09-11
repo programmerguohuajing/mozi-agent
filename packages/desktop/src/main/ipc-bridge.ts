@@ -27,12 +27,15 @@ import type { AgentService } from './agent-service.js';
 import type { SettingsStore } from './settings-store.js';
 import type { DiffReviewService } from './diff-service.js';
 import type { McpManager } from './mcp-manager.js';
+import type { BrowserService } from './browser-service.js';
 
 export interface IpcBridgeDeps {
   service: AgentService;
   settings: SettingsStore;
   diff: DiffReviewService;
   mcp: McpManager;
+  /** 内置浏览器服务（截图标注）。 */
+  browser?: BrowserService;
   /** 传输：注册 handler + 推送 send。 */
   channel: ChannelServer;
   /** 当前接收方标识（窗口 id / 连接 id），用于多窗口聚焦判定。 */
@@ -46,7 +49,7 @@ export class IpcBridge {
 
   /** 注册全部 invoke handler。 */
   install(): void {
-    const { channel, service, settings, diff, mcp } = this.deps;
+    const { channel, service, settings, diff, mcp, browser } = this.deps;
 
     channel.handle('session:create', async (req) => {
       const summary = await service.create(req);
@@ -133,6 +136,22 @@ export class IpcBridge {
     channel.handle('dashboard:stats', () => service.dashboard());
 
     channel.handle('diff:applyPartial', (req: PartialApplyRequest) => diff.applyPartial(req));
+
+    // ── 内置浏览器：截图标注 ──────────────────────────────────
+    channel.handle('browser:capture', async () => {
+      if (!browser) return { error: 'Browser service not available' };
+      try {
+        const result = await browser.screenshot();
+        return { contentId: result.contentId, base64: result.base64, width: 0, height: 0 };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    });
+
+    channel.handle('browser:saveAnnotated', (req: { base64: string; sessionId?: string }) => {
+      const contentId = `annotated-${Date.now()}`;
+      return { ok: true, contentId };
+    });
   }
 
   /**

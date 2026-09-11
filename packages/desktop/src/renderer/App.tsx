@@ -14,6 +14,7 @@ import { SessionView } from './components/SessionView.js';
 import { Dashboard } from './components/Dashboard.js';
 import { SettingsPanel } from './components/SettingsPanel.js';
 import { SubAgentPanel } from './components/SubAgentPanel.js';
+import { AnnotationOverlay } from './components/AnnotationOverlay.js';
 import type { DashboardStats } from '@mozi/protocol';
 
 /** preload 暴露的 API（window.mozi）。 */
@@ -56,6 +57,10 @@ export function App({ api }: { api: MoziApi }): React.ReactElement {
     costByModel: [],
   });
   const [input, setInput] = React.useState('');
+  /** 标注附件：等待发送的标注截图。 */
+  const [attachments, setAttachments] = React.useState<Array<{ contentId: string; base64: string; thumbnail: string }>>([]);
+  /** 标注覆盖层状态。 */
+  const [annotation, setAnnotation] = React.useState<{ base64: string; width: number; height: number } | null>(null);
 
   // 订阅 store
   React.useEffect(() => store.subscribe(setState), [store]);
@@ -108,7 +113,36 @@ export function App({ api }: { api: MoziApi }): React.ReactElement {
     if (!input.trim() || !state.activeSessionId) return;
     const text = input;
     setInput('');
-    await api.invoke('run:start', { sessionId: state.activeSessionId, text });
+    // 构造消息文本（含附件标记）
+    const attachmentInfo = attachments.length > 0
+      ? `\n[附件 ${attachments.length} 张标注截图: ${attachments.map((a) => a.contentId).join(', ')}]`
+      : '';
+    setAttachments([]);
+    await api.invoke('run:start', { sessionId: state.activeSessionId, text: text + attachmentInfo });
+  };
+
+  /** 从内置浏览器截图并打开标注覆盖层。 */
+  const captureAndAnnotate = async (): Promise<void> => {
+    const result = await api.invoke('browser:capture', {});
+    const r = result as { contentId?: string; base64?: string; width?: number; height?: number; error?: string };
+    if (r.error || !r.base64) {
+      alert(`截图失败：${r.error ?? '未知错误'}`);
+      return;
+    }
+    setAnnotation({ base64: r.base64, width: r.width ?? 1200, height: r.height ?? 800 });
+  };
+
+  /** 标注确认 → 保存到附件列表。 */
+  const onAnnotationConfirm = async (annotatedBase64: string): Promise<void> => {
+    const result = await api.invoke('browser:saveAnnotated', {
+      base64: annotatedBase64,
+      sessionId: state.activeSessionId,
+    }) as { ok: boolean; contentId: string };
+    if (result.ok) {
+      const thumbnail = `data:image/png;base64,${annotatedBase64.slice(0, 1000)}`;
+      setAttachments((prev) => [...prev, { contentId: result.contentId, base64: annotatedBase64, thumbnail }]);
+    }
+    setAnnotation(null);
   };
 
   return (
@@ -213,34 +247,74 @@ export function App({ api }: { api: MoziApi }): React.ReactElement {
         </div>
 
         {tab === 'chat' && activeView ? (
-          <div className="flex gap-2 border-t border-neutral-700 p-2">
-            <textarea
-              className="min-h-10 flex-1 resize-none rounded bg-neutral-800 px-2 py-1 text-sm"
-              placeholder="输入任务…（Enter 发送，Shift+Enter 换行）"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
+          <div className="flex flex-col gap-1 border-t border-neutral-700 p-2">
+            {/* 附件预览区 */}
+            {attachments.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((a) => (
+                  <div key={a.contentId} className="group relative">
+                    <img
+                      src={`data:image/png;base64,${a.base64}`}
+                      className="h-16 w-24 rounded border border-neutral-600 object-cover"
+                      alt="标注截图"
+                    />
+                    <button
+                      className="absolute right-0 top-0 rounded-full bg-red-600 px-1 text-xs text-white opacity-0 group-hover:opacity-100"
+                      onClick={() => setAttachments((prev) => prev.filter((x) => x.contentId !== a.contentId))}
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              <textarea
+                className="min-h-10 flex-1 resize-none rounded bg-neutral-800 px-2 py-1 text-sm"
+                placeholder="输入任务…（Enter 发送，Shift+Enter 换行）"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+              />
+              <button
+                className="rounded bg-sky-700 px-3 text-sm text-white hover:bg-sky-600"
+                onClick={() => void captureAndAnnotate()}
+                title="从内置浏览器截图并标注"
+              >
+                截图标注
+              </button>
+              <button
+                className="rounded bg-emerald-600 px-3 text-sm text-white hover:bg-emerald-500"
+                onClick={() => void send()}
+              >
+                发送
+              </button>
+              <button
+                className="rounded bg-neutral-700 px-3 text-sm hover:bg-neutral-600"
+                onClick={() =>
+                  void api.invoke('engine:abort', { sessionId: state.activeSessionId })
                 }
-              }}
-            />
-            <button
-              className="rounded bg-emerald-600 px-3 text-sm text-white hover:bg-emerald-500"
-              onClick={() => void send()}
-            >
-              发送
-            </button>
-            <button
-              className="rounded bg-neutral-700 px-3 text-sm hover:bg-neutral-600"
-              onClick={() =>
-                void api.invoke('engine:abort', { sessionId: state.activeSessionId })
-              }
-            >
-              中止
-            </button>
+              >
+                中止
+              </button>
+            </div>
           </div>
+        ) : null}
+
+        {/* 标注覆盖层 */}
+        {annotation ? (
+          <AnnotationOverlay
+            screenshotBase64={annotation.base64}
+            width={annotation.width}
+            height={annotation.height}
+            onConfirm={(b64) => void onAnnotationConfirm(b64)}
+            onCancel={() => setAnnotation(null)}
+          />
         ) : null}
       </main>
     </div>

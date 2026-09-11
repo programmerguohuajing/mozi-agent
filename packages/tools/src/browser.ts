@@ -13,7 +13,7 @@ import type { AgentTool, ToolContext } from './types.js';
 import { ok, fail, truncate } from './types.js';
 
 type BrowserAction =
-  | 'navigate' | 'screenshot' | 'get_text' | 'get_html'
+  | 'navigate' | 'screenshot' | 'annotate' | 'get_text' | 'get_html'
   | 'click' | 'fill' | 'eval' | 'close' | 'list_tabs';
 
 interface BrowserInput {
@@ -28,8 +28,12 @@ interface BrowserInput {
   value?: string;
   /** JavaScript 脚本（eval）。 */
   script?: string;
-  /** 全页截图（screenshot），默认 false。 */
+  /** 全页截图（screenshot/annotate），默认 false。 */
   fullPage?: boolean;
+  /** 标注提示文字（annotate），用于在截图中高亮区域。 */
+  highlight?: string;
+  /** 标注区域选择器（annotate），高亮指定元素。 */
+  highlightSelector?: string;
 }
 
 export const browserTool: AgentTool<BrowserInput> = {
@@ -38,18 +42,19 @@ export const browserTool: AgentTool<BrowserInput> = {
   riskLevel: 'read',
   description: [
     'Built-in browser tool for web browsing, content extraction, and interaction.',
-    'Actions: navigate (open URL), screenshot (capture page), get_text (extract text),',
-    'get_html (get page HTML), click (click element by CSS selector), fill (fill form field),',
-    'eval (run JavaScript), close (close browser), list_tabs (list open tabs).',
+    'Actions: navigate (open URL), screenshot (capture page), annotate (capture + highlight for user review),',
+    'get_text (extract text), get_html (get page HTML), click (click element by CSS selector),',
+    'fill (fill form field), eval (run JavaScript), close (close browser), list_tabs (list open tabs).',
     'Desktop uses Electron BrowserView; CLI falls back to HTTP fetch.',
     'Note: click/fill/eval are interactive operations subject to policy approval.',
+    'annotate: captures screenshot with optional highlight overlay; user can mark areas in desktop UI before sending to agent.',
   ].join(' '),
   parameters: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        enum: ['navigate', 'screenshot', 'get_text', 'get_html', 'click', 'fill', 'eval', 'close', 'list_tabs'],
+        enum: ['navigate', 'screenshot', 'annotate', 'get_text', 'get_html', 'click', 'fill', 'eval', 'close', 'list_tabs'],
         description: 'Browser action to perform.',
       },
       url: {
@@ -75,6 +80,14 @@ export const browserTool: AgentTool<BrowserInput> = {
       fullPage: {
         type: 'boolean',
         description: 'Capture full page screenshot (default: false).',
+      },
+      highlight: {
+        type: 'string',
+        description: 'Highlight label text for annotate action (overlay on screenshot).',
+      },
+      highlightSelector: {
+        type: 'string',
+        description: 'CSS selector to highlight in annotate action (draws red box around element).',
       },
     },
     required: ['action'],
@@ -106,6 +119,39 @@ export const browserTool: AgentTool<BrowserInput> = {
           return ok(`Screenshot captured: ${result.contentId} (${result.base64.length} bytes base64)`);
         } catch (e) {
           return fail(`Screenshot failed: ${e instanceof Error ? e.message : String(e)}`, 'screenshot_error');
+        }
+      }
+
+      case 'annotate': {
+        // 截图 + 可选高亮区域，供桌面端用户在 UI 中标注后保存到输入框
+        try {
+          // 如果指定了 highlightSelector，先在页面上画红色框高亮目标元素
+          if (input.highlightSelector) {
+            await browser.eval(`(() => {
+              const el = document.querySelector(${JSON.stringify(input.highlightSelector)});
+              if (!el) return;
+              const rect = el.getBoundingClientRect();
+              const overlay = document.createElement('div');
+              overlay.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top +
+                'px;width:' + rect.width + 'px;height:' + rect.height +
+                'px;border:3px solid #ef4444;z-index:999999;pointer-events:none;box-sizing:border-box;';
+              overlay.id = '__mozi_highlight__';
+              document.body.appendChild(overlay);
+            })()`);
+          }
+          const result = await browser.screenshot({ fullPage: input.fullPage ?? false });
+          // 清理高亮覆盖层
+          if (input.highlightSelector) {
+            await browser.eval(`document.getElementById('__mozi_highlight__')?.remove()`);
+          }
+          const highlightInfo = input.highlight ? ` (highlight: ${input.highlight})` : '';
+          const selectorInfo = input.highlightSelector ? ` (selector: ${input.highlightSelector})` : '';
+          return ok(
+            `Annotated screenshot captured: ${result.contentId} (${result.base64.length} bytes base64)${highlightInfo}${selectorInfo}`,
+            { kind: 'image', contentId: result.contentId, base64: result.base64 } as never,
+          );
+        } catch (e) {
+          return fail(`Annotate failed: ${e instanceof Error ? e.message : String(e)}`, 'annotate_error');
         }
       }
 

@@ -109,6 +109,8 @@ export const ALLOWED_INVOKE: InvokeChannel[] = [
   'audit:query',
   'dashboard:stats',
   'diff:applyPartial',
+  'browser:capture',
+  'browser:saveAnnotated',
 ];
 
 export const ALLOWED_SEND: SendChannel[] = [

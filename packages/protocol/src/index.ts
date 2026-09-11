@@ -180,6 +180,8 @@ export interface InvokeChannels {
   'audit:query': (req: AuditQueryRequest) => AuditEntry[];
   'dashboard:stats': () => DashboardStats;
   'diff:applyPartial': (req: PartialApplyRequest) => { ok: boolean; applied: number };
+  'browser:capture': () => { contentId: string; base64: string; width: number; height: number } | { error: string };
+  'browser:saveAnnotated': (req: { base64: string; sessionId?: string }) => { ok: boolean; contentId: string };
 }
 
 export type InvokeChannel = keyof InvokeChannels;
@@ -220,6 +222,8 @@ export const INVOKE_CHANNELS: InvokeChannel[] = [
   'audit:query',
   'dashboard:stats',
   'diff:applyPartial',
+  'browser:capture',
+  'browser:saveAnnotated',
 ];
 
 export const SEND_CHANNELS: SendChannel[] = [

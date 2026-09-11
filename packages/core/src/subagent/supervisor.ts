@@ -6,6 +6,8 @@
 import type { AgentEvent, PolicyMode, ToolResult } from '@mozi/shared';
 import type { SubAgentDispatcher, ToolContext } from '@mozi/tools';
 import { estimateTokens } from '../context/compactor.js';
+import type { HookRunner } from '../hooks/runner.js';
+import type { ResolvedHook } from '../hooks/types.js';
 import type { Session, SessionStore } from '../session/session-store.js';
 import { TemplateRegistry } from './templates.js';
 
@@ -113,6 +115,9 @@ export interface SupervisorDeps {
   sessions: SessionStore;
   templates: TemplateRegistry;
   config?: Partial<SubAgentConfig>;
+  /** M18：task:run:pre/post 钩子执行器与已加载清单。 */
+  hooks?: HookRunner;
+  resolvedHooks?: ResolvedHook[];
 }
 
 const SUMMARY_CAP_TOKENS = 4000;
@@ -196,6 +201,21 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
       this.releaseTurnSlot(parent.id);
       const available = this.templates().map((t) => t.type).join(', ');
       return err(`未知子智能体模板 '${spec.agent}'。可用模板：${available}`);
+    }
+
+    // ── M18 task:run:pre 钩子（可阻止子智能体派发）──
+    if (this.deps.hooks && this.deps.resolvedHooks && this.deps.resolvedHooks.length) {
+      const pre = await this.deps.hooks.run(
+        'task:run:pre',
+        this.deps.resolvedHooks,
+        { event: 'task:run:pre', agent: spec.agent, prompt: spec.prompt, sessionId: parent.id },
+        { sessionId: parent.id, blocking: true },
+      );
+      if (pre.some((o) => o.action === 'block')) {
+        this.releaseTurnSlot(parent.id);
+        const blocked = pre.find((o) => o.action === 'block');
+        return err(`子智能体派发被 hook 阻止：${blocked?.stdout || 'task:run:pre'}`);
+      }
     }
 
     const subId = `sub-${++this.subSeq}`;
@@ -293,15 +313,51 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
         ts: new Date().toISOString(),
       });
       this.cleanup(parent, subSessionId, cascade, onParentAbort, timer, ctx);
+      const durationMs = Date.now() - startedAt;
+      // ── M18 task:run:post 钩子（派发失败路径）──
+      if (this.deps.hooks && this.deps.resolvedHooks && this.deps.resolvedHooks.length) {
+        await this.deps.hooks.run(
+          'task:run:post',
+          this.deps.resolvedHooks,
+          {
+            event: 'task:run:post',
+            agent: spec.agent,
+            subSessionId,
+            steps,
+            durationMs,
+            isError: true,
+            sessionId: parent.id,
+          },
+          { sessionId: parent.id, blocking: false },
+        );
+      }
       return { callId: '', content: `sub-agent failed: ${message}`, isError: true };
     }
     void maxSteps;
 
     this.cleanup(parent, subSessionId, cascade, onParentAbort, timer, ctx);
+    const durationMs = Date.now() - startedAt;
+
+    // ── M18 task:run:post 钩子（派发完成，成功路径）──
+    if (this.deps.hooks && this.deps.resolvedHooks && this.deps.resolvedHooks.length) {
+      await this.deps.hooks.run(
+        'task:run:post',
+        this.deps.resolvedHooks,
+        {
+          event: 'task:run:post',
+          agent: spec.agent,
+          subSessionId,
+          steps,
+          durationMs,
+          isError: false,
+          sessionId: parent.id,
+        },
+        { sessionId: parent.id, blocking: false },
+      );
+    }
 
     const summary = lastAssistant.trim() || '(sub-agent produced no final summary)';
     const truncated = truncateSummary(summary);
-    const durationMs = Date.now() - startedAt;
     emit({
       type: 'subagent.completed',
       subSessionId,

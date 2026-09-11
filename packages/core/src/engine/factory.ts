@@ -3,12 +3,21 @@ import type { ProviderRegistry } from '@mozi/providers';
 /**
  * 引擎工厂：组装 providers / tools / policy / context / sessions / workspace。
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { type AgentEvent, type PolicyMode, defaultConfig, type SandboxRunner } from '@mozi/shared';
 import { createSandbox } from '@mozi/sandbox';
 import { McpBridge, type McpServerEntry } from '@mozi/mcp-client';
-import { Workspace, createBuiltinRegistry } from '@mozi/tools';
+import { Workspace, createBuiltinRegistry, type MemoryAccess, type VisionAccess } from '@mozi/tools';
 import { ContextManager } from '../context/context-manager.js';
 import { type Session, SessionStore } from '../session/session-store.js';
+import { PromptAssembler } from '../prompts/assembler.js';
+import { MemoryManager } from '../memory/manager.js';
+import { MemoryStore } from '../memory/store.js';
+import { ScreenshotService } from '../vision/screenshot.js';
+import { HookRunner } from '../hooks/runner.js';
+import { loadHooks } from '../hooks/config.js';
+import type { ResolvedHook } from '../hooks/types.js';
 import { SubAgentSupervisor, type SubAgentConfig } from '../subagent/supervisor.js';
 import { createTemplateRegistry } from '../subagent/templates.js';
 import { AgentEngine, type EngineDeps } from './agent-engine.js';
@@ -40,6 +49,15 @@ export interface CreateEngineOptions {
    * 子 Agent 审批冒泡依赖此通道——父 run() 生成器在等待工具执行期间无法 yield。
    */
   onEvent?: (event: AgentEvent) => void;
+  /** M18 钩子：直接注入已加载的执行器（不传则由 factory 按 ~/.mozi + <ws>/.mozi 加载）。 */
+  hooks?: HookRunner;
+  resolvedHooks?: ResolvedHook[];
+  /** M16 记忆存储（不传则按 workspace 自动创建）。 */
+  memoryStore?: MemoryStore;
+  /** M17 视觉服务（不传则按 workspace 创建 ScreenshotService）。 */
+  visionService?: VisionAccess;
+  /** 只读/CI 模式：忽略项目级 hooks（§18.5 防线 4）。默认跟随 unattended。 */
+  headless?: boolean;
 }
 
 export interface CreatedEngine {
@@ -70,9 +88,22 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
   const sessions = new SessionStore(opts.sessionDir);
   const workspace = new Workspace(opts.workspaceRoot);
   const policy = new PolicyEngine();
+
+  // M15 提示词分层组装器（L0-L3），由 ContextManager 物理拼在 AGENTS.md/记忆之前。
+  const prompts = new PromptAssembler();
+  // M16 记忆：按 workspace 创建存储 + 管理器（buildInjection 注入 L4）。
+  const memoryStore = opts.memoryStore ?? new MemoryStore({ workspace: opts.workspaceRoot });
+  const memoryManager = new MemoryManager({ store: memoryStore });
+  // M17 视觉：screenshot 服务（落盘 + OCR）。
+  const visionService =
+    opts.visionService ?? new ScreenshotService({ mediaDir: path.join(opts.workspaceRoot, '.mozi', 'media') });
+
   const context = new ContextManager({
     systemPrompt: opts.systemPrompt,
     workspaceRoot: opts.workspaceRoot,
+    prompts,
+    memory: memoryManager,
+    gitBranch: detectGitBranch(opts.workspaceRoot),
   });
   const tools = createBuiltinRegistry();
 
@@ -94,6 +125,23 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     });
   }
 
+  // M18 钩子：直接注入或按 ~/.mozi + <ws>/.mozi 加载（项目级需审查/指纹确认）。
+  let hooks: HookRunner | undefined;
+  let resolvedHooks: ResolvedHook[] | undefined;
+  if (opts.hooks && opts.resolvedHooks) {
+    hooks = opts.hooks;
+    resolvedHooks = opts.resolvedHooks;
+  } else {
+    const loaded = loadHooks({
+      workspace: opts.workspaceRoot,
+      headless: opts.headless ?? opts.unattended ?? false,
+    });
+    if (loaded.hooks.length) {
+      hooks = new HookRunner({ workspace: opts.workspaceRoot });
+      resolvedHooks = loaded.hooks;
+    }
+  }
+
   const deps: EngineDeps = {
     providers: opts.providers,
     tools,
@@ -105,6 +153,11 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     policyMode: opts.policyMode ?? 'auto',
     sandbox,
     evaluateOptions: opts.unattended ? { unattended: true } : undefined,
+    memoryManager,
+    memoryAccess: memoryAccessFrom(memoryStore),
+    visionAccess: visionService,
+    hooks,
+    resolvedHooks,
   };
   const engine = new AgentEngine(deps);
   if (opts.onEvent) engine.setHostEventSink(opts.onEvent);
@@ -115,6 +168,8 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     sessions,
     templates: createTemplateRegistry(opts.workspaceRoot),
     config: opts.subagent,
+    hooks,
+    resolvedHooks,
   });
   if (opts.enableSubAgents !== false) {
     deps.supervisor = supervisor;
@@ -129,6 +184,52 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
       await mcp?.closeAll();
     },
   };
+}
+
+/** 把 MemoryStore 适配为工具侧 MemoryAccess（M16 §16.4：memory_write/search/forget）。 */
+function memoryAccessFrom(store: MemoryStore): MemoryAccess {
+  return {
+    write(req) {
+      const r = store.writeExplicit(
+        { layer: req.layer, type: req.type, content: req.content, evidence: req.evidence },
+        req.evidence,
+      );
+      return { entry: { id: r.entry.id, content: r.entry.content }, merged: r.merged, replaced: r.replaced };
+    },
+    search(query, opts) {
+      return store
+        .search(query, { layer: opts?.layer, limit: opts?.limit })
+        .map((h) => ({
+          entry: {
+            id: h.entry.id,
+            layer: h.entry.layer,
+            type: h.entry.type,
+            content: h.entry.content,
+            source: h.entry.source,
+          },
+          score: h.score,
+        }));
+    },
+    forget(id) {
+      return store.forget(id);
+    },
+  };
+}
+
+/** 安全读取 git 分支（纯 fs，失败返回 undefined；环境层会显示「非 git 仓库或未知」）。 */
+function detectGitBranch(workspaceRoot: string): string | undefined {
+  try {
+    const head = path.join(workspaceRoot, '.git', 'HEAD');
+    const ref = fs.readFileSync(head, 'utf8').trim();
+    if (ref.startsWith('ref:')) {
+      const parts = ref.slice(4).trim().split('/');
+      return parts[parts.length - 1] || undefined;
+    }
+    // detached HEAD：取短 hash
+    return ref.slice(0, 8) || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export type { Session };

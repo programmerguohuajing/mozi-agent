@@ -1,14 +1,3 @@
----
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: 'fafff660-fd44-425f-a59e-c8d20e4623e5'
-  PropagateID: 'fafff660-fd44-425f-a59e-c8d20e4623e5'
-  ReservedCode1: '79c11415-5581-42e7-8608-f15c3206c9c0'
-  ReservedCode2: '79c11415-5581-42e7-8608-f15c3206c9c0'
----
-
 # 墨子 (Mozi)
 
 [English](README.md) | **简体中文**
@@ -74,5 +63,3 @@ examples/        # 引擎嵌入示例
 ## 许可证
 
 [MIT](./LICENSE)
-
-> AI生成

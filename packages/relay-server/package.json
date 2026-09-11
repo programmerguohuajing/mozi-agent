@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@mozi/relay-server",
   "version": "0.0.0",
   "description": "Self-hostable E2E relay: zero-content encrypted envelope router.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

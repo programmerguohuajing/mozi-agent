@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@mozi/protocol",
   "version": "0.0.0",
   "description": "Unified channel semantics: in-process / Electron IPC / WSS adapters.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

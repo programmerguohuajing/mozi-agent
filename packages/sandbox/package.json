@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@mozi/sandbox",
   "version": "0.0.0",
   "description": "Four-level sandbox: process limits, OS sandbox, containers.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

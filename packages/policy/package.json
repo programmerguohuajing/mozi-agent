@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@mozi/policy",
   "version": "0.0.0",
   "description": "Approval policy engine + command risk analysis.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

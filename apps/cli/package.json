@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "mozi",
   "version": "0.0.0",
   "description": "Mozi CLI — the coding agent that lives in your terminal.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "mozi": "./dist/index.js"

@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@mozi/mcp-client",
   "version": "0.0.0",
   "description": "Full MCP client: stdio + Streamable HTTP transports, tools/resources/prompts/sampling/elicit.",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

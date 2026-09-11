@@ -3,10 +3,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: 'f2fa8afd-9f40-4323-af0f-01e8e2359943'
-  PropagateID: 'f2fa8afd-9f40-4323-af0f-01e8e2359943'
-  ReservedCode1: '05fb71a2-3d0d-4d82-94ce-7c4b671d69f0'
-  ReservedCode2: '05fb71a2-3d0d-4d82-94ce-7c4b671d69f0'
+  ProduceID: 'e4a00bcb-3cc3-4730-bd43-649203f3aa80'
+  PropagateID: 'e4a00bcb-3cc3-4730-bd43-649203f3aa80'
+  ReservedCode1: '124d93e3-1427-4c5c-ac86-c4cbde080cd8'
+  ReservedCode2: '124d93e3-1427-4c5c-ac86-c4cbde080cd8'
 ---
 
 # 墨子（Mozi）—— 仿 Codex 的编码 Agent 开发技术方案
@@ -150,7 +150,7 @@ Codex CLI（开源部分，Rust 实现）的核心能力，即 mozi 的功能基
 
 | 维度 | Codex CLI | Claude Code | Gemini CLI | Aider | **mozi** |
 |------|-----------|-------------|------------|-------|----------|
-| 开源协议 | Apache-2.0 | 闭源 | Apache-2.0 | Apache-2.0 | **Apache-2.0** |
+| 开源协议 | Apache-2.0 | 闭源 | Apache-2.0 | Apache-2.0 | **MIT** |
 | 语言 | Rust | TS（闭源） | TS | Python | **TS** |
 | 引擎可复用 | ✗ | ✗ | 部分（core 面向自家） | ✗ | **✓ 独立 npm 包** |
 | 多模型 | OpenAI 系 | Anthropic 系 | Gemini 系 | 多模型 | **多模型 + 能力协商** |
@@ -1169,7 +1169,7 @@ const provider = new ScriptedProvider([
 
 | 事项 | 方案 |
 |------|------|
-| License | Apache-2.0（与 Codex/Gemini CLI 一致，商用友好） |
+| License | MIT（宽松商用友好，npm 生态最通用） |
 | 仓库治理 | trunk-based + PR 模板 + CODEOWNERS + 语义化提交 |
 | 版本发布 | changesets 自动化：PR 打标签 → merge 后自动发 npm + GitHub Release |
 | 桌面分发 | electron-builder：dmg（公证）/ nsis / AppImage + electron-updater 增量更新 |

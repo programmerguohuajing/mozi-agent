@@ -3,13 +3,15 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '28109ba5-f674-4355-beec-2abf71e4c293'
-  PropagateID: '28109ba5-f674-4355-beec-2abf71e4c293'
-  ReservedCode1: 'e1b1e9ac-d673-4cf7-8ae7-ab489dfeeb42'
-  ReservedCode2: 'e1b1e9ac-d673-4cf7-8ae7-ab489dfeeb42'
+  ProduceID: 'aca77709-dc2e-4f82-801b-d429eabcf4ea'
+  PropagateID: 'aca77709-dc2e-4f82-801b-d429eabcf4ea'
+  ReservedCode1: '304a7856-d9e7-41df-9e3c-85c3d25fa211'
+  ReservedCode2: '304a7856-d9e7-41df-9e3c-85c3d25fa211'
 ---
 
 # 墨子 (Mozi)
+
+**English** | [简体中文](README.zh-CN.md)
 
 **An open-source coding agent that lives in your machine.**
 
@@ -71,6 +73,6 @@ examples/        # Engine embedding examples
 
 ## License
 
-Apache-2.0
+[MIT](./LICENSE)
 
 > AI生成

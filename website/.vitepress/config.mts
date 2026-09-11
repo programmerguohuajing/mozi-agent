@@ -4,7 +4,12 @@ export default defineConfig({
   lang: 'zh-CN',
   title: '墨子 Mozi',
   description: '常驻本机的开源编码智能体 —— 引擎即产品',
+  head: [
+    ['link', { rel: 'icon', href: '/logo.png' }],
+    ['meta', { name: 'theme-color', content: '#0a1535' }],
+  ],
   themeConfig: {
+    logo: '/logo.png',
     nav: [
       { text: '指南', link: '/guide/getting-started' },
       { text: 'API 参考', link: '/guide/api/engine' },

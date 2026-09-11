@@ -74,7 +74,7 @@ afterEach(async () => {
 describe('§10.3 IPC 契约：通道清单完整性', () => {
   it('INVOKE_CHANNELS / SEND_CHANNELS 与详细设计清单一致', async () => {
     const proto = await import('@mozi/protocol');
-    // §10.3 invoke 清单（19 条）
+    // §10.3 invoke 清单（21 条，含四之九内置浏览器新增的 browser:capture / browser:saveAnnotated）
     expect(proto.INVOKE_CHANNELS).toContain('session:create');
     expect(proto.INVOKE_CHANNELS).toContain('run:start');
     expect(proto.INVOKE_CHANNELS).toContain('approval:resolve');
@@ -83,7 +83,9 @@ describe('§10.3 IPC 契约：通道清单完整性', () => {
     expect(proto.INVOKE_CHANNELS).toContain('mcp:restart');
     expect(proto.INVOKE_CHANNELS).toContain('audit:query');
     expect(proto.INVOKE_CHANNELS).toContain('diff:applyPartial');
-    expect(proto.INVOKE_CHANNELS.length).toBe(19);
+    expect(proto.INVOKE_CHANNELS).toContain('browser:capture');
+    expect(proto.INVOKE_CHANNELS).toContain('browser:saveAnnotated');
+    expect(proto.INVOKE_CHANNELS.length).toBe(21);
     // send 清单
     expect(proto.SEND_CHANNELS).toContain('engine:event');
     expect(proto.SEND_CHANNELS).toContain('session:status');

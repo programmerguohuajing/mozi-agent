@@ -3,6 +3,9 @@ hero:
   name: 墨子
   text: Mozi
   tagline: 常驻你本机的开源编码智能体 —— 引擎即产品
+  image:
+    src: /logo.png
+    alt: Mozi Logo
   actions:
     - theme: brand
       text: 快速开始
@@ -34,10 +37,10 @@ AIGC:
   ContentProducer: '001191110102MAD55U9H0F10002'
   ContentPropagator: '001191110102MAD55U9H0F10002'
   Label: '1'
-  ProduceID: '34e3fe67-a7f0-4a65-beab-07799add27d5'
-  PropagateID: '34e3fe67-a7f0-4a65-beab-07799add27d5'
-  ReservedCode1: '4a0c3e70-4226-4ab2-a5b6-1dd8ba89bea0'
-  ReservedCode2: '4a0c3e70-4226-4ab2-a5b6-1dd8ba89bea0'
+  ProduceID: 'a3ed2f90-abda-4b95-8b78-b88edb9470a6'
+  PropagateID: 'a3ed2f90-abda-4b95-8b78-b88edb9470a6'
+  ReservedCode1: 'b1804e61-8bbc-49c0-8806-6524b79ba1c4'
+  ReservedCode2: 'b1804e61-8bbc-49c0-8806-6524b79ba1c4'
 ---
 
 ## 为什么是墨子？
@@ -59,7 +62,7 @@ for await (const event of engine.run({ sessionId: 's1', text: '修复测试' }))
 
 ## 项目状态
 
-M0–M3.5 已交付（引擎闭环 / 安全与编辑 / 沙箱 / 完整 MCP 客户端），
-M4 桌面应用与 M4.5 定时任务开发中。完整路线图见仓库 `docs/`。
+M0–M5 + M4.5（定时任务）+ M4.75（移动端与远程）+ M4.9（学习扩展：提示词/记忆/多模态/Hooks）+ 内置浏览器/Git 工具均已交付。
+完整路线图见仓库 `docs/`。
 
 > AI生成

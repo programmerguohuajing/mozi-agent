@@ -176,7 +176,9 @@ describe('M4.75 RemoteNode 协议全链路', () => {
     await node.onFrame({ t: 'invoke', id: 'i5', channel: 'run:start', params: {}, requestId: 'rid-1' });
     const first = out.length - 1;
     await node.onFrame({ t: 'invoke', id: 'i6', channel: 'run:start', params: {}, requestId: 'rid-1' });
-    expect(out[first]).toEqual(out[out.length - 1]);
+    // 去重：响应帧 id 随当前请求推进（i6），但 ok 负载与首次（i5）相同、且只执行一次
+    expect((out[out.length - 1] as { id: string }).id).toBe('i6');
+    expect((out[first] as { ok: unknown }).ok).toEqual((out[out.length - 1] as { ok: unknown }).ok);
     expect(calls.runStart).toBe(before + 1);
 
     const beforeEvents = out.length;

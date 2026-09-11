@@ -34,5 +34,14 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "com.mozi.desktop",
+    "productName": "Mozi",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "build/**/*"],
+    "win": { "icon": "build/icon.png" },
+    "mac": { "icon": "build/icon.png" },
+    "linux": { "icon": "build/icon.png" }
   }
 }

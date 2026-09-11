@@ -36,6 +36,16 @@ const HOME = os.homedir();
 const SESSION_DIR = process.env.MOZI_SESSION_DIR ?? path.join(HOME, '.mozi', 'sessions');
 fs.mkdirSync(SESSION_DIR, { recursive: true });
 
+/** CLI 启动 banner（ASCII art Logo）。 */
+const BANNER = String.raw`
+  ███╗   ███╗ ██████╗ ███╗   ██╗ █████╗
+  ████╗ ████║██╔═══██╗████╗  ██║██╔══██╗
+  ██╔████╔██║██║   ██║██╔██╗ ██║███████║
+  ██║╚██╔╝██║██║   ██║██║╚██╗██║██╔══██║
+  ██║ ╚═╝ ██║╚██████╔╝██║ ╚████║██║  ██║
+  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝
+  墨子 · Mozi — 开源编码 Agent`;
+
 interface ProviderInfo {
   reg: ProviderRegistry;
   model: string;
@@ -186,8 +196,8 @@ async function runRepl(): Promise<void> {
   });
   const sid = `repl-${Date.now().toString(36)}`;
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  if (!live) console.log('Mozi REPL（离线演示模式）。输入任务开始；输入 exit 退出。\n');
-  else console.log('Mozi REPL。输入任务开始；exit 退出；/undo 撤销最近一次文件修改。\n');
+  if (!live) console.log(`${BANNER}\nMozi REPL（离线演示模式）。输入任务开始；输入 exit 退出。\n`);
+  else console.log(`${BANNER}\nMozi REPL。输入任务开始；exit 退出；/undo 撤销最近一次文件修改。\n`);
 
   const ask = (q: string): Promise<string> => new Promise((res) => rl.question(q, (a) => res(a)));
 
@@ -268,6 +278,7 @@ const program = new Command();
 program
   .name('mozi')
   .description('Mozi（墨子）—— 开源编码 Agent。引擎可复用，多模型适配，事件开放。')
+  .version('0.0.0')
   .argument('[prompt...]', '任务描述；省略则进入交互 REPL')
   .option('--json', '以 NDJSON 输出事件流（非交互）')
   .option('--session <id>', '会话 ID（用于 resume）')

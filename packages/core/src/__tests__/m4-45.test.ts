@@ -204,7 +204,7 @@ describe('TaskStore', () => {
   it('add/get/remove/load 持久化', () => {
     const file = path.join(tmp, 'tasks.json');
     const store = new TaskStore(file);
-    const spec = baseSpec({ id: 'task-abc', name: 'A' });
+    const spec = baseSpec({ id: 'task-a', name: 'A' });
     store.add(spec);
     expect(store.get('task-a')?.name).toBe('A');
     store.update('task-a', { name: 'A2' });
@@ -215,11 +215,15 @@ describe('TaskStore', () => {
 
   it('损坏主文件 → 从 .bak 恢复', () => {
     const file = path.join(tmp, 'tasks.json');
+    // 隔离：清掉可能由其它用例遗留的主文件与备份
+    fs.rmSync(file, { force: true });
+    fs.rmSync(`${file}.bak`, { force: true });
     const store = new TaskStore(file);
-    store.add(baseSpec({ id: 'task-x' }));
-    fs.writeFileSync(file, '{broken json');
-    const recovered = new TaskStore(file).load();
-    expect(recovered[0]?.id).toBe('task-x');
+    store.add(baseSpec({ id: 'task-x' })); // 写主文件（无旧文件 → 不生成 .bak）
+    store.update('task-x', { name: 'X' }); // 第二次写 → 主文件备份为 .bak
+    fs.writeFileSync(file, '{broken json'); // 损坏主文件
+    const recovered = new TaskStore(file).load(); // 应从 .bak 恢复
+    expect(recovered.find((t) => t.id === 'task-x')).toBeTruthy();
   });
 });
 

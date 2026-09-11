@@ -56,6 +56,8 @@ export interface BootOptions {
   settingsFile?: string;
   /** dev server URL（Vite HMR），有则 loadURL。 */
   devServerUrl?: string;
+  /** 窗口图标路径（默认 build/icon.png）。 */
+  iconPath?: string;
 }
 
 export interface BootedApp {
@@ -122,10 +124,12 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
   bridge = new IpcBridge({ service, settings, diff, mcp, channel });
   bridge.install();
 
+  const iconPath = opts.iconPath ?? path.join(path.dirname(opts.rendererIndex), 'build', 'icon.png');
   const createWindow = (sessionId?: string): ElectronBrowserWindow => {
     const win = new electron.BrowserWindow({
       width: 1280,
       height: 840,
+      ...(fs.existsSync(iconPath) ? { icon: iconPath } : {}),
       webPreferences: {
         // 进程安全（§10.2）：隔离上下文、禁用 node 集成、白名单 preload。
         contextIsolation: true,

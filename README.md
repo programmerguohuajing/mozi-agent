@@ -1,3 +1,18 @@
+---
+AIGC:
+  ContentProducer: '001191110102MAD55U9H0F10002'
+  ContentPropagator: '001191110102MAD55U9H0F10002'
+  Label: '1'
+  ProduceID: 'd8afd8c1-a2b4-4db7-ab1f-1762ad5c8482'
+  PropagateID: 'd8afd8c1-a2b4-4db7-ab1f-1762ad5c8482'
+  ReservedCode1: 'ea78e50c-c2b9-411e-8e8d-da35097e3cb1'
+  ReservedCode2: 'ea78e50c-c2b9-411e-8e8d-da35097e3cb1'
+---
+
+<div align="center">
+  <img src="docs/logo/mozi-logo.png" width="200" alt="Mozi Logo" />
+</div>
+
 # 墨子 (Mozi)
 
 **English** | [简体中文](README.zh-CN.md)
@@ -63,3 +78,5 @@ examples/        # Engine embedding examples
 ## License
 
 [MIT](./LICENSE)
+
+> AI生成

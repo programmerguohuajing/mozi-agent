@@ -7,6 +7,7 @@ export * from './context/compactor.js';
 export * from './context/freshness.js';
 export * from './prompts/index.js';
 export * from './memory/index.js';
+export * from './vision/index.js';
 export * from './subagent/templates.js';
 export * from './subagent/supervisor.js';
 export * from './engine/agent-engine.js';

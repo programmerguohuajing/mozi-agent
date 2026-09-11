@@ -515,6 +515,30 @@ export class AgentEngine {
     } else if (decision.type === 'deny') {
       allowed = false;
     } else {
+      // ── M18 approval:pre 钩子（可阻止审批，等价于 deny）──
+      const approvalPre = await this.runHooks(
+        'approval:pre',
+        { tool: call.name, reason: decision.reason },
+        true,
+        sid,
+      );
+      if (approvalPre.some((o) => o.action === 'block')) {
+        const blocked = approvalPre.find((o) => o.action === 'block');
+        const result: ToolResult = {
+          callId: call.id,
+          content: `Blocked by hook (approval:pre): ${blocked?.stdout || 'approval denied'}`,
+          isError: true,
+          meta: { errorKind: 'hook-blocked' },
+        };
+        push({ type: 'tool.completed', callId: call.id, result, ts: now() });
+        session.messages.push({
+          role: 'tool',
+          callId: call.id,
+          content: result.content,
+          isError: true,
+        });
+        return evs;
+      }
       push({ type: 'tool.approval.required', call, reason: decision.reason, ts: now() });
       const answer = await this.awaitApproval(session, call, decision.reason);
       push({
@@ -524,6 +548,8 @@ export class AgentEngine {
         by: 'user',
         ts: now(),
       });
+      // ── M18 approval:post 钩子 ──
+      await this.runHooks('approval:post', { tool: call.name, decision: answer }, false, sid);
       allowed = answer === 'allow';
     }
 
@@ -563,10 +589,36 @@ export class AgentEngine {
       return evs;
     }
 
+    // ── M18 tool:pre 钩子（可阻止工具执行，等价于 deny）──
+    const toolPre = await this.runHooks(
+      'tool:pre',
+      { tool: call.name, arguments: call.arguments ?? {}, riskLevel: call.riskLevel },
+      true,
+      sid,
+    );
+    if (toolPre.some((o) => o.action === 'block')) {
+      const blocked = toolPre.find((o) => o.action === 'block');
+      const result: ToolResult = {
+        callId: call.id,
+        content: `Blocked by hook (tool:pre): ${blocked?.stdout || 'tool execution denied'}`,
+        isError: true,
+        meta: { errorKind: 'hook-blocked' },
+      };
+      push({ type: 'tool.completed', callId: call.id, result, ts: now() });
+      session.messages.push({
+        role: 'tool',
+        callId: call.id,
+        content: result.content,
+        isError: true,
+      });
+      return evs;
+    }
+
     const startedAt = Date.now();
     const tracker = this.freshnessFor(sid);
+    let result: ToolResult;
     try {
-      const result = await withTimeout(
+      result = await withTimeout(
         tool.execute(call.arguments as Record<string, unknown>, {
           workspace: this.workspace,
           signal,
@@ -597,7 +649,7 @@ export class AgentEngine {
       });
     } catch (err) {
       const e = toMoziError(err);
-      const result: ToolResult = {
+      result = {
         callId: call.id,
         content: `Error: ${e.message}`,
         isError: true,
@@ -611,6 +663,8 @@ export class AgentEngine {
         isError: true,
       });
     }
+    // ── M18 tool:post 钩子（无论成功/失败均触发）──
+    await this.runHooks('tool:post', { tool: call.name, callId: call.id, isError: result.isError }, false, sid);
     return evs;
   }
 

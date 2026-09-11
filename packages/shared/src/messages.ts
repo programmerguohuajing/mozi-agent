@@ -52,7 +52,9 @@ export type DisplayPayload =
   | { kind: 'markdown'; text: string }
   | { kind: 'table'; headers: string[]; rows: string[][] }
   | { kind: 'json'; data: unknown }
-  | { kind: 'tree'; entries: string[] };
+  | { kind: 'tree'; entries: string[] }
+  /** 图片卡片（M17 §17.3）：TUI 提示保存路径，桌面/移动端直接渲染。 */
+  | { kind: 'image'; path: string; contentId: string; alt?: string };
 
 export interface ToolResult {
   callId: string;

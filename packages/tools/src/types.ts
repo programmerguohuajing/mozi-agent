@@ -23,6 +23,47 @@ export interface SessionStateView {
   enabledTools?: string[];
 }
 
+/** 记忆写入/检索契约（M16 §16.4）：由 core 的 MemoryStore 实现，避免 tools 反向依赖 core。 */
+export interface MemoryAccess {
+  /** 显式写入（memory_write 工具）；检测到密钥时抛错。 */
+  write(req: {
+    layer: 'user' | 'project';
+    type: 'fact' | 'preference' | 'decision';
+    content: string;
+    evidence?: string;
+  }): { entry: { id: string; content: string }; merged: boolean; replaced?: string };
+  /** 记忆检索（memory_search 工具）。 */
+  search(
+    query: string,
+    opts?: { layer?: 'user' | 'project' | 'semantic'; limit?: number },
+  ): Array<{ entry: { id: string; layer: string; type: string; content: string; source: string }; score: number }>;
+  /** 删除条目（memory_forget 工具）。 */
+  forget(id: string): boolean;
+}
+
+/** 截图/视觉契约（M17 §17.3）：由 core 的图片管线实现。 */
+export interface VisionAccess {
+  /** 主动截图；返回落盘路径 + OCR 摘要。 */
+  screenshot(input: {
+    target?:
+      | { kind: 'screen' }
+      | { kind: 'window'; title: string }
+      | { kind: 'browser'; url: string; waitMs?: number; fullPage?: boolean };
+    annotate?: { highlight?: string };
+  }): Promise<{
+    /** 落盘图片相对/绝对路径。 */
+    path: string;
+    /** contentId（事件只带此 id，§17.2）。 */
+    contentId: string;
+    /** OCR 文本摘要（截断）。 */
+    ocrText?: string;
+    /** 估算图片 token（计费，§17.2）。 */
+    estimatedTokens?: number;
+    /** 是否由 headless 浏览器模式产生。 */
+    browser?: boolean;
+  }>;
+}
+
 export interface ToolContext {
   workspace: Workspace;
   signal: AbortSignal;
@@ -33,6 +74,10 @@ export interface ToolContext {
   session?: SessionStateView;
   /** 子智能体监督者（M12 §12.4，task 工具用）。 */
   supervisor?: SubAgentDispatcher;
+  /** 记忆访问（M16；未注入时 memory_* 工具返回明确错误）。 */
+  memory?: MemoryAccess;
+  /** 视觉访问（M17；未注入时 screenshot 工具返回明确错误）。 */
+  vision?: VisionAccess;
   /** 工具内部产生的旁路事件（如 subagent.progress）。 */
   emit?: (e: AgentEvent) => void;
 }

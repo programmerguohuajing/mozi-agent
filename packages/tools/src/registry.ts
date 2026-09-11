@@ -5,7 +5,11 @@ import type { ToolCall } from '@mozi/shared';
 import { editFileTool } from './edit-file.js';
 import { globTool } from './glob.js';
 import { grepTool } from './grep.js';
+import { memoryForgetTool } from './memory-forget.js';
+import { memorySearchTool } from './memory-search.js';
+import { memoryWriteTool } from './memory-write.js';
 import { readFileTool } from './read.js';
+import { screenshotTool } from './screenshot.js';
 import { shellTool } from './shell.js';
 import { taskTool } from './task.js';
 import { todoListTool } from './todo-list.js';
@@ -71,7 +75,7 @@ export class ToolRegistry {
   }
 }
 
-/** M1+M2 内置工具集：read_file / write_file / edit_file / glob / grep / shell + todo_list / task。 */
+/** M1+M2 内置工具集 + M16 记忆工具 + M17 screenshot。 */
 export function builtinTools(): AgentTool[] {
   // 具体工具各自收窄了输入类型（AgentTool<ReadInput> 等），此处统一为注册表用的宽类型。
   return [
@@ -83,6 +87,10 @@ export function builtinTools(): AgentTool[] {
     shellTool,
     todoListTool,
     taskTool,
+    memoryWriteTool,
+    memorySearchTool,
+    memoryForgetTool,
+    screenshotTool,
   ] as unknown as AgentTool[];
 }
 

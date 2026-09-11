@@ -16,3 +16,7 @@ export * from './patch-matcher.js';
 export * from './patch-applier.js';
 export * from './edit-file.js';
 export * from './snapshots.js';
+export * from './memory-write.js';
+export * from './memory-search.js';
+export * from './memory-forget.js';
+export * from './screenshot.js';

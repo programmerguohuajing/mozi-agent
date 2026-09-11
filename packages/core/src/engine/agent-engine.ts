@@ -22,7 +22,10 @@ import {
   type ToolResult,
   toMoziError,
 } from '@mozi/shared';
-import type { ToolRegistry, Workspace } from '@mozi/tools';
+import type { MemoryAccess, ToolRegistry, VisionAccess, Workspace } from '@mozi/tools';
+import type { MemoryManager } from '../memory/manager.js';
+import type { HookRunner, HookPayload } from '../hooks/runner.js';
+import type { HookEvent, HookOutcome, ResolvedHook } from '../hooks/types.js';
 import { compactMessages, shouldCompact } from '../context/compactor.js';
 import { FreshnessTracker } from '../context/freshness.js';
 import type { ContextManager, BuildView } from '../context/context-manager.js';
@@ -95,6 +98,16 @@ export interface EngineDeps {
   supervisor?: SubAgentSupervisor;
   /** 无人值守评估选项（M13 I1）：注入后 evaluate 时 ask 一律静态化为 deny。 */
   evaluateOptions?: EvaluateOptions;
+  /** M16 记忆管理器：会话启动时提示待确认候选 + 每轮语义检索刷新（注入 L4）。 */
+  memoryManager?: MemoryManager;
+  /** M16 工具侧记忆访问（memory_write/search/forget 工具）。 */
+  memoryAccess?: MemoryAccess;
+  /** M17 工具侧视觉访问（screenshot 工具）。 */
+  visionAccess?: VisionAccess;
+  /** M18 钩子执行器（已加载的 hooks）。未注入则不触发任何 hook。 */
+  hooks?: HookRunner;
+  /** M18 已加载的钩子清单（供 HookRunner.run 过滤事件）。 */
+  resolvedHooks?: ResolvedHook[];
 }
 
 export class AgentEngine {
@@ -109,6 +122,8 @@ export class AgentEngine {
   private readonly sinks = new Map<string, (e: AgentEvent) => void>();
   /** 主机级事件出口（宿主注册）。 */
   private hostSink?: (e: AgentEvent) => void;
+  /** 会话级 hook 提示缓冲（M18 §18.4）：inherited=上一轮产生的提示，fresh=本轮新产生。 */
+  private readonly hookNotes = new Map<string, { inherited: string[]; fresh: string[] }>();
 
   constructor(private readonly deps: EngineDeps) {
     this.approval = deps.approval ?? new InteractiveApprovalGateway();
@@ -167,6 +182,33 @@ export class AgentEngine {
       const parent = this.subParent.get(originSessionId);
       if (parent) this.sinks.get(parent)?.(event);
     }
+  }
+
+  /**
+   * 触发某生命周期事件的全部钩子（M18 §18.4）。
+   * 仅当注入了 HookRunner 且有对应事件清单时才执行；stdout 的 {"note"} 自动累积进
+   * 会话的 fresh 提示缓冲（由 run() 在每轮上下文组装时注入 L4）。
+   * @param blocking 前置类事件（tool:pre/approval:pre）置 true：任一 block 即短路。
+   */
+  private async runHooks(
+    event: HookEvent,
+    rest: Record<string, unknown>,
+    blocking: boolean,
+    sid: string,
+  ): Promise<HookOutcome[]> {
+    if (!this.deps.hooks || !this.deps.resolvedHooks || this.deps.resolvedHooks.length === 0) {
+      return [];
+    }
+    const payload: HookPayload = { event, ...rest };
+    const outcomes = await this.deps.hooks.run(event, this.deps.resolvedHooks, payload, {
+      sessionId: sid,
+      blocking,
+    });
+    const st = this.hookNotes.get(sid);
+    if (st) {
+      for (const o of outcomes) if (o.note) st.fresh.push(o.note);
+    }
+    return outcomes;
   }
 
   resolveApproval(sessionId: string, callId: string, decision: 'allow' | 'deny'): void {
@@ -234,12 +276,20 @@ export class AgentEngine {
     input.signal?.addEventListener('abort', onAbort);
     const sid = session.id;
     const tracker = this.freshnessFor(sid);
+    this.hookNotes.set(sid, { inherited: [], fresh: [] });
 
     try {
       const turnId = genId('turn');
       yield { type: 'turn.started', turnId, input: input.text, ts: now() };
       this.log(session, { type: 'turn.started', turnId, input: input.text, ts: now() });
       session.messages.push({ role: 'user', content: [{ type: 'text', text: input.text }] });
+
+      // ---- M18 生命周期钩子：session:start（一次）----
+      await this.runHooks('session:start', { input: input.text, model: session.config.models.executor }, false, sid);
+      // ---- M16 会话启动：提示待确认记忆候选（如有）----
+      this.deps.memoryManager?.onSessionStart();
+      // ---- M18 turn:start（一次）----
+      await this.runHooks('turn:start', { turnIndex: 0, model: session.config.models.executor }, false, sid);
 
       const limits = session.limits;
       for (let step = 0; step < limits.maxSteps; step++) {
@@ -251,10 +301,15 @@ export class AgentEngine {
         // ── Auto-Compact（§5.4）：预算命中且距上次压缩 ≥ minIntervalTurns ──
         await this.maybeCompact(session, tracker, sid, (e) => this.pending.push(e));
 
+        // ── M16 每轮：节流刷新语义检索（注入 L4 由 ContextManager 完成）──
+        await this.deps.memoryManager?.onTurn(step, input.text);
+
+        const hn = this.hookNotes.get(sid);
         const view = this.deps.context.build(session, {
           dirtyFiles: tracker.checkDirty().map((abs) =>
             FreshnessTracker.relativize(abs, this.workspace.root),
           ),
+          ...(hn ? { hookNotes: [...hn.inherited, ...hn.fresh] } : {}),
         });
         const provider = this.deps.providers.resolve(session.config.models.executor);
         const stream = provider.chat({
@@ -311,6 +366,14 @@ export class AgentEngine {
         // 持久化会话级元数据（todo 列表等），resume 时恢复。
         if (!session.parentSessionId) this.deps.sessions.saveMeta(session.id, session.meta);
 
+        // ── M18 turn:end 钩子 + 提示滚动（本轮 fresh → 下轮 inherited）──
+        await this.runHooks('turn:end', { turnIndex: step, steps: step + 1, usage: session.usage }, false, sid);
+        const hnEnd = this.hookNotes.get(sid);
+        if (hnEnd) {
+          hnEnd.inherited = hnEnd.fresh;
+          hnEnd.fresh = [];
+        }
+
         yield { type: 'turn.completed', usage: session.usage, steps: step + 1, ts: now() };
         this.log(session, {
           type: 'turn.completed',
@@ -334,6 +397,9 @@ export class AgentEngine {
       this.active.delete(sid);
       this.aborts.delete(sid);
       input.signal?.removeEventListener('abort', onAbort);
+      // ── M18 session:end 钩子（无论正常完成/中断/异常）──
+      await this.runHooks('session:end', { turnIndex: 0 }, false, sid);
+      this.hookNotes.delete(sid);
     }
     // 冲刷压缩等内部挂起事件（顺序保证在 task.completed 之后）。
     if (this.pending.length) {
@@ -508,6 +574,8 @@ export class AgentEngine {
           sandbox: this.deps.sandbox,
           session,
           supervisor: this.deps.supervisor,
+          ...(this.deps.memoryAccess ? { memory: this.deps.memoryAccess } : {}),
+          ...(this.deps.visionAccess ? { vision: this.deps.visionAccess } : {}),
           emit: (e) => evs.push(e),
         }),
         session.limits.toolTimeoutMs,

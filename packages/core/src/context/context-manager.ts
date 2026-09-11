@@ -63,7 +63,7 @@ export interface BuildView {
 export class ContextManager {
   constructor(private readonly opts: ContextManagerOptions) {}
 
-  build(session: Session, extra?: { dirtyFiles?: string[] }): BuildView {
+  build(session: Session, extra?: { dirtyFiles?: string[]; hookNotes?: string[] }): BuildView {
     const parts: string[] = [];
     let prompt: PromptBuildResult | undefined;
 
@@ -106,6 +106,14 @@ export class ContextManager {
         .join('\n');
       parts.push(
         `[注意] 以下文件自上次读取后已被修改，请重新 read_file 确认最新内容：\n${list}`,
+      );
+    }
+
+    // ---- L4 任务层：生命周期钩子提示（M18 §18.4：stdout {"note"} 注入下轮上下文）----
+    const hookNotes = extra?.hookNotes ?? [];
+    if (hookNotes.length) {
+      parts.push(
+        `[hook 提示] 来自生命周期钩子的上下文提示：\n${hookNotes.map((n) => `- ${n}`).join('\n')}`,
       );
     }
     const systemText = parts.join('\n\n');

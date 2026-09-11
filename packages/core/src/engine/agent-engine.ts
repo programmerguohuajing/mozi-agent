@@ -447,9 +447,15 @@ export class AgentEngine {
       turnsSinceLastCompact: session.meta.turnsSinceLastCompact ?? 0,
     });
     if (!check.should) return;
+    // ── M18 compact:pre 钩子 ──
+    await this.runHooks('compact:pre', { turnsSinceLastCompact: session.meta.turnsSinceLastCompact ?? 0 }, false, sid);
     const provider = this.deps.providers.resolve(session.config.models.executor);
     const result = await compactMessages(session.messages, provider, session.id);
-    if (!result) return; // 失败跳过
+    if (!result) {
+      // 失败跳过（仍触发 compact:post 通知）
+      await this.runHooks('compact:post', { skipped: true }, false, sid);
+      return;
+    }
     session.messages.splice(0, session.messages.length, ...result.messages);
     session.meta.turnsSinceLastCompact = 0;
     session.meta.compactCount = (session.meta.compactCount ?? 0) + 1;
@@ -462,6 +468,8 @@ export class AgentEngine {
     };
     this.log(session, ev);
     emit(ev);
+    // ── M18 compact:post 钩子 ──
+    await this.runHooks('compact:post', { removedTurns: result.removedTurns, savedTokens: result.savedTokens }, false, sid);
   }
 
   /** 等待审批：超时自动 deny（M6 §6.1.3 / M12 §12.7，默认 10 分钟）。 */

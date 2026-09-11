@@ -16,18 +16,28 @@ let ws: Workspace;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mozi-git-'));
-  execSync('git init', { cwd: tmp });
-  execSync('git config user.email "test@test.com"', { cwd: tmp });
-  execSync('git config user.name "Test"', { cwd: tmp });
   ws = new Workspace(tmp);
 });
-afterEach(() => {
-  fs.rmSync(tmp, { recursive: true, force: true });
+afterEach(async () => {
+  // Windows 上 git 可能仍持有句柄（EBUSY）：短重试再清。
+  for (let i = 0; i < 10; i++) {
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
 });
 
 // ── Git 工具 ────────────────────────────────────────────────────────
 
 describe('内置 Git 工具', () => {
+  beforeEach(() => {
+    execSync('git init', { cwd: tmp });
+    execSync('git config user.email "test@test.com"', { cwd: tmp });
+    execSync('git config user.name "Test"', { cwd: tmp });
+  });
   it('status：空仓库返回空列表', async () => {
     const result = await gitTool.execute(
       { action: 'status' },

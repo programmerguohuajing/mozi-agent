@@ -1,9 +1,9 @@
 {
   "name": "mozi-monorepo",
-  "private": true,
-  "version": "0.0.0",
+  "private": false,
+  "version": "0.0.1",
   "description": "Mozi (墨子) — an open-source coding agent. 机关术造工具，名辩术讲逻辑，守城术筑安全。",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "packageManager": "pnpm@11.1.2",
   "engines": {
     "node": ">=20"

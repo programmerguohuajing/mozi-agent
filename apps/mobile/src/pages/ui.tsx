@@ -65,8 +65,14 @@ export function Btn({
   const kindStyle =
     kind === 'primary' ? uiStyles.btnPrimary : kind === 'success' ? uiStyles.btnSuccess : kind === 'danger' ? uiStyles.btnDanger : uiStyles.btnGhost;
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={[uiStyles.btn, small ? uiStyles.btnSmall : null, disabled ? uiStyles.btnDisabled : null, kindStyle]}>
-      <Text style={[uiStyles.btnText, kind === 'ghost' ? uiStyles.btnTextGhost : null, small ? { fontSize: 12 } : null]}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[uiStyles.btn, small ? uiStyles.btnSmall : null, kindStyle, disabled ? uiStyles.btnDisabled : null]}
+    >
+      <Text style={[uiStyles.btnText, kind === 'ghost' ? uiStyles.btnTextGhost : null, small ? { fontSize: 12 } : null, disabled ? uiStyles.btnTextDisabled : null]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -114,6 +120,7 @@ export const uiStyles = StyleSheet.create({
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.cardBorder },
   btnText: { color: '#0a0a0a', fontSize: 14, fontWeight: '700' },
   btnTextGhost: { color: colors.text },
+  btnTextDisabled: { color: colors.textFaint },
   empty: { alignItems: 'center', padding: spacing.xl * 2 },
   emptyText: { color: colors.textFaint, fontSize: 13, textAlign: 'center' },
   section: { color: colors.textFaint, fontSize: 12, fontWeight: '700', marginTop: spacing.md, marginBottom: spacing.sm },

@@ -18,6 +18,18 @@ import type { PolicyMode } from '@mozi/shared';
  */
 import { Command } from 'commander';
 import { listSnapshots, undoLast } from '@mozi/tools';
+import { nextRunAt } from '@mozi/core';
+import {
+  taskAdd,
+  taskDoctor,
+  taskGc,
+  taskList,
+  taskRemove,
+  taskRun,
+  taskSetEnabled,
+  taskTick,
+  registerTaskCommands,
+} from './task.js';
 
 const HOME = os.homedir();
 const SESSION_DIR = process.env.MOZI_SESSION_DIR ?? path.join(HOME, '.mozi', 'sessions');
@@ -255,19 +267,19 @@ program
   .argument('[prompt...]', '任务描述；省略则进入交互 REPL')
   .option('--json', '以 NDJSON 输出事件流（非交互）')
   .option('--session <id>', '会话 ID（用于 resume）')
-  .option('--policy <mode>', '审批模式: readonly | auto | full-auto', 'auto')
+  .option('--policy-mode <mode>', '审批模式: readonly | auto | full-auto（task 子命令的 --policy 用于无人值守策略）', 'auto')
   .option('--yes', '非交互模式下自动批准所有需要审批的工具调用')
   .action(
     async (
       promptParts: string[],
-      opts: { json?: boolean; session?: string; policy?: string; yes?: boolean },
+      opts: { json?: boolean; session?: string; policyMode?: string; yes?: boolean },
     ) => {
       const prompt = promptParts.join(' ').trim();
       if (!prompt) {
         await runRepl();
         return;
       }
-      const code = await runExec(prompt, opts);
+      const code = await runExec(prompt, { ...opts, policy: opts.policyMode });
       process.exit(code);
     },
   );
@@ -286,5 +298,8 @@ program
       console.log(`${s.id}  model=${s.model ?? '-'}  updated=${s.updatedAt ?? '-'}`);
     }
   });
+
+// ── M4.5：定时任务子命令族（M13 §13.9）──
+registerTaskCommands(program);
 
 void program.parseAsync(process.argv);

@@ -33,6 +33,8 @@ export interface CreateEngineOptions {
   subagent?: Partial<SubAgentConfig>;
   /** 是否启用子智能体（task 工具）；默认 true。 */
   enableSubAgents?: boolean;
+  /** 无人值守模式（M13 I1）：策略评估时 ask 一律静态化为 deny。 */
+  unattended?: boolean;
   /**
    * 宿主级实时事件出口：所有会话（含子会话桥接事件，如 subagent.approval.required）即时送达。
    * 子 Agent 审批冒泡依赖此通道——父 run() 生成器在等待工具执行期间无法 yield。
@@ -102,6 +104,7 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     approval: opts.approval,
     policyMode: opts.policyMode ?? 'auto',
     sandbox,
+    evaluateOptions: opts.unattended ? { unattended: true } : undefined,
   };
   const engine = new AgentEngine(deps);
   if (opts.onEvent) engine.setHostEventSink(opts.onEvent);

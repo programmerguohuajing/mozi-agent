@@ -1,4 +1,5 @@
 import type { PolicyEngine } from '@mozi/policy';
+import type { EvaluateOptions } from '@mozi/policy';
 import type { ProviderRegistry } from '@mozi/providers';
 /**
  * AgentEngine：状态机主循环（M1 §1.5 + M2 扩展）。
@@ -92,6 +93,8 @@ export interface EngineDeps {
   sandbox?: SandboxRunner;
   /** 子智能体监督者（M12）：注入后 task 工具可派发子 Agent。 */
   supervisor?: SubAgentSupervisor;
+  /** 无人值守评估选项（M13 I1）：注入后 evaluate 时 ask 一律静态化为 deny。 */
+  evaluateOptions?: EvaluateOptions;
 }
 
 export class AgentEngine {
@@ -439,7 +442,7 @@ export class AgentEngine {
 
     push({ type: 'tool.requested', call, ts: now() });
 
-    const decision = this.deps.policy.evaluate(call, session.config.policy);
+    const decision = this.deps.policy.evaluate(call, session.config.policy, this.deps.evaluateOptions ?? {});
     let allowed = false;
     if (decision.type === 'allow') {
       allowed = true;

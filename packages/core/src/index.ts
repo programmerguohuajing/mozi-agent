@@ -10,4 +10,5 @@ export * from './subagent/supervisor.js';
 export * from './engine/agent-engine.js';
 export * from './engine/approve.js';
 export * from './engine/factory.js';
+export * from './tasks/index.js';
 export { Workspace, createBuiltinRegistry } from '@mozi/tools';

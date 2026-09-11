@@ -78,8 +78,32 @@ export interface ToolContext {
   memory?: MemoryAccess;
   /** 视觉访问（M17；未注入时 screenshot 工具返回明确错误）。 */
   vision?: VisionAccess;
+  /** 浏览器访问（内置浏览器；未注入时 browser 工具返回明确错误）。 */
+  browser?: BrowserAccess;
   /** 工具内部产生的旁路事件（如 subagent.progress）。 */
   emit?: (e: AgentEvent) => void;
+}
+
+/** 内置浏览器访问契约：由桌面端 Electron BrowserView 或 CLI HTTP fetch 实现。 */
+export interface BrowserAccess {
+  /** 导航到 URL，返回页面基本信息。 */
+  navigate(url: string, opts?: { waitMs?: number }): Promise<{ title: string; url: string; status: number }>;
+  /** 截取当前页面截图（base64 PNG）。 */
+  screenshot(opts?: { fullPage?: boolean }): Promise<{ contentId: string; base64: string }>;
+  /** 提取页面纯文本内容。 */
+  getText(): Promise<{ text: string; truncated: boolean }>;
+  /** 获取页面 HTML。 */
+  getHtml(): Promise<{ html: string; truncated: boolean }>;
+  /** 按 CSS 选择器点击元素。 */
+  click(selector: string): Promise<{ ok: boolean; error?: string }>;
+  /** 填充表单字段。 */
+  fill(selector: string, value: string): Promise<{ ok: boolean; error?: string }>;
+  /** 在页面上下文执行 JavaScript（受限于安全策略）。 */
+  eval(script: string): Promise<{ result: unknown; error?: string }>;
+  /** 关闭当前标签页/浏览器。 */
+  close(): Promise<void>;
+  /** 列出已打开的标签页。 */
+  listTabs(): Promise<Array<{ id: string; url: string; title: string; active: boolean }>>;
 }
 
 /** task 工具需要的派发契约（由 core 的 SubAgentSupervisor 实现）。 */

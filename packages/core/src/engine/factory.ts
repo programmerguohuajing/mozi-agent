@@ -8,7 +8,7 @@ import path from 'node:path';
 import { type AgentEvent, type PolicyMode, defaultConfig, type SandboxRunner } from '@mozi/shared';
 import { createSandbox } from '@mozi/sandbox';
 import { McpBridge, type McpServerEntry } from '@mozi/mcp-client';
-import { Workspace, createBuiltinRegistry, type MemoryAccess, type VisionAccess } from '@mozi/tools';
+import { Workspace, createBuiltinRegistry, type BrowserAccess, type MemoryAccess, type VisionAccess } from '@mozi/tools';
 import { ContextManager } from '../context/context-manager.js';
 import { type Session, SessionStore } from '../session/session-store.js';
 import { PromptAssembler } from '../prompts/assembler.js';
@@ -56,6 +56,8 @@ export interface CreateEngineOptions {
   memoryStore?: MemoryStore;
   /** M17 视觉服务（不传则按 workspace 创建 ScreenshotService）。 */
   visionService?: VisionAccess;
+  /** 内置浏览器服务（桌面端注入 BrowserService；不传则 browser 工具返回不可用错误）。 */
+  browserAccess?: BrowserAccess;
   /** 只读/CI 模式：忽略项目级 hooks（§18.5 防线 4）。默认跟随 unattended。 */
   headless?: boolean;
 }
@@ -156,6 +158,7 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     memoryManager,
     memoryAccess: memoryAccessFrom(memoryStore),
     visionAccess: visionService,
+    browserAccess: opts.browserAccess,
     hooks,
     resolvedHooks,
   };

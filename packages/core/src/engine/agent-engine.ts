@@ -22,7 +22,7 @@ import {
   type ToolResult,
   toMoziError,
 } from '@mozi/shared';
-import type { MemoryAccess, ToolRegistry, VisionAccess, Workspace } from '@mozi/tools';
+import type { BrowserAccess, MemoryAccess, ToolRegistry, VisionAccess, Workspace } from '@mozi/tools';
 import type { MemoryManager } from '../memory/manager.js';
 import type { HookRunner, HookPayload } from '../hooks/runner.js';
 import type { HookEvent, HookOutcome, ResolvedHook } from '../hooks/types.js';
@@ -104,6 +104,8 @@ export interface EngineDeps {
   memoryAccess?: MemoryAccess;
   /** M17 工具侧视觉访问（screenshot 工具）。 */
   visionAccess?: VisionAccess;
+  /** 内置浏览器访问（browser 工具；桌面端注入 BrowserService）。 */
+  browserAccess?: BrowserAccess;
   /** M18 钩子执行器（已加载的 hooks）。未注入则不触发任何 hook。 */
   hooks?: HookRunner;
   /** M18 已加载的钩子清单（供 HookRunner.run 过滤事件）。 */
@@ -636,6 +638,7 @@ export class AgentEngine {
           supervisor: this.deps.supervisor,
           ...(this.deps.memoryAccess ? { memory: this.deps.memoryAccess } : {}),
           ...(this.deps.visionAccess ? { vision: this.deps.visionAccess } : {}),
+          ...(this.deps.browserAccess ? { browser: this.deps.browserAccess } : {}),
           emit: (e) => evs.push(e),
         }),
         session.limits.toolTimeoutMs,

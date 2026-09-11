@@ -3,6 +3,8 @@
  */
 import type { ToolCall } from '@mozi/shared';
 import { editFileTool } from './edit-file.js';
+import { browserTool } from './browser.js';
+import { gitTool } from './git.js';
 import { globTool } from './glob.js';
 import { grepTool } from './grep.js';
 import { memoryForgetTool } from './memory-forget.js';
@@ -75,7 +77,7 @@ export class ToolRegistry {
   }
 }
 
-/** M1+M2 内置工具集 + M16 记忆工具 + M17 screenshot。 */
+/** M1+M2 内置工具集 + M16 记忆工具 + M17 screenshot + 内置 Git/浏览器。 */
 export function builtinTools(): AgentTool[] {
   // 具体工具各自收窄了输入类型（AgentTool<ReadInput> 等），此处统一为注册表用的宽类型。
   return [
@@ -91,6 +93,8 @@ export function builtinTools(): AgentTool[] {
     memorySearchTool,
     memoryForgetTool,
     screenshotTool,
+    gitTool,
+    browserTool,
   ] as unknown as AgentTool[];
 }
 

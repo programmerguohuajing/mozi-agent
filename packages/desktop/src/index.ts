@@ -11,6 +11,7 @@ export * from './main/diff-service.js';
 export * from './main/settings-store.js';
 export * from './main/mcp-manager.js';
 export * from './main/electron-transport.js';
+export * from './main/browser-service.js';
 export * from './preload.js';
 export * from './shared/diff-types.js';
 export * from './shared/diff-view.js';

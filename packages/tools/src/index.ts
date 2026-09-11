@@ -20,3 +20,5 @@ export * from './memory-write.js';
 export * from './memory-search.js';
 export * from './memory-forget.js';
 export * from './screenshot.js';
+export * from './git.js';
+export * from './browser.js';

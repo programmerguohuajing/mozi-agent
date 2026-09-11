@@ -145,6 +145,42 @@ export class Bm25Index {
   }
 }
 
+/**
+ * 提取「实词」集合（用于中文改写判重的兜底路径）。
+ * 在 bigram 基础上剔除高频通用词，使「同主题改写」的 Jaccard 高、
+ * 而「同领域但不同事实」的 Jaccard 低。
+ */
+const GENERIC_TERMS = new Set([
+  '我们',
+  '这个',
+  '那个',
+  '一个',
+  '使用',
+  '采用',
+  '需要',
+  '可以',
+  '应该',
+  '以及',
+  '进行',
+  '通过',
+  '说明',
+  '内容',
+  '项目',
+  '保持',
+  '执行',
+  '约定',
+]);
+
+export function keyTerms(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const t of tokenize(text)) {
+    if (t.length < 2) continue; // 丢弃单字 CJK，降低噪声
+    if (GENERIC_TERMS.has(t)) continue;
+    out.add(t);
+  }
+  return out;
+}
+
 /** 粗略 token 估算（与 PromptAssembler 同口径，避免跨模块耦合复制一份）。 */
 export function estimateTokens(text: string): number {
   let cjk = 0;

@@ -20,5 +20,6 @@ export {
   editSimilarity,
   cosine,
   tokenize,
+  keyTerms,
 } from './text-utils.js';
 export * from './types.js';

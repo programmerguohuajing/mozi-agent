@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Session } from '../session/session-store.js';
 import { VectorStub, type EmbeddingProvider } from './embedding.js';
-import { Bm25Index, containsSecret, cosine, editSimilarity, estimateTokens, redactSecret } from './text-utils.js';
+import { Bm25Index, containsSecret, cosine, editSimilarity, estimateTokens, keyTerms, redactSecret } from './text-utils.js';
 import {
   DEDUP_COSINE,
   DEDUP_EDIT_SIMILARITY,
@@ -420,12 +420,32 @@ export class MemoryStore {
 
   private findSimilar(list: MemoryEntry[], content: string): MemoryEntry | undefined {
     const cjk = /[\u3000-\u9fff]/.test(content);
-    // 英文/代码为主时用编辑距离（短文本更稳）；中文用向量余弦。
+    // 中文：向量余弦（相似度够高才合并）。阈值见 DEDUP_COSINE。
     if (cjk && this.embedding instanceof VectorStub) {
       const qv = this.embedding.embedOne(content);
+      let best: { e: MemoryEntry; s: number } | undefined;
       for (const e of list) {
-        const ev = this.embedding.embedOne(e.content);
-        if (cosine(qv, ev) > DEDUP_COSINE) return e;
+        const s = cosine(qv, this.embedding.embedOne(e.content));
+        if (s > DEDUP_COSINE && (!best || s > best.s)) best = { e, s };
+      }
+      if (best) return best.e;
+      // 中文「同主题改写」兜底：要求主题实词高度重合（Jaccard ≥ 0.6），
+      // 或存在明确的「变更/替代」语义词 + 核心主题词重合（矛盾覆盖场景）。
+      const qTok = keyTerms(content);
+      if (qTok.size >= 2) {
+        for (const e of list) {
+          const eTok = keyTerms(e.content);
+          if (eTok.size < 2) continue;
+          let inter = 0;
+          for (const t of qTok) {
+            if (eTok.has(t)) inter += 1;
+          }
+          const jaccard = inter / (qTok.size + eTok.size - inter);
+          if (jaccard >= 0.6) return e;
+          // 变更语义词（采用/改为/放弃/替换/切换/迁移）+ 主题词显著重合
+          const CHANGE = /采用|改为|换成|放弃|替换|切换|迁移|改用/;
+          if (CHANGE.test(content) && CHANGE.test(e.content) && inter >= 3) return e;
+        }
       }
     }
     for (const e of list) {

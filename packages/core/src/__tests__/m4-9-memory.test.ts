@@ -127,6 +127,53 @@ describe('M16 文本工具', () => {
   });
 });
 
+const DISTINCT_FACTS = [
+  '部署走 wrangler deploy 命令',
+  '测试命令是 pnpm test:unit',
+  '代码风格由 biome 统一格式化',
+  '数据库本地用 docker compose 起',
+  '前端框架选型是 Vue 3',
+  '包管理器确定为 pnpm 而非 npm',
+  'CI 流水线跑在 GitHub Actions 上',
+  '日志统一走结构化 JSON 输出',
+  '鉴权令牌有过期时间需要刷新',
+  '路由使用文件系统约定式注册',
+  '状态管理选择轻量的响应式方案',
+  '组件库基于自研设计系统构建',
+  '错误上报接入 Sentry 平台',
+  '接口文档由 OpenAPI 自动生成',
+  '缓存层使用 Redis 做热点加速',
+  '定时任务由独立调度器驱动',
+  '文件上传走对象存储直传',
+  '消息队列选型为轻量内存实现',
+  '国际化文案集中在 locales 目录',
+  '主题切换支持深色与浅色两档',
+  '性能监控采集首屏渲染耗时',
+  '安全扫描覆盖依赖漏洞检测',
+  '发布流程需要先过冒烟测试',
+  '回滚策略保留最近三个版本',
+  '告警通道绑定企业微信机器人',
+];
+
+/** 生成第 i 条「全局唯一」事实：不同前缀 + 序号，避免被去重合并。 */
+function factAt(i: number): string {
+  const base = DISTINCT_FACTS[i % DISTINCT_FACTS.length]!;
+  return i < DISTINCT_FACTS.length ? base : `${base} - ${i}`;
+}
+
+/** 组合式唯一事实：两个维度交叉，每项字符集互不相同，避免 bigram 共享导致误合并。 */
+const TOPIC_A = ['鉴权', '部署', '缓存', '路由', '队列', '日志', '脚本', '镜像', '证书', '网关',
+  '索引', '快照', '钩子', '探针', '灰度', '限流', '熔断', '降级', '配额', '审计'];
+const TOPIC_B = ['务必复核', '需要归档', '禁止外传', '定期演练', '按需开启', '优先内网', '谨防覆盖',
+  '避免阻塞', '统一口径', '留痕备查'];
+
+/** 第 i 条独立事实：a 与 b 的组合，字符集错开，bigram 交集极小。 */
+function uniqueFact(i: number): string {
+  const a = TOPIC_A[i % TOPIC_A.length]!;
+  const b = TOPIC_B[Math.floor(i / TOPIC_A.length) % TOPIC_B.length]!;
+  return `${a}策略${b}#${i}`;
+}
+
 describe('M16 写入路径与去重/矛盾/LRU', () => {
   it('路径① 显式写入：source=user，落盘 user.jsonl 与可读 md 镜像', () => {
     const s = makeStore();
@@ -180,24 +227,24 @@ describe('M16 写入路径与去重/矛盾/LRU', () => {
 
   it('容量上限：project 超 200 条时按 LRU + evidence 弱者优先淘汰', () => {
     const s = makeStore({ clock: (() => { let n = 0; return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000); })() });
-    for (let i = 0; i < MEMORY_CAPS.project + 5; i++) {
-      // 唯一内容避免被去重合并；均无 evidence → 淘汰最早的
-      s.writeExplicit({ layer: 'project', type: 'fact', content: `项目事实条目编号 ${i} unique` });
+    const total = MEMORY_CAPS.project + 5;
+    for (let i = 0; i < total; i++) {
+      s.writeExplicit({ layer: 'project', type: 'fact', content: uniqueFact(i) });
     }
     const list = s['export']({}).project;
     expect(list).toHaveLength(MEMORY_CAPS.project);
-    // 最早的 5 条应被淘汰
+    // 最早的 5 条（无 evidence、最旧）应被淘汰
     const contents = list.map((e) => e.content);
-    expect(contents).not.toContain('项目事实条目编号 0 unique');
-    expect(contents).toContain(`项目事实条目编号 ${MEMORY_CAPS.project + 4} unique`);
+    expect(contents.some((c) => c.endsWith('#0'))).toBe(false);
+    expect(contents.some((c) => c.endsWith(`#${total - 1}`))).toBe(true);
   });
 
   it('证据弱者的条目在淘汰中保留（有 evidence 优先于无 evidence）', () => {
     const s = makeStore({ clock: (() => { let n = 0; return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000); })() });
-    // 先写一条带 evidence 的，再写满容量
+    // 先写一条带 evidence 的锚点，再写满容量
     s.writeExplicit({ layer: 'user', type: 'preference', content: '锚点条目 alpha unique', evidence: 'session:abc' });
     for (let i = 0; i < MEMORY_CAPS.user + 3; i++) {
-      s.writeExplicit({ layer: 'user', type: 'preference', content: `用户偏好编号 ${i} unique` });
+      s.writeExplicit({ layer: 'user', type: 'preference', content: `用户偏好场景 ${i}：${factAt(i)}` });
     }
     const list = s['export']({}).user;
     expect(list.map((e) => e.content)).toContain('锚点条目 alpha unique');
@@ -250,19 +297,23 @@ describe('M16 检索与注入', () => {
     expect(hits[0]!.entry.hits).toBe(1);
   });
 
-  it('向量检索（VectorStub）：相似查询命中，阈值过滤掉不相关', async () => {
-    const s = makeStore({ embedding: new VectorStub(64) });
+  it('向量检索（VectorStub）：相似查询排序正确，噪声被阈值过滤', async () => {
+    const s = makeStore({ embedding: new VectorStub(256) });
     await s.writeSemantic('本项目鉴权使用 JWT，refresh token 存 Redis');
     await s.writeSemantic('构建流水线使用 GitHub Actions');
-    const { hits, mode } = await s.retrieve('JWT 鉴权方案');
+    // 用桩可区分的阈值断言排序语义（真实 provider 用 §16.3 默认 0.7）
+    const { hits, mode } = await s.retrieve('JWT 鉴权方案', { threshold: 0.2 });
     expect(mode).toBe('vector');
     expect(hits[0]?.entry.content).toContain('JWT');
+    // 噪声查询在阈值下无命中
+    const noise = await s.retrieve('zzzz 完全无关内容', { threshold: 0.2 });
+    expect(noise.hits).toHaveLength(0);
   });
 
   it('向量全不达阈值 → 降级 BM25（§16.3）', async () => {
-    const s = makeStore({ embedding: new VectorStub(64) });
+    const s = makeStore({ embedding: new VectorStub(256) });
     await s.writeSemantic('完全无关的语义条目内容');
-    // 阈值拉到 1.0 使向量路径必然不命中
+    // 阈值拉到 1.0 使向量路径必然不命中 → 走 BM25 降级
     const { mode } = await s.retrieve('完全无关', { threshold: 1.0001 });
     expect(mode).toBe('bm25');
   });
@@ -281,17 +332,16 @@ describe('M16 检索与注入', () => {
 
   it('注入预算：user 层超 800 token 时截断', () => {
     const s = makeStore();
-    // 每条约 60 个 CJK 字符 ≈ 60 token；写 30 条 ≈ 1800 token > 800
+    // 每条约 40+ CJK 字符；写 30 条远超 800 token 预算
     for (let i = 0; i < 30; i++) {
       s.writeExplicit({
         layer: 'user',
         type: 'preference',
-        content: `用户偏好条目编号${i}：${'这是一个较长的偏好描述内容用于撑大预算'.repeat(2)}${i}`,
+        content: `用户偏好场景 ${i}：${factAt(i)}，这是用于撑大注入预算的补充描述文本内容`,
       });
     }
     const inj = s.buildInjection(makeSession());
     const lineCount = inj.split('\n').filter((l) => l.startsWith('- [')).length;
-    // 800 预算下不可能塞进 30 条
     expect(lineCount).toBeGreaterThan(0);
     expect(lineCount).toBeLessThan(30);
   });
@@ -332,13 +382,14 @@ describe('M16 MemoryManager', () => {
     const m = new MemoryManager({ store: s });
     await m.onTurn(0, 'JWT');
     expect(m.currentSemanticHits().length).toBe(1);
-    // 第 1-4 轮不刷新（缓存保持）
-    m.currentSemanticHits().length = 0; // 清空以证明未刷新
-    await m.onTurn(1, 'JWT');
-    expect(m.currentSemanticHits().length).toBe(0);
-    m.currentSemanticHits().length = 0;
-    await m.onTurn(5, 'JWT');
+    // 第 1-4 轮不刷新：用一个不存在的查询也无法改变缓存（因为根本没查）
+    await m.onTurn(1, 'zzz-nothing');
     expect(m.currentSemanticHits().length).toBe(1);
+    // 第 5 轮刷新：新查询命中不同条目
+    await s.writeSemantic('部署使用 wrangler');
+    await m.onTurn(5, 'wrangler');
+    expect(m.currentSemanticHits().length).toBe(1);
+    expect(m.currentSemanticHits()[0]!.content).toContain('wrangler');
   });
 
   it('半自动提取触发条件：token>20k + 新事实信号 + 任务完成', async () => {

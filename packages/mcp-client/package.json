@@ -1,0 +1,23 @@
+﻿{
+  "name": "@mozi/mcp-client",
+  "version": "0.0.0",
+  "description": "Full MCP client: stdio + Streamable HTTP transports, tools/resources/prompts/sampling/elicit.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mozi/shared": "workspace:*"
+  }
+}

@@ -1,0 +1,24 @@
+﻿{
+  "name": "@mozi/relay-server",
+  "version": "0.0.0",
+  "description": "Self-hostable E2E relay: zero-content encrypted envelope router.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mozi/shared": "workspace:*",
+    "@mozi/protocol": "workspace:*"
+  }
+}

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Mozi runtime state (local agent data)
+.mozi/
+*.local.json
+
+# Desktop / mobile builds
+apps/mobile/.expo/
+apps/desktop/release/
+*.dmg
+*.exe
+*.AppImage
+
+# Logs & temp
+logs/
+*.log
+.temp/
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json

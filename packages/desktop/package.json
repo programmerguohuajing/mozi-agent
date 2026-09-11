@@ -1,0 +1,25 @@
+﻿{
+  "name": "@mozi/desktop",
+  "version": "0.0.0",
+  "description": "Electron desktop app (main + renderer).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mozi/shared": "workspace:*",
+    "@mozi/core": "workspace:*",
+    "@mozi/protocol": "workspace:*"
+  }
+}

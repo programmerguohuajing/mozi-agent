@@ -1,0 +1,14 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  - "benchmark"
+  - "examples/*"
+
+allowBuilds:
+  '@biomejs/biome': set this to true or false
+
+# pnpm v10+: 允许执行安装脚本的依赖（biome 原生二进制）
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - "esbuild"
+  - "electron"

@@ -1,0 +1,23 @@
+﻿{
+  "name": "@mozi/tools",
+  "version": "0.0.0",
+  "description": "Built-in toolset + PatchEngine (apply_patch structured editing).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mozi/shared": "workspace:*"
+  }
+}

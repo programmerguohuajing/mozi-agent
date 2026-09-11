@@ -1,0 +1,7 @@
+﻿{
+  "name": "@mozi/mobile",
+  "version": "0.0.0",
+  "description": "Mozi mobile client (Expo / React Native).",
+  "license": "Apache-2.0",
+  "private": true
+}

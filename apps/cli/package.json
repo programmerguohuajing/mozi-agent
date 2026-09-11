@@ -1,0 +1,21 @@
+﻿{
+  "name": "mozi",
+  "version": "0.0.0",
+  "description": "Mozi CLI — the coding agent that lives in your terminal.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "mozi": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@mozi/core": "workspace:*",
+    "@mozi/shared": "workspace:*",
+    "@mozi/config": "workspace:*",
+    "@mozi/tui": "workspace:*",
+    "commander": "^12.1.0"
+  }
+}

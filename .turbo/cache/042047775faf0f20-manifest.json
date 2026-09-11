@@ -1,0 +1,43 @@
+{
+  "files": {
+    "packages/tui/.turbo/turbo-build.log": {
+      "size": 23,
+      "mtime_nanos": 1789095231171570100,
+      "mode": 420,
+      "is_dir": false
+    },
+    "packages/tui/dist/index.js": {
+      "size": 65,
+      "mtime_nanos": 1789095231112105500,
+      "mode": 420,
+      "is_dir": false
+    },
+    "packages/tui/dist/index.js.map": {
+      "size": 141,
+      "mtime_nanos": 1789095231111604800,
+      "mode": 420,
+      "is_dir": false
+    },
+    "packages/tui/dist/index.d.ts.map": {
+      "size": 133,
+      "mtime_nanos": 1789095231115603500,
+      "mode": 420,
+      "is_dir": false
+    },
+    "packages/tui/dist": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "packages/tui/dist/index.d.ts": {
+      "size": 75,
+      "mtime_nanos": 1789095231115603500,
+      "mode": 420,
+      "is_dir": false
+    }
+  },
+  "order": [
+    "packages/tui/.turbo/turbo-build.log",
+    "packages/tui/dist",
+    "packages/tui/dist/index.d.ts",
+    "packages/tui/dist/index.d.ts.map",
+    "packages/tui/dist/index.js",
+    "packages/tui/dist/index.js.map"
+  ]
+}

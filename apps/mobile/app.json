@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Mozi",
+    "slug": "mozi-mobile",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0a0a",
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "bundler": "metro",
+      "favicon": "../docs/logo/mozi-logo.png"
+    }
+  }
+}

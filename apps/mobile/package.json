@@ -3,5 +3,9 @@
   "version": "0.0.0",
   "description": "Mozi mobile client (Expo / React Native).",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
 }

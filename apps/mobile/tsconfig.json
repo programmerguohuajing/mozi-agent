@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@mozi/protocol": ["../../packages/protocol/dist/index.d.ts"],
+      "@mozi/shared": ["../../packages/shared/dist/index.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

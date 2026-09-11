@@ -288,3 +288,6 @@ export function approvalTicketFromEvent(
 }
 
 export { LoopbackChannel } from './loopback.js';
+export * from './remote.js';
+export * from './crypto-box.js';
+export * from './remote-node.js';

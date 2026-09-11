@@ -30,6 +30,7 @@ import {
   taskTick,
   registerTaskCommands,
 } from './task.js';
+import { registerRemoteCommands, serve } from './remote.js';
 
 const HOME = os.homedir();
 const SESSION_DIR = process.env.MOZI_SESSION_DIR ?? path.join(HOME, '.mozi', 'sessions');
@@ -301,5 +302,17 @@ program
 
 // ── M4.5：定时任务子命令族（M13 §13.9）──
 registerTaskCommands(program);
+
+// ── M4.75：远程访问（serve + device 管理，M14 §14.11）──
+program
+  .command('serve')
+  .description('启动远程服务（headless；真实 WSS 需 ws 依赖）')
+  .option('--port <n>', '监听端口', '7777')
+  .option('--lan', '仅局域网直连')
+  .option('--relay <url>', '经自托管中继')
+  .action((opts) => {
+    void serve({ port: Number(opts.port), lan: opts.lan, relay: opts.relay });
+  });
+registerRemoteCommands(program);
 
 void program.parseAsync(process.argv);

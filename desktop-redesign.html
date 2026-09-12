@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Mozi Studio — Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═════════════════════════════════════════
+   Mozi Studio — Bioluminescent Redesign
+   Design System: Deep-sea command center
+   ═════════════════════════════════════════ */
+
+:root {
+  /* Core palette */
+  --bg-deep:      #040810;
+  --bg-base:      #0a1018;
+  --bg-elevated:  #0f1722;
+  --bg-card:      #131d2a;
+  --bg-hover:     #1a2535;
+  --bg-input:     #0c1420;
+
+  /* Bioluminescent accents */
+  --cyan:         #00e5c7;
+  --cyan-dim:     #00b89e;
+  --cyan-glow:    rgba(0, 229, 199, 0.18);
+  --cyan-glow-strong: rgba(0, 229, 199, 0.35);
+  --amber:        #f5a623;
+  --amber-glow:   rgba(245, 166, 35, 0.15);
+  --violet:       #a78bfa;
+  --violet-glow:  rgba(167, 139, 250, 0.15);
+  --rose:         #fb7185;
+  --rose-glow:    rgba(251, 113, 133, 0.15);
+  --emerald:      #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.15);
+
+  /* Text */
+  --tx-primary:   #e4ebf5;
+  --tx-secondary: #7b8fa8;
+  --tx-muted:     #4a5b70;
+  --tx-accent:    var(--cyan);
+
+  /* Borders & surfaces */
+  --border:       rgba(255,255,255,0.05);
+  --border-active:rgba(0,229,199,0.25);
+  --border-subtle:rgba(255,255,255,0.03);
+  --glass:        rgba(13,20,30,0.75);
+  --glass-blur:   20px;
+
+  /* Spacing */
+  --sidebar-w:    272px;
+  --header-h:     60px;
+  --radius-sm:    6px;
+  --radius-md:    10px;
+  --radius-lg:    16px;
+  --radius-xl:    22px;
+
+  /* Shadows (glow-based) */
+  --shadow-cyan:  0 0 30px -5px var(--cyan-glow);
+  --shadow-card:  0 4px 24px rgba(0,0,0,0.4);
+  --shadow-elevated: 0 8px 40px rgba(0,0,0,0.5);
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16,1,0.3,1);
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* ── Reset & Base ─────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:15px; -webkit-font-smoothing:antialiased; }
+body {
+  font-family:'DM Sans',sans-serif; background:var(--bg-deep); color:var(--tx-primary);
+  height:100vh; overflow:hidden; display:flex; flex-direction:column;
+}
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--tx-muted); }
+
+/* ── Animated Background Mesh ─────────── */
+.bg-mesh {
+  position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+}
+.bg-mesh::before, .bg-mesh::after {
+  content:''; position:absolute; border-radius:50%; filter:blur(120px); opacity:.35;
+  animation:meshDrift 20s ease-in-out infinite alternate;
+}
+.bg-mesh::before {
+  width:700px; height:700px; background:radial-gradient(circle,var(--cyan-glow),transparent 70%);
+  top:-200px; left:-150px;
+}
+.bg-mesh::after {
+  width:500px; height:500px; background:radial-gradient(circle,var(--violet-glow),transparent 70%);
+  bottom:-100px; right:-100px; animation-delay:-10s; animation-duration:25s;
+}
+@keyframes meshDrift {
+  0%   { transform:translate(0,0) scale(1); }
+  50%  { transform:translate(40px,30px) scale(1.08); }
+  100% { transform:translate(-20px,20px) scale(0.95); }
+}
+
+/* Subtle grid overlay */
+.grid-overlay {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size:60px 60px; opacity:.3;
+}
+
+/* ── App Shell ────────────────────────── */
+.app-shell { display:flex; flex:1; position:relative; z-index:1; }
+
+/* ── Sidebar ──────────────────────────── */
+.sidebar {
+  width:var(--sidebar-w); min-width:var(--sidebar-w);
+  display:flex; flex-direction:column;
+  background:linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-base) 100%);
+  border-right:1px solid var(--border);
+  backdrop-filter:blur(var(--glass-blur));
+  transition:transform .4s var(--ease-out), opacity .4s var(--ease-out);
+}
+.sidebar-header {
+  display:flex; align-items:center; gap:12px; padding:20px 20px 16px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-logo {
+  width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, var(--cyan), var(--violet));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:var(--shadow-cyan);
+}
+.sidebar-logo svg { width:20px; height:20px; fill:#fff; }
+.sidebar-brand { font-family:'Sora',sans-serif; font-weight:700; font-size:17px; letter-spacing:-.3px; }
+.sidebar-brand span { color:var(--cyan); }
+
+.new-chat-btn {
+  margin:14px 14px 10px; padding:10px 16px; border-radius:var(--radius-md);
+  background:linear-gradient(135deg, var(--cyan-dim), #009b82);
+  color:#fff; border:none; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-weight:600; font-size:13px;
+  display:flex; align-items:center; gap:8px;
+  transition:all .25s var(--ease-out); box-shadow:0 2px 12px var(--cyan-glow);
+}
+.new-chat-btn:hover { transform:translateY(-1px); box-shadow:0 6px 24px var(--cyan-glow-strong); }
+.new-chat-btn:active { transform:scale(.97); }
+
+/* Nav items */
+.nav-section { padding:6px 10px; }
+.nav-label {
+  font-size:10px; text-transform:uppercase; letter-spacing:1.2px; color:var(--tx-muted);
+  padding:8px 10px 4px; font-weight:600;
+}
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:9px 12px;
+  border-radius:var(--radius-sm); cursor:pointer; color:var(--tx-secondary);
+  font-size:13.5px; font-weight:500; transition:all .2s ease;
+  margin-bottom:1px;
+}
+.nav-item:hover { background:var(--bg-hover); color:var(--tx-primary); }
+.nav-item.active {
+  background:var(--cyan-glow); color:var(--cyan);
+  box-shadow:inset 0 0 0 1px var(--border-active);
+}
+.nav-item svg { width:17px; height:17px; opacity:.75; flex-shrink:0; }
+.nav-item.active svg { opacity:1; }
+
+/* Session tree */
+.session-tree { flex:1; overflow-y:auto; padding:4px 10px 16px; }
+.tree-group { margin-bottom:4px; }
+.tree-group-header {
+  display:flex; align-items:center; gap:6px; padding:7px 10px;
+  cursor:pointer; border-radius:var(--radius-sm); font-size:12.5px;
+  color:var(--tx-secondary); font-weight:500; transition:background .15s;
+}
+.tree-group-header:hover { background:var(--bg-hover); }
+.tree-chevron { transition:transform .2s ease; font-size:10px; color:var(--tx-muted); }
+.tree-group.open > .tree-chevron { transform:rotate(90deg); }
+.tree-group-name { flex:1; }
+.tree-count {
+  font-size:10px; padding:1px 7px; border-radius:8px; background:var(--bg-hover); color:var(--tx-muted);
+}
+.tree-children { padding-left:18px; display:none; }
+.tree-group.open > .tree-children { display:block; }
+
+.tree-item {
+  display:flex; align-items:center; gap:8px; padding:6px 10px;
+  border-radius:var(--radius-sm); cursor:pointer; font-size:12.5px;
+  color:var(--tx-secondary); transition:all .15s;
+  margin:1px 0;
+}
+.tree-item:hover { background:var(--bg-hover); color:var(--tx-primary); }
+.tree-item.selected { background:var(--cyan-glow); color:var(--cyan); }
+.tree-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.tree-item-info { flex:1; min-width:0; }
+.tree-item-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tree-item-meta { font-size:10px; color:var(--tx-muted); }
+.status-badge {
+  font-size:10px; padding:2px 8px; border-radius:6px; font-weight:600;
+  letter-spacing:.3px;
+}
+.status-running  { background:rgba(0,229,199,.12); color:var(--cyan); }
+.status-idle     { background:rgba(245,166,35,.12); color:var(--amber); }
+.status-success  { background:rgba(52,211,153,.12); color:var(--emerald); }
+.status-error    { background:var(--rose-glow); color:var(--rose); }
+.status-pending  { background:rgba(167,139,250,.12); color:var(--violet); }
+
+/* ── Main Area ────────────────────────── */
+.main-area { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+
+/* Top bar */
+.topbar {
+  height:var(--header-h); display:flex; align-items:center; justify-content:space-between;
+  padding:0 28px; border-bottom:1px solid var(--border);
+  background:rgba(10,16,24,0.7); backdrop-filter:blur(16px);
+  z-index:10;
+}
+.topbar-tabs { display:flex; gap:2px; }
+.topbar-tab {
+  padding:8px 18px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px;
+  font-weight:500; color:var(--tx-secondary); background:none; border:none;
+  transition:all .2s ease; position:relative;
+}
+.topbar-tab:hover { color:var(--tx-primary); background:var(--bg-hover); }
+.topbar-tab.active { color:var(--cyan); background:var(--cyan-glow); }
+.topbar-tab.active::after {
+  content:''; position:absolute; bottom:-1px; left:50%; transform:translateX(-50%);
+  width:20px; height:2px; border-radius:1px; background:var(--cyan);
+}
+
+.topbar-actions { display:flex; align-items:center; gap:12px; }
+.theme-toggle {
+  width:36px; height:36px; border-radius:var(--radius-sm); border:1px solid var(--border);
+  background:var(--bg-card); color:var(--tx-secondary); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:all .2s;
+}
+.theme-toggle:hover { border-color:var(--border-active); color:var(--cyan); }
+.user-avatar {
+  width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg, var(--violet), var(--rose));
+  display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff;
+  cursor:pointer; transition:transform .2s var(--ease-spring);
+}
+.user-avatar:hover { transform:scale(1.08); }
+
+/* Content area */
+.content-area { flex:1; overflow-y:auto; position:relative; }
+.page { display:none; padding:32px; animation:pageIn .4s var(--ease-out) both; }
+.page.active { display:block; }
+@keyframes pageIn {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Page: Chat ───────────────────────── */
+.chat-container { max-width:900px; margin:0 auto; }
+.chat-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height:55vh; text-align:center;
+}
+.chat-empty-icon {
+  width:80px; height:80px; border-radius:22px;
+  background:linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  margin-bottom:24px; box-shadow:var(--shadow-cyan);
+}
+.chat-empty-icon svg { width:36px; height:36px; stroke:var(--cyan); fill:none; stroke-width:1.5; }
+.chat-empty h2 { font-family:'Sora',sans-serif; font-size:22px; font-weight:600; margin-bottom:8px; }
+.chat-empty p { color:var(--tx-secondary); font-size:14.5px; line-height:1.6; }
+
+.chat-input-area {
+  position:sticky; bottom:0; padding:20px 0 8px;
+  background:linear-gradient(to top, var(--bg-deep) 60%, transparent);
+}
+.chat-input-wrapper {
+  max-width:900px; margin:0 auto; position:relative;
+}
+.chat-input {
+  width:100%; padding:16px 56px 16px 20px; border-radius:var(--radius-lg);
+  background:var(--bg-card); border:1px solid var(--border);
+  color:var(--tx-primary); font-family:'DM Sans',sans-serif; font-size:14.5px;
+  resize:none; outline:none; transition:all .25s ease;
+  box-shadow:var(--shadow-card);
+}
+.chat-input:focus { border-color:var(--border-active); box-shadow:var(--shadow-cyan), var(--shadow-card); }
+.chat-input::placeholder { color:var(--tx-muted); }
+.chat-send-btn {
+  position:absolute; right:10px; bottom:10px;
+  width:38px; height:38px; border-radius:var(--radius-md);
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-dim));
+  border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .2s var(--ease-out);
+}
+.chat-send-btn:hover { transform:scale(1.06); box-shadow:0 4px 16px var(--cyan-glow-strong); }
+.chat-send-btn:active { transform:scale(.95); }
+.chat-send-btn svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; }
+
+/* ── Page: Dashboard ──────────────────── */
+.dashboard-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:32px; }
+.stat-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:22px; position:relative; overflow:hidden; transition:all .3s var(--ease-out);
+}
+.stat-card:hover { border-color:var(--border-active); transform:translateY(-2px); box-shadow:var(--shadow-elevated); }
+.stat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  border-radius:2px 2px 0 0;
+}
+.stat-card.cyan::before { background:linear-gradient(90deg, var(--cyan), transparent); }
+.stat-card.amber::before { background:linear-gradient(90deg, var(--amber), transparent); }
+.stat-card.violet::before { background:linear-gradient(90deg, var(--violet), transparent); }
+.stat-card.emerald::before { background:linear-gradient(90deg, var(--emerald), transparent); }
+.stat-label { font-size:12px; color:var(--tx-muted); font-weight:600; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+.stat-value { font-family:'Sora',sans-serif; font-size:32px; font-weight:700; line-height:1.1; }
+.stat-value.cyan { color:var(--cyan); }
+.stat-value.amber { color:var(--amber); }
+.stat-value.violet { color:var(--violet); }
+.stat-value.emerald { color:var(--emerald); }
+.stat-change { font-size:12px; margin-top:6px; font-weight:500; }
+.stat-change.up { color:var(--emerald); }
+.stat-change.down { color:var(--rose); }
+
+.dashboard-row { display:grid; grid-template-columns:1fr 380px; gap:20px; }
+.panel {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:hidden;
+}
+.panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 22px; border-bottom:1px solid var(--border);
+}
+.panel-title { font-family:'Sora',sans-serif; font-size:15px; font-weight:600; }
+.panel-body { padding:20px 22px; }
+
+/* Activity feed */
+.activity-list { list-style:none; }
+.activity-item {
+  display:flex; gap:14px; padding:12px 0; border-bottom:1px solid var(--border-subtle);
+  transition:background .15s; border-radius:var(--radius-sm); margin:0 -8px; padding-left:8px; padding-right:8px;
+}
+.activity-item:last-child { border-bottom:none; }
+.activity-item:hover { background:var(--bg-hover); }
+.activity-dot { width:10px; height:10px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+.activity-content { flex:1; min-width:0; }
+.activity-text { font-size:13.5px; line-height:1.5; }
+.activity-text strong { color:var(--tx-primary); }
+.activity-time { font-size:11.5px; color:var(--tx-muted); margin-top:3px; }
+
+/* Mini chart placeholder */
+.mini-chart { height:120px; display:flex; align-items:flex-end; gap:4px; padding-top:16px; }
+.chart-bar {
+  flex:1; border-radius:3px 3px 0 0; min-height:8px;
+  transition:height .6s var(--ease-out); position:relative;
+}
+.chart-bar:hover { filter:brightness(1.2); }
+.chart-bar.cyan { background:linear-gradient(to top, var(--cyan-glow), var(--cyan)); }
+.chart-bar.violet { background:linear-gradient(to top, var(--violet-glow), var(--violet)); }
+
+/* ── Page: Plugins ────────────────────── */
+.plugins-toolbar {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;
+}
+.plugin-filters { display:flex; gap:6px; }
+.filter-chip {
+  padding:7px 16px; border-radius:20px; font-size:12.5px; font-weight:500;
+  background:var(--bg-card); border:1px solid var(--border); color:var(--tx-secondary);
+  cursor:pointer; transition:all .2s;
+}
+.filter-chip:hover { border-color:var(--border-active); color:var(--tx-primary); }
+.filter-chip.active { background:var(--cyan-glow); border-color:var(--border-active); color:var(--cyan); }
+.install-btn {
+  padding:9px 20px; border-radius:var(--radius-md); font-size:13px; font-weight:600;
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-dim)); color:#fff;
+  border:none; cursor:pointer; transition:all .2s var(--ease-out);
+  display:flex; align-items:center; gap:6px;
+}
+.install-btn:hover { box-shadow:0 4px 16px var(--cyan-glow-strong); transform:translateY(-1px); }
+
+.plugins-stats {
+  display:flex; gap:28px; margin-bottom:24px; padding:16px 22px;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+}
+.plugins-stat { display:flex; align-items:baseline; gap:6px; }
+.plugins-stat-value { font-family:'Sora',sans-serif; font-size:26px; font-weight:700; color:var(--cyan); }
+.plugins-stat-label { font-size:13px; color:var(--tx-secondary); }
+
+.plugins-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.plugin-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:22px; transition:all .3s var(--ease-out); position:relative; overflow:hidden;
+}
+.plugin-card:hover { border-color:var(--border-active); transform:translateY(-3px); box-shadow:var(--shadow-elevated); }
+.plugin-card::after {
+  content:''; position:absolute; inset:0; background:radial-gradient(200px circle at 50% 0%, var(--cyan-glow), transparent 70%);
+  opacity:0; transition:opacity .3s;
+}
+.plugin-card:hover::after { opacity:1; pointer-events:none; }
+.plugin-card-header { display:flex; align-items:center; gap:14px; margin-bottom:14px; position:relative; }
+.plugin-icon {
+  width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0;
+}
+.plugin-icon.fs  { background:rgba(245,166,35,.12); }
+.plugin-icon.br  { background:rgba(0,229,199,.12); }
+.plugin-icon.git { background:rgba(167,139,250,.12); }
+.plugin-icon.ws  { background:rgba(52,211,153,.12); }
+.plugin-icon.db  { background:rgba(251,113,133,.12); }
+.plugin-icon.ct  { background:rgba(96,165,250,.12); }
+.plugin-info { flex:1; min-width:0; }
+.plugin-name { font-family:'Sora',sans-serif; font-size:15px; font-weight:600; margin-bottom:2px; }
+.plugin-version { font-size:11.5px; color:var(--tx-muted); font-family:'JetBrains Mono',monospace; }
+.plugin-desc { font-size:13px; color:var(--tx-secondary); line-height:1.5; margin-bottom:16px; position:relative; }
+.plugin-footer { display:flex; align-items:center; justify-content:space-between; position:relative; }
+.plugin-meta { font-size:11.5px; color:var(--tx-muted); }
+/* Toggle switch */
+.toggle { position:relative; width:42px; height:24px; cursor:pointer; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider {
+  position:absolute; inset:0; border-radius:12px; background:var(--bg-hover);
+  transition:all .3s var(--ease-out); border:1px solid var(--border);
+}
+.toggle-slider::before {
+  content:''; position:absolute; width:18px; height:18px; border-radius:50%;
+  background:var(--tx-secondary); top:2px; left:2px; transition:all .3s var(--ease-spring);
+}
+.toggle input:checked + .toggle-slider { background:var(--cyan-glow); border-color:var(--cyan); }
+.toggle input:checked + .toggle-slider::before { transform:translateX(18px); background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+/* ── Page: Settings / Security ────────── */
+.settings-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+.settings-panel {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:hidden;
+}
+.settings-panel-header {
+  display:flex; align-items:center; gap:10px; padding:18px 22px;
+  border-bottom:1px solid var(--border);
+}
+.settings-panel-icon { font-size:18px; }
+.settings-panel-title { font-family:'Sora',sans-serif; font-size:15px; font-weight:600; }
+.settings-panel-desc { font-size:12px; color:var(--tx-muted); margin-top:2px; }
+.settings-body { padding:20px 22px; }
+
+.setting-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 0; border-bottom:1px solid var(--border-subtle);
+}
+.setting-row:last-child { border-bottom:none; }
+.setting-label { font-size:13.5px; }
+.setting-value { font-size:13px; font-weight:500; }
+.setting-value.on { color:var(--emerald); }
+.setting-value.off { color:var(--tx-muted); }
+.setting-value.warn { color:var(--amber); }
+.setting-value.danger { color:var(--rose); }
+
+.security-metric {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 0; font-size:13.5px;
+}
+.security-metric-label { color:var(--tx-secondary); }
+.security-metric-bar { flex:1; margin:0 14px; height:6px; background:var(--bg-hover); border-radius:3px; overflow:hidden; }
+.security-metric-fill { height:100%; border-radius:3px; transition:width .8s var(--ease-out); }
+.security-metric-fill.cyan { background:var(--cyan); box-shadow:0 0 8px var(--cyan-glow); }
+.security-metric-fill.amber { background:var(--amber); }
+.security-metric-fill.rose { background:var(--rose); }
+.security-metric-value { font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; min-width:40px; text-align:right; }
+
+/* ── Page: Subagents ──────────────────── */
+.subagents-layout { display:grid; grid-template-columns:280px 1fr; gap:24px; }
+.subagent-list { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+.subagent-list-header { padding:16px 20px; border-bottom:1px solid var(--border); font-weight:600; font-size:13px; color:var(--tx-secondary); }
+.subagent-item {
+  display:flex; align-items:center; gap:12px; padding:12px 20px;
+  cursor:pointer; transition:background .15s; border-bottom:1px solid var(--border-subtle);
+}
+.subagent-item:hover { background:var(--bg-hover); }
+.subagent-item.active { background:var(--cyan-glow); }
+.subagent-avatar {
+  width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.subagent-info { flex:1; min-width:0; }
+.subagent-name { font-size:13.5px; font-weight:600; }
+.subagent-role { font-size:11.5px; color:var(--tx-muted); }
+.subagent-detail { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; }
+.subagent-detail-header { display:flex; align-items:center; gap:16px; margin-bottom:28px; }
+.subagent-detail-avatar {
+  width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  font-size:22px; font-weight:700; color:#fff;
+}
+.subagent-detail-name { font-family:'Sora',sans-serif; font-size:24px; font-weight:700; }
+.subagent-detail-role { color:var(--tx-secondary); font-size:14px; margin-top:2px; }
+.detail-section { margin-bottom:24px; }
+.detail-section-title { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--tx-muted); font-weight:600; margin-bottom:12px; }
+.detail-tags { display:flex; flex-wrap:wrap; gap:8px; }
+.detail-tag {
+  padding:5px 12px; border-radius:6px; font-size:12px; background:var(--bg-hover); color:var(--tx-secondary);
+  border:1px solid var(--border);
+}
+.detail-log {
+  background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius-md);
+  padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7;
+  color:var(--tx-secondary); max-height:260px; overflow-y:auto;
+}
+.log-line { margin-bottom:4px; }
+.log-time { color:var(--tx-muted); margin-right:10px; }
+.log-info { color:var(--cyan); }
+.log-warn { color:var(--amber); }
+.log-ok { color:var(--emerald); }
+
+/* ── Responsive ───────────────────────── */
+@media (max-width:1200px) {
+  .dashboard-grid { grid-template-columns:repeat(2,1fr); }
+  .plugins-grid { grid-template-columns:repeat(2,1fr); }
+  .settings-grid { grid-template-columns:1fr; }
+  .dashboard-row { grid-template-columns:1fr; }
+}
+@media (max-width:900px) {
+  .sidebar { position:fixed; left:0; top:0; bottom:0; z-index:100; transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); box-shadow:var(--shadow-elevated); }
+  .plugins-grid { grid-template-columns:1fr; }
+  .subagents-layout { grid-template-columns:1fr; }
+}
+
+/* ── Pulse animations ─────────────────── */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow:0 0 0 0 currentColor; opacity:.6; }
+  50%      { box-shadow:0 0 0 6px transparent; opacity:1; }
+}
+.pulse { animation:pulseGlow 2s ease-in-out infinite; }
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.stagger-1 { animation:fadeInUp .5s var(--ease-out) .05s both; }
+.stagger-2 { animation:fadeInUp .5s var(--ease-out) .12s both; }
+.stagger-3 { animation:fadeInUp .5s var(--ease-out) .19s both; }
+.stagger-4 { animation:fadeInUp .5s var(--ease-out) .26s both; }
+</style>
+</head>
+<body>
+
+<!-- Background atmosphere -->
+<div class="bg-mesh"></div>
+<div class="grid-overlay"></div>
+
+<div class="app-shell">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="sidebar-brand">Mozi <span>Studio</span></div>
+  </div>
+
+  <button class="new-chat-btn" onclick="switchPage('chat')">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    新对话
+  </button>
+
+  <nav class="nav-section">
+    <div class="nav-item active" data-page="chat" onclick="switchPage('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      新对话
+    </div>
+    <div class="nav-item" data-page="pulls" onclick="switchPage('pulls')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7"/><line x1="6" y1="9" x2="6" y2="15"/></svg>
+      Pull Request
+    </div>
+    <div class="nav-item" data-page="schedule" onclick="switchPage('schedule')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      定时任务
+    </div>
+    <div class="nav-item" data-page="plugins" onclick="switchPage('plugins')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      插件
+    </div>
+    <div class="nav-item" data-page="settings" onclick="switchPage('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      安全
+    </div>
+  </nav>
+
+  <div class="nav-label">会话 (0)</div>
+  <div class="session-tree">
+    <!-- mozi-agent group -->
+    <div class="tree-group open" onclick="toggleGroup(this)">
+      <span class="tree-chevron">▶</span>
+      <span class="tree-group-name">📁 mozi-agent</span>
+      <span class="tree-count">3</span>
+      <div class="tree-children">
+        <div class="tree-item selected">
+          <span class="tree-dot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan-glow)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">claude-sonnet-4</div>
+            <div class="tree-item-meta">09-12 01:17 · 12.4k tok</div>
+          </div>
+          <span class="status-badge status-running pulse">running</span>
+        </div>
+        <div class="tree-item">
+          <span class="tree-dot" style="background:var(--emerald)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">gpt-4o</div>
+            <div class="tree-item-meta">09-11 22:05 · 8.3k tok</div>
+          </div>
+          <span class="status-badge status-success">已完成</span>
+        </div>
+        <div class="tree-item">
+          <span class="tree-dot" style="background:var(--violet)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">deepseek-v3</div>
+            <div class="tree-item-meta">09-11 14:20 · 3.1k tok</div>
+          </div>
+          <span class="status-badge status-pending">空闲</span>
+        </div>
+      </div>
+    </div>
+    <!-- web-crawler group -->
+    <div class="tree-group open" onclick="toggleGroup(this)">
+      <span class="tree-chevron">▶</span>
+      <span class="tree-group-name">📁 web-crawler</span>
+      <span class="tree-count">2</span>
+      <div class="tree-children">
+        <div class="tree-item">
+          <span class="tree-dot" style="background:var(--amber)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">claude-sonnet-4</div>
+            <div class="tree-item-meta">09-11 16:45 · 15.7k tok</div>
+          </div>
+          <span class="status-badge status-idle">待审阅</span>
+        </div>
+        <div class="tree-item">
+          <span class="tree-dot" style="background:var(--rose)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">gpt-4o</div>
+            <div class="tree-item-meta">09-10 09:33 · 22.5k tok</div>
+          </div>
+          <span class="status-badge status-error">失败</span>
+        </div>
+      </div>
+    </div>
+    <!-- data-pipeline group -->
+    <div class="tree-group" onclick="toggleGroup(this)">
+      <span class="tree-chevron">▶</span>
+      <span class="tree-group-name">📁 data-pipeline</span>
+      <span class="tree-count">1</span>
+      <div class="tree-children">
+        <div class="tree-item">
+          <span class="tree-dot" style="background:var(--violet)"></span>
+          <div class="tree-item-info">
+            <div class="tree-item-name">claude-opus-4</div>
+            <div class="tree-item-meta">09-10 18:00 · 45.2k tok</div>
+          </div>
+          <span class="status-badge status-running">running</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN AREA ═══ -->
+<div class="main-area">
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-tabs">
+      <button class="topbar-tab active" data-page="chat" onclick="switchPage('chat')">会话</button>
+      <button class="topbar-tab" data-page="subagents" onclick="switchPage('subagents')">子智能体</button>
+      <button class="topbar-tab" data-page="dashboard" onclick="switchPage('dashboard')">仪表盘</button>
+      <button class="topbar-tab" data-page="settings" onclick="switchPage('settings')">设置</button>
+    </div>
+    <div class="topbar-actions">
+      <button class="theme-toggle" title="切换主题">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+      <div class="user-avatar" title="空间">空</div>
+    </div>
+  </header>
+
+  <!-- Content pages -->
+  <div class="content-area">
+
+    <!-- ══ PAGE: Chat ══ -->
+    <div class="page active" id="page-chat">
+      <div class="chat-container">
+        <div class="chat-empty stagger-1">
+          <div class="chat-empty-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <h2>选择或新建一个会话开始</h2>
+          <p>从左侧选择一个已有的智能体会话，<br>或点击「新对话」创建全新的 Agent 运行实例。</p>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-wrapper">
+            <textarea class="chat-input" rows="3" placeholder="输入消息或指令… (Shift+Enter 换行)"></textarea>
+            <button class="chat-send-btn">
+              <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: Dashboard ══ -->
+    <div class="page" id="page-dashboard">
+      <div class="stagger-1">
+        <div class="dashboard-grid">
+          <div class="stat-card cyan">
+            <div class="stat-label">活跃会话</div>
+            <div class="stat-value cyan">12</div>
+            <div class="stat-change up">↑ 3 较昨日</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">Token 消耗</div>
+            <div class="stat-value amber">847K</div>
+            <div class="stat-change down">↓ 12% 较上周</div>
+          </div>
+          <div class="stat-card violet">
+            <div class="stat-label">子智能体</div>
+            <div class="stat-value violet">8</div>
+            <div class="stat-change up">↑ 2 新增</div>
+          </div>
+          <div class="stat-card emerald">
+            <div class="stat-label">审批通过率</div>
+            <div class="stat-value emerald">94%</div>
+            <div class="stat-change up">↑ 2.1%</div>
+          </div>
+        </div>
+        <div class="dashboard-row">
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">📡 实时活动流</span>
+            </div>
+            <div class="panel-body">
+              <ul class="activity-list">
+                <li class="activity-item">
+                  <span class="activity-dot" style="background:var(--cyan);box-shadow:0 0 8px var(--cyan-glow)"></span>
+                  <div class="activity-content">
+                    <div class="activity-text"><strong>claude-sonnet-4</strong> 完成了代码重构任务</div>
+                    <div class="activity-time">刚刚 · mozi-agent</div>
+                  </div>
+                </li>
+                <li class="activity-item">
+                  <span class="activity-dot" style="background:var(--amber)"></span>
+                  <div class="activity-content">
+                    <div class="activity-text"><strong>gpt-4o</strong> 提交了 PR #247 等待审阅</div>
+                    <div class="activity-time">3 分钟前 · web-crawler</div>
+                  </div>
+                </li>
+                <li class="activity-item">
+                  <span class="activity-dot" style="background:var(--violet)"></span>
+                  <div class="activity-content">
+                    <div class="activity-text"><strong>deepseek-v3</strong> 启动了数据分析流水线</div>
+                    <div class="activity-time">8 分钟前 · data-pipeline</div>
+                  </div>
+                </li>
+                <li class="activity-item">
+                  <span class="activity-dot" style="background:var(--emerald)"></span>
+                  <div class="activity-content">
+                    <div class="activity-text"><strong>安全网关</strong> 自动批准了 22 条工具调用</div>
+                    <div class="activity-time">15 分钟前 · 系统</div>
+                  </div>
+                </li>
+                <li class="activity-item">
+                  <span class="activity-dot" style="background:var(--rose)"></span>
+                  <div class="activity-content">
+                    <div class="activity-text"><strong>gpt-4o</strong> 的请求因超时被标记为失败</div>
+                    <div class="activity-time">23 分钟前 · web-crawler</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">📈 Token 使用趋势</span>
+            </div>
+            <div class="panel-body">
+              <div class="mini-chart">
+                <div class="chart-bar cyan" style="height:40%"></div>
+                <div class="chart-bar cyan" style="height:65%"></div>
+                <div class="chart-bar cyan" style="height:45%"></div>
+                <div class="chart-bar violet" style="height:80%"></div>
+                <div class="chart-bar violet" style="height:55%"></div>
+                <div class="chart-bar violet" style="height:90%"></div>
+                <div class="chart-bar cyan" style="height:70%"></div>
+                <div class="chart-bar cyan" style="height:50%"></div>
+                <div class="chart-bar violet" style="height:85%"></div>
+                <div class="chart-bar violet" style="height:60%"></div>
+                <div class="chart-bar cyan" style="height:75%"></div>
+                <div class="chart-bar cyan" style="height:95%"></div>
+                <div class="chart-bar violet" style="height:68%"></div>
+                <div class="chart-bar violet" style="height:42%"></div>
+                <div class="chart-bar cyan" style="height:58%"></div>
+                <div class="chart-bar cyan" style="height:78%"></div>
+                <div class="chart-bar violet" style="height:88%"></div>
+                <div class="chart-bar violet" style="height:52%"></div>
+                <div class="chart-bar cyan" style="height:62%"></div>
+                <div class="chart-bar cyan" style="height:72%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: Plugins ══ -->
+    <div class="page" id="page-plugins">
+      <div class="stagger-1">
+        <div class="plugins-toolbar">
+          <div class="plugin-filters">
+            <button class="filter-chip active">全部</button>
+            <button class="filter-chip">官方</button>
+            <button class="filter-chip">社区</button>
+            <button class="filter-chip">自定义</button>
+          </div>
+          <button class="install-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            安装插件
+          </button>
+        </div>
+        <div class="plugins-stats">
+          <div class="plugins-stat"><span class="plugins-stat-value">6</span><span class="plugins-stat-label">总数</span></div>
+          <div class="plugins-stat"><span class="plugins-stat-value">5</span><span class="plugins-stat-label">已启用</span></div>
+          <div class="plugins-stat"><span class="plugins-stat-value">53</span><span class="plugins-stat-label">工具数</span></div>
+        </div>
+        <div class="plugins-grid">
+          <div class="plugin-card stagger-1">
+            <div class="plugin-card-header">
+              <div class="plugin-icon fs">📂</div>
+              <div class="plugin-info">
+                <div class="plugin-name">Filesystem</div>
+                <div class="plugin-version">v1.2.0 · 官方</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">文件系统读写操作工具，支持目录遍历、文件创建与内容编辑。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">8 个工具 · official</span>
+            </div>
+          </div>
+          <div class="plugin-card stagger-2">
+            <div class="plugin-card-header">
+              <div class="plugin-icon br">🌐</div>
+              <div class="plugin-info">
+                <div class="plugin-name">Browser</div>
+                <div class="plugin-version">v1.0.0 · 官方</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">内置浏览器截图与页面操作，支持导航、点击、表单填写等交互。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">9 个工具 · official</span>
+            </div>
+          </div>
+          <div class="plugin-card stagger-3">
+            <div class="plugin-card-header">
+              <div class="plugin-icon git">🔧</div>
+              <div class="plugin-info">
+                <div class="plugin-name">Git Tools</div>
+                <div class="plugin-version">v2.1.0 · 官方</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">Git 版本工具集（commit/push/pr），完整覆盖版本控制工作流。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">17 个工具 · official</span>
+            </div>
+          </div>
+          <div class="plugin-card stagger-1">
+            <div class="plugin-card-header">
+              <div class="plugin-icon ws">🔍</div>
+              <div class="plugin-info">
+                <div class="plugin-name">Web Search</div>
+                <div class="plugin-version">v1.3.0 · 社区</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">联网搜索与信息聚合，支持实时网页内容提取与摘要生成。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">4 个工具 · community</span>
+            </div>
+          </div>
+          <div class="plugin-card stagger-2">
+            <div class="plugin-card-header">
+              <div class="plugin-icon db">🗄️</div>
+              <div class="plugin-info">
+                <div class="plugin-name">Database</div>
+                <div class="plugin-version">v0.9.0 · 社区</div>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">数据库查询与管理工具，支持结构化数据读写与事务操作。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">12 个工具 · community</span>
+            </div>
+          </div>
+          <div class="plugin-card stagger-3">
+            <div class="plugin-card-header">
+              <div class="plugin-icon ct">⚙️</div>
+              <div class="plugin-info">
+                <div class="plugin-name">My Custom Tool</div>
+                <div class="plugin-version">v1.0.0 · 自定义</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="plugin-desc">自定义工具插件，可根据业务需求扩展专属能力。</div>
+            <div class="plugin-footer">
+              <span class="plugin-meta">3 个工具 · you</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: Settings / Security ══ -->
+    <div class="page" id="page-settings">
+      <div class="stagger-1">
+        <h2 style="font-family:'Sora',sans-serif;font-size:24px;font-weight:700;margin-bottom:6px;">安全管理</h2>
+        <p style="color:var(--tx-secondary);font-size:14px;margin-bottom:28px;">沙箱隔离、策略审批、密钥保护、审计日志</p>
+        <div class="settings-grid">
+          <div class="settings-panel">
+            <div class="settings-panel-header">
+              <span class="settings-panel-icon">🔒</span>
+              <div>
+                <div class="settings-panel-title">沙箱隔离</div>
+                <div class="settings-panel-desc">进程级安全边界</div>
+              </div>
+            </div>
+            <div class="settings-body">
+              <div class="setting-row">
+                <span class="setting-label">当前级别</span>
+                <span class="setting-value" style="color:var(--cyan)">L1 进程组超时强杀</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">进程隔离</span>
+                <span class="setting-value on">✓ 已启用</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">平台隔离</span>
+                <span class="setting-value off">未启用</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">Docker 隔离</span>
+                <span class="setting-value off">未启用</span>
+              </div>
+            </div>
+          </div>
+          <div class="settings-panel">
+            <div class="settings-panel-header">
+              <span class="settings-panel-icon">🛡️</span>
+              <div>
+                <div class="settings-panel-title">策略审批</div>
+                <div class="settings-panel-desc">自动/人工审批网关</div>
+              </div>
+            </div>
+            <div class="settings-body">
+              <div class="security-metric">
+                <span class="security-metric-label">策略模式</span>
+                <div class="security-metric-bar"><div class="security-metric-fill cyan" style="width:100%"></div></div>
+                <span class="security-metric-value">auto</span>
+              </div>
+              <div class="security-metric">
+                <span class="security-metric-label">已批准</span>
+                <div class="security-metric-bar"><div class="security-metric-fill emerald" style="width:92%"></div></div>
+                <span class="security-metric-value">247</span>
+              </div>
+              <div class="security-metric">
+                <span class="security-metric-label">已拒绝</span>
+                <div class="security-metric-bar"><div class="security-metric-fill rose" style="width:8%"></div></div>
+                <span class="security-metric-value">22</span>
+              </div>
+              <div class="security-metric">
+                <span class="security-metric-label">拒绝率</span>
+                <div class="security-metric-bar"><div class="security-metric-fill amber" style="width:8.2%"></div></div>
+                <span class="security-metric-value">8.2%</span>
+              </div>
+            </div>
+          </div>
+          <div class="settings-panel">
+            <div class="settings-panel-header">
+              <span class="settings-panel-icon">🔑</span>
+              <div>
+                <div class="settings-panel-title">密钥保护</div>
+                <div class="settings-panel-desc">API Key 与凭证管理</div>
+              </div>
+            </div>
+            <div class="settings-body">
+              <div class="setting-row">
+                <span class="setting-label">OS 级加密</span>
+                <span class="setting-value on">✓ 已启用</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">密钥不出主进程</span>
+                <span class="setting-value on">是</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">脱敏预览</span>
+                <span class="setting-value on">✓ 已启用</span>
+              </div>
+            </div>
+          </div>
+          <div class="settings-panel">
+            <div class="settings-panel-header">
+              <span class="settings-panel-icon">📋</span>
+              <div>
+                <div class="settings-panel-title">审计日志</div>
+                <div class="settings-panel-desc">全量操作记录与回放</div>
+              </div>
+            </div>
+            <div class="settings-body">
+              <div class="setting-row">
+                <span class="setting-label">日志记录</span>
+                <span class="setting-value on">✓ 已启用</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">事件持久化</span>
+                <span class="setting-value" style="color:var(--cyan)">events.jsonl</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">审批审计</span>
+                <span class="setting-value on">✓ 完整</span>
+              </div>
+              <div class="setting-row">
+                <span class="setting-label">会话恢复</span>
+                <span class="setting-value on">✓ 支持</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: Subagents ══ -->
+    <div class="page" id="page-subagents">
+      <div class="stagger-1">
+        <div class="subagents-layout">
+          <div class="subagent-list">
+            <div class="subagent-list-header">团队 (8)</div>
+            <div class="subagent-item active">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#00e5c7,#00b89e)">PM</div>
+              <div class="subagent-info">
+                <div class="subagent-name">pm</div>
+                <div class="subagent-role">项目经理</div>
+              </div>
+            </div>
+            <div class="subagent-item">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">UI</div>
+              <div class="subagent-info">
+                <div class="subagent-name">ui-designer</div>
+                <div class="subagent-role">UI 设计师</div>
+              </div>
+            </div>
+            <div class="subagent-item">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#f5a623,#d97706)">FE</div>
+              <div class="subagent-info">
+                <div class="subagent-name">fe-dev</div>
+                <div class="subagent-role">前端开发</div>
+              </div>
+            </div>
+            <div class="subagent-item">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#34d399,#059669)">BE</div>
+              <div class="subagent-info">
+                <div class="subagent-name">be-dev</div>
+                <div class="subagent-role">后端开发</div>
+              </div>
+            </div>
+            <div class="subagent-item">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#fb7185,#e11d48)">QA</div>
+              <div class="subagent-info">
+                <div class="subagent-name">qa</div>
+                <div class="subagent-role">质量保障</div>
+              </div>
+            </div>
+            <div class="subagent-item">
+              <div class="subagent-avatar" style="background:linear-gradient(135deg,#60a5fa,#2563eb)">DB</div>
+              <div class="subagent-info">
+                <div class="subagent-name">db-admin</div>
+                <div class="subagent-role">数据库管理</div>
+              </div>
+            </div>
+          </div>
+          <div class="subagent-detail">
+            <div class="subagent-detail-header">
+              <div class="subagent-detail-avatar" style="background:linear-gradient(135deg,#00e5c7,#00b89e)">PM</div>
+              <div>
+                <div class="subagent-detail-name">pm</div>
+                <div class="subagent-detail-role">项目经理 — 负责需求拆解、进度追踪、跨角色协调</div>
+              </div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">能力标签</div>
+              <div class="detail-tags">
+                <span class="detail-tag">PRD 编写</span>
+                <span class="detail-tag">任务拆解</span>
+                <span class="detail-tag">进度追踪</span>
+                <span class="detail-tag">风险识别</span>
+                <span class="detail-tag">干系人沟通</span>
+              </div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-section-title">最近日志</div>
+              <div class="detail-log">
+                <div class="log-line"><span class="log-time">02:18:03</span> <span class="log-info">[INFO]</span> 接收用户需求：UI 界面重新设计</div>
+                <div class="log-line"><span class="log-time">02:18:04</span> <span class="log-info">[INFO]</span> 分析现有桌面端截图 (15 张)</div>
+                <div class="log-line"><span class="log-time">02:18:05</span> <span class="log-info">[INFO]</span> 读取移动端源码：App.tsx / theme.ts / 6 页面</div>
+                <div class="log-line"><span class="log-time">02:18:06</span> <span class="log-warn">[WARN]</span> 当前设计偏通用，缺乏品牌辨识度</div>
+                <div class="log-line"><span class="log-time">02:18:07</span> <span class="log-info">[INFO]</span> 确定设计方向：「深海生物发光指挥中心」</div>
+                <div class="log-line"><span class="log-time">02:18:12</span> <span class="log-ok">[OK]</span> 桌面端原型已生成 → desktop-redesign.html</div>
+                <div class="log-line"><span class="log-time">02:18:15</span> <span class="log-info">[INFO]</span> 正在生成移动端原型...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+</div><!-- /main-area -->
+
+</div><!-- /app-shell -->
+
+<script>
+// Page switching
+function switchPage(pageId) {
+  // Update tabs
+  document.querySelectorAll('.topbar-tab').forEach(t => t.classList.toggle('active', t.dataset.page === pageId));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === pageId));
+  // Update pages
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + pageId));
+  // Re-trigger animations
+  const activePage = document.getElementById('page-' + pageId);
+  if (activePage) {
+    activePage.style.animation = 'none';
+    void activePage.offsetHeight; // force reflow
+    activePage.style.animation = '';
+  }
+}
+
+// Tree group toggle
+function toggleGroup(el) {
+  el.classList.toggle('open');
+}
+
+// Filter chips interaction
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// Animate chart bars on dashboard view
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.height = entry.target.style.height;
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.chart-bar').forEach(bar => observer.observe(bar));
+
+// Keyboard shortcut: Ctrl+K for new chat
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    switchPage('chat');
+    document.querySelector('.chat-input').focus();
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,87 +1,130 @@
 /**
- * 会话侧栏（M10 §10.5①）：会话列表（时间 / 项目名 / 状态徽标 / token 消耗）+ 新建会话。
+ * 会话侧栏 — Mozi Studio
+ * 仿 ChatGPT：导航菜单 + 置顶分组 + 项目级会话分组。
+ * 支持 i18n + 三套主题。
  */
 import * as React from 'react';
 import type { SessionSummary, SessionState } from '@mozi/protocol';
+import { useApp } from '../i18n.js';
 
-const STATE_BADGE: Record<SessionState, { label: string; cls: string }> = {
-  idle: { label: '空闲', cls: 'bg-neutral-700 text-neutral-300' },
-  running: { label: 'running', cls: 'bg-emerald-700 text-emerald-100' },
-  pending_approval: { label: '待审批', cls: 'bg-amber-600 text-amber-50' },
-  completed: { label: '已完成', cls: 'bg-sky-700 text-sky-100' },
-  failed: { label: '失败', cls: 'bg-red-700 text-red-100' },
-};
+export type NavTab = 'chat' | 'pulls' | 'schedule' | 'plugins' | 'skills' | 'security' | 'subagents' | 'dashboard' | 'settings';
 
 export interface SidebarProps {
   sessions: SessionSummary[];
   activeSessionId?: string;
+  activeNav: NavTab;
+  onNavChange: (nav: NavTab) => void;
   onSelect: (sessionId: string) => void;
   onNew: () => void;
   onDelete: (sessionId: string) => void;
   onFork: (sessionId: string) => void;
 }
 
+function groupByProject(sessions: SessionSummary[]): Array<{ project: string; sessions: SessionSummary[] }> {
+  const groups = new Map<string, SessionSummary[]>();
+  for (const s of sessions) {
+    const key = s.project ?? s.workspace ?? '其他';
+    const list = groups.get(key);
+    if (list) { list.push(s); } else { groups.set(key, [s]); }
+  }
+  return [...groups.entries()].map(([project, ss]) => ({
+    project,
+    sessions: ss.sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')),
+  })).sort((a, b) => (b.sessions[0]?.updatedAt ?? '').localeCompare(a.sessions[0]?.updatedAt ?? ''));
+}
+
 export function Sidebar(props: SidebarProps): React.ReactElement {
+  const { t } = useApp();
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
+  const groups = groupByProject(props.sessions);
+
+  const stateBadge = (state: SessionState): { label: string; cls: string } => {
+    const map: Record<SessionState, { label: string; cls: string }> = {
+      idle: { label: t('status.idle'), cls: 'badge-idle' },
+      running: { label: t('status.running'), cls: 'badge-running' },
+      pending_approval: { label: t('status.pending_approval'), cls: 'badge-pending' },
+      completed: { label: t('status.completed'), cls: 'badge-completed' },
+      failed: { label: t('status.failed'), cls: 'badge-failed' },
+    };
+    return map[state] ?? map.idle;
+  };
+
+  const navItems: Array<{ key: NavTab; label: string; icon: string }> = [
+    { key: 'chat', label: t('nav.chat'), icon: '✏️' },
+    { key: 'pulls', label: t('nav.pulls'), icon: '🔀' },
+    { key: 'schedule', label: t('nav.schedule'), icon: '⏰' },
+    { key: 'plugins', label: t('nav.plugins'), icon: '🧩' },
+    { key: 'security', label: t('nav.security'), icon: '🛡️' },
+  ];
+
+  const toggle = (project: string): void => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(project)) next.delete(project); else next.add(project);
+      return next;
+    });
+  };
+
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-neutral-700">
-      <div className="flex items-center justify-between border-b border-neutral-700 px-3 py-2">
-        <span className="font-medium">墨子 Mozi</span>
-        <button
-          className="rounded bg-emerald-600 px-2 py-0.5 text-xs text-white hover:bg-emerald-500"
-          onClick={props.onNew}
-        >
-          新建
-        </button>
+    <aside className="sidebar">
+      <div className="sidebar-header">
+        <div className="logo">
+          <div className="logo-icon">墨</div>
+          <span>{t('app.name')}</span>
+        </div>
+        <button className="btn-new" onClick={props.onNew}>{t('app.new')}</button>
       </div>
-      <ul className="min-h-0 flex-1 overflow-auto">
-        {props.sessions.map((s) => {
-          const badge = STATE_BADGE[s.state];
-          const active = s.id === props.activeSessionId;
+
+      <nav className="sidebar-nav">
+        {navItems.map((item) => (
+          <div key={item.key} className={`nav-item ${props.activeNav === item.key ? 'active' : ''}`} onClick={() => props.onNavChange(item.key)}>
+            <span className="nav-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </div>
+        ))}
+      </nav>
+
+      <div className="pinned-section">
+        <div className="pinned-header">{t('sidebar.pinned')} (0)</div>
+      </div>
+
+      <div className="session-list">
+        {groups.map((group) => {
+          const isCollapsed = collapsed.has(group.project);
+          const hasActive = group.sessions.some((s) => s.id === props.activeSessionId);
           return (
-            <li
-              key={s.id}
-              className={`cursor-pointer border-b border-neutral-800 px-3 py-2 text-sm hover:bg-neutral-800/50 ${
-                active ? 'bg-neutral-800' : ''
-              }`}
-              onClick={() => props.onSelect(s.id)}
-            >
-              <div className="flex items-center gap-2">
-                <span className="truncate">{s.project ?? s.id}</span>
-                <span className={`ml-auto rounded px-1.5 py-0.5 text-[10px] ${badge.cls}`}>
-                  {badge.label}
-                </span>
+            <div key={group.project} className="project-group">
+              <div className={`project-header ${hasActive ? 'has-active' : ''}`} onClick={() => toggle(group.project)}>
+                <span className="project-arrow">{isCollapsed ? '▶' : '▼'}</span>
+                <span className="project-icon">📁</span>
+                <span className="project-name">{group.project}</span>
+                <span className="project-count">{group.sessions.length}</span>
               </div>
-              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
-                <span>{s.updatedAt?.slice(0, 16).replace('T', ' ') ?? '-'}</span>
-                {s.usage ? <span>{s.usage.totalTokens} tok</span> : null}
-                <button
-                  className="ml-auto hover:text-neutral-300"
-                  title="分叉"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    props.onFork(s.id);
-                  }}
-                >
-                  ⑂
-                </button>
-                <button
-                  className="hover:text-red-400"
-                  title="删除"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    props.onDelete(s.id);
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            </li>
+              {!isCollapsed && group.sessions.map((s) => {
+                const badge = stateBadge(s.state);
+                const active = s.id === props.activeSessionId;
+                return (
+                  <div key={s.id} className={`session-item ${active ? 'active' : ''}`} onClick={() => props.onSelect(s.id)}>
+                    <div className="session-item-top">
+                      <span className="session-name">{s.model ?? s.id.slice(0, 12)}</span>
+                      <span className={`badge ${badge.cls}`}>{badge.label}</span>
+                    </div>
+                    <div className="session-meta">
+                      <span>{s.updatedAt?.slice(0, 16).replace('T', ' ') ?? '-'}</span>
+                      {s.usage ? <span>{s.usage.totalTokens} tok</span> : null}
+                      <div className="session-actions">
+                        <button title="fork" onClick={(e) => { e.stopPropagation(); props.onFork(s.id); }}>⑂</button>
+                        <button className="danger" title="delete" onClick={(e) => { e.stopPropagation(); props.onDelete(s.id); }}>✕</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           );
         })}
-        {props.sessions.length === 0 ? (
-          <li className="px-3 py-4 text-center text-xs text-neutral-600">（无会话）</li>
-        ) : null}
-      </ul>
+        {props.sessions.length === 0 ? <div className="empty-list">{t('session.empty.list')}</div> : null}
+      </div>
     </aside>
   );
 }

@@ -135,7 +135,7 @@ const devStyles = StyleSheet.create({
   renameRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   renameInput: {
     flex: 1,
-    backgroundColor: '#0d0d18',
+    backgroundColor: colors.bgBase,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: 8,

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, user-scalable=no">
+<title>Mozi Mobile — Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═════════════════════════════════════════
+   Mozi Mobile — Bioluminescent Redesign
+   375px mobile-first prototype
+   ═════════════════════════════════════════ */
+
+:root {
+  --bg-deep:      #040810;
+  --bg-base:      #0a1018;
+  --bg-card:      #111c28;
+  --bg-elevated:  #162236;
+  --bg-input:     #0c1420;
+  --cyan:         #00e5c7;
+  --cyan-dim:     #00b89e;
+  --cyan-glow:    rgba(0,229,199,.16);
+  --cyan-glow-strong: rgba(0,229,199,.35);
+  --amber:        #f5a623;
+  --amber-glow:   rgba(245,166,35,.14);
+  --violet:       #a78bfa;
+  --violet-glow:  rgba(167,139,250,.15);
+  --rose:         #fb7185;
+  --emerald:      #34d399;
+  --tx-primary:   #e4ebf5;
+  --tx-secondary: #7b8fa8;
+  --tx-muted:     #4a5b70;
+  --border:       rgba(255,255,255,.05);
+  --border-active:rgba(0,229,199,.25);
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    18px;
+  --radius-xl:    24px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:15px; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent; }
+body {
+  font-family:'DM Sans',sans-serif; background:var(--bg-deep); color:var(--tx-primary);
+  height:100vh; overflow:hidden; display:flex; flex-direction:column;
+  max-width:375px; margin:0 auto; position:relative;
+}
+::-webkit-scrollbar { display:none; }
+
+/* ── Background ───────────────────────── */
+.bg-mesh {
+  position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+}
+.bg-mesh::before {
+  content:''; position:absolute; width:350px; height:350px; border-radius:50%;
+  background:radial-gradient(circle,var(--cyan-glow),transparent 70%);
+  top:-120px; left:-80px; filter:blur(80px); opacity:.5;
+  animation:meshFloat 18s ease-in-out infinite alternate;
+}
+.bg-mesh::after {
+  content:''; position:absolute; width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle,var(--violet-glow),transparent 70%);
+  bottom:-80px; right:-60px; filter:blur(80px); opacity:.4;
+  animation:meshFloat 22s ease-in-out infinite alternate-reverse;
+}
+@keyframes meshFloat {
+  0%   { transform:translate(0,0) scale(1); }
+  100% { transform:translate(20px,15px) scale(1.1); }
+}
+
+/* ── App Shell ───────────────────────── */
+.app-shell { display:flex; flex-direction:column; height:100%; position:relative; z-index:1; }
+
+/* ── Header ──────────────────────────── */
+.header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:48px 20px 14px;
+  background:linear-gradient(180deg, var(--bg-base) 0%, transparent 100%);
+  position:relative; z-index:10;
+}
+.header-left { display:flex; align-items:center; gap:10px; }
+.logo {
+  width:34px; height:34px; border-radius:10px;
+  background:linear-gradient(135deg, var(--cyan), var(--violet));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 20px var(--cyan-glow);
+}
+.logo-text { font-family:'Sora',sans-serif; font-weight:900; font-size:15px; color:#fff; }
+.header-title { font-family:'Sora',sans-serif; font-size:18px; font-weight:700; letter-spacing:-.3px; }
+.conn-badge {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 12px; border-radius:20px;
+  background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.2);
+}
+.conn-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--emerald);
+  box-shadow:0 0 8px rgba(52,211,153,.5);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%     { opacity:.5; transform:scale(.85); }
+}
+.conn-text { font-size:11.5px; color:var(--emerald); font-weight:600; }
+
+/* ── Content Area ─────────────────────── */
+.content { flex:1; overflow-y:auto; padding:0 16px 24px; position:relative; z-index:1; }
+.page { display:none; animation:slideUp .35s cubic-bezier(.16,1,.3,1) both; }
+.page.active { display:block; }
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Tab Bar ─────────────────────────── */
+.tab-bar {
+  display:flex; padding:8px 8px 28px;
+  background:linear-gradient(to top, var(--bg-deep) 60%, transparent);
+  position:relative; z-index:10;
+}
+.tab-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:8px 4px; border-radius:var(--radius-md); cursor:pointer;
+  transition:all .25s ease; -webkit-tap-highlight-color:transparent;
+}
+.tab-item:active { transform:scale(.92); }
+.tab-icon {
+  width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:20px; transition:all .3s ease;
+  background:var(--bg-card); border:1px solid var(--border);
+}
+.tab-label { font-size:10.5px; font-weight:500; color:var(--tx-muted); transition:color .25s; }
+.tab-item.active .tab-icon {
+  background:var(--cyan-glow); border-color:var(--border-active);
+  box-shadow:0 4px 16px var(--cyan-glow);
+  transform:translateY(-2px);
+}
+.tab-item.active .tab-label { color:var(--cyan); font-weight:700; }
+
+/* ═══════════════════════════════════
+   PAGE: PAIR (配对)
+   ═══════════════════════════════════ */
+.pair-hero {
+  text-align:center; padding:32px 0 28px;
+}
+.pair-illustration {
+  width:120px; height:120px; margin:0 auto 20px; border-radius:30px;
+  background:linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  font-size:48px; box-shadow:0 8px 40px rgba(0,0,0,.4), 0 0 60px var(--cyan-glow);
+  animation:float 4s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-8px); }
+}
+.pair-title { font-family:'Sora',sans-serif; font-size:22px; font-weight:700; margin-bottom:8px; }
+.pair-desc { font-size:14px; color:var(--tx-secondary); line-height:1.6; padding:0 8px; }
+
+.pair-form { display:flex; flex-direction:column; gap:14px; }
+.input-group { position:relative; }
+.input-field {
+  width:100%; padding:16px 18px; border-radius:var(--radius-lg);
+  background:var(--bg-card); border:1px solid var(--border);
+  color:var(--tx-primary); font-family:'DM Sans',sans-serif; font-size:15px;
+  outline:none; transition:all .25s ease;
+}
+.input-field:focus { border-color:var(--border-active); box-shadow:0 0 0 3px var(--cyan-glow); }
+.input-field::placeholder { color:var(--tx-muted); }
+.input-label {
+  font-size:11.5px; text-transform:uppercase; letter-spacing:1px; color:var(--tx-muted);
+  font-weight:600; margin-bottom:6px; display:block;
+}
+
+.btn-primary {
+  width:100%; padding:16px; border-radius:var(--radius-lg);
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-dim)); color:#fff;
+  border:none; font-family:'DM Sans',sans-serif; font-size:15.5px; font-weight:700;
+  cursor:pointer; transition:all .25s var(--ease-out);
+  box-shadow:0 4px 20px var(--cyan-glow);
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary:active { transform:scale(.97); box-shadow:0 2px 10px var(--cyan-glow); }
+
+.pair-divider {
+  display:flex; align-items:center; gap:14px; margin:24px 0;
+  color:var(--tx-muted); font-size:12px;
+}
+.pair-divider::before, .pair-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+.pair-scan-btn {
+  width:100%; padding:16px; border-radius:var(--radius-lg);
+  background:var(--bg-card); border:1px dashed var(--border-active);
+  color:var(--cyan); font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600;
+  cursor:pointer; transition:all .25s; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.pair-scan-btn:active { background:var(--cyan-glow); }
+
+/* ═══════════════════════════════════
+   PAGE: SESSIONS (会话)
+   ═══════════════════════════════════ */
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px; padding-top:8px;
+}
+.section-title { font-family:'Sora',sans-serif; font-size:17px; font-weight:700; }
+.section-action { font-size:13px; color:var(--cyan); font-weight:600; }
+
+.session-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:16px; margin-bottom:12px; transition:all .25s ease;
+  position:relative; overflow:hidden;
+}
+.session-card:active { transform:scale(.98); border-color:var(--border-active); }
+.session-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+}
+.session-card.running::before { background:linear-gradient(90deg, var(--cyan), var(--violet)); }
+.session-card.idle::before { background:linear-gradient(90deg, var(--amber), transparent); }
+.session-card.success::before { background:linear-gradient(90deg, var(--emerald), transparent); }
+.session-card.error::before { background:linear-gradient(90deg, var(--rose), transparent); }
+
+.session-card-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.session-avatar {
+  width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  font-size:15px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.session-info { flex:1; min-width:0; }
+.session-name { font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.session-model { font-size:11.5px; color:var(--tx-muted); font-family:'JetBrains Mono',monospace; margin-top:1px; }
+.session-status-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+}
+.session-status-dot.running { background:var(--cyan); box-shadow:0 0 10px var(--cyan-glow); animation:pulse 2s infinite; }
+.session-status-dot.idle { background:var(--amber); }
+.session-status-dot.success { background:var(--emerald); }
+.session-status-dot.error { background:var(--rose); }
+
+.session-meta {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; color:var(--tx-muted);
+}
+.session-tokens { font-family:'JetBrains Mono',monospace; }
+.session-badge {
+  font-size:10.5px; padding:3px 10px; border-radius:8px; font-weight:600;
+}
+.session-badge.running { background:rgba(0,229,199,.12); color:var(--cyan); }
+.session-badge.idle { background:rgba(245,166,35,.12); color:var(--amber); }
+.session-badge.success { background:rgba(52,211,153,.12); color:var(--emerald); }
+.session-badge.error { background:var(--rose-glow); color:var(--rose); }
+
+/* Group header */
+.group-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600;
+  background:var(--bg-elevated); border:1px solid var(--border); color:var(--tx-secondary);
+  margin:16px 0 10px;
+}
+.group-count {
+  font-size:10.5px; padding:1px 7px; border-radius:8px; background:var(--bg-card); color:var(--tx-muted);
+}
+
+/* ═══════════════════════════════════
+   PAGE: APPROVALS (审批)
+   ═══════════════════════════════════ */
+.approval-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:16px; margin-bottom:12px; border-left:3px solid var(--amber);
+  transition:all .2s;
+}
+.approval-card:active { transform:scale(.98); }
+.approval-card.urgent { border-left-color:var(--rose); }
+.approval-card.auto-approved { border-left-color:var(--emerald); opacity:.7; }
+
+.approval-type {
+  font-size:10.5px; text-transform:uppercase; letter-spacing:1px; font-weight:700;
+  color:var(--amber); margin-bottom:6px;
+}
+.approval-card.urgent .approval-type { color:var(--rose); }
+.approval-card.auto-approved .approval-type { color:var(--emerald); }
+
+.approval-desc { font-size:14px; line-height:1.5; margin-bottom:10px; }
+.approval-desc code {
+  font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:2px 6px;
+  background:var(--bg-input); border-radius:4px; color:var(--cyan);
+}
+
+.approval-footer {
+  display:flex; align-items:center; justify-content:space-between;
+}
+.approval-meta { font-size:11.5px; color:var(--tx-muted); }
+.approval-actions { display:flex; gap:8px; }
+.btn-sm {
+  padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:600;
+  border:none; cursor:pointer; transition:all .2s;
+}
+.btn-approve { background:var(--cyan-glow); color:var(--cyan); border:1px solid var(--border-active); }
+.btn-approve:active { background:var(--cyan); color:#fff; }
+.btn-deny { background:var(--bg-input); color:var(--tx-secondary); border:1px solid var(--border); }
+.btn-deny:active { background:var(--rose-glow); color:var(--rose); }
+
+.approval-summary {
+  display:flex; gap:10px; margin-bottom:20px;
+}
+.summary-stat {
+  flex:1; text-align:center; padding:14px 8px; border-radius:var(--radius-md);
+  background:var(--bg-card); border:1px solid var(--border);
+}
+.summary-val { font-family:'Sora',sans-serif; font-size:22px; font-weight:700; }
+.summary-val.cyan { color:var(--cyan); }
+.summary-val.amber { color:var(--amber); }
+.summary-val.emerald { color:var(--emerald); }
+.summary-lbl { font-size:10.5px; color:var(--tx-muted); margin-top:2px; }
+
+/* ═══════════════════════════════════
+   PAGE: TASKS (定时任务)
+   ═══════════════════════════════════ */
+.task-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:16px; margin-bottom:12px; transition:all .2s;
+}
+.task-card:active { transform:scale(.98); }
+.task-card-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.task-icon {
+  width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.task-icon.sched { background:rgba(167,139,250,.12); }
+.task-icon.cron { background:rgba(0,229,199,.12); }
+.task-icon.webhook { background:rgba(245,166,35,.12); }
+.task-info { flex:1; min-width:0; }
+.task-name { font-size:14.5px; font-weight:600; }
+.task-schedule { font-size:11.5px; color:var(--tx-muted); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+.task-toggle { flex-shrink:0; }
+.task-toggle input { display:none; }
+.toggle-track {
+  width:44px; height:26px; border-radius:13px; background:var(--bg-input);
+  border:1px solid var(--border); position:relative; cursor:pointer; transition:all .3s;
+}
+.toggle-track::after {
+  content:''; position:absolute; width:20px; height:20px; border-radius:50%;
+  background:var(--tx-muted); top:2px; left:2px; transition:all .3s cubic-bezier(.34,1.56,.64,1);
+}
+.task-toggle input:checked + .toggle-track { background:var(--cyan-glow); border-color:var(--cyan); }
+.task-toggle input:checked + .toggle-track::after { transform:translateX(18px); background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+.task-desc { font-size:13px; color:var(--tx-secondary); line-height:1.5; margin-bottom:10px; }
+.task-footer { display:flex; align-items:center; justify-content:space-between; }
+.task-last-run { font-size:11.5px; color:var(--tx-muted); }
+.task-next-run { font-size:11.5px; color:var(--cyan); font-weight:500; }
+
+/* ═══════════════════════════════════
+   PAGE: DEVICE (设备)
+   ═══════════════════════════════════ */
+.device-card {
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:20px; margin-bottom:16px; position:relative; overflow:hidden;
+}
+.device-card::after {
+  content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px;
+  border-radius:50%; background:radial-gradient(circle, var(--cyan-glow), transparent 70%);
+  opacity:.5;
+}
+.device-status-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; position:relative; }
+.device-name { font-family:'Sora',sans-serif; font-size:18px; font-weight:700; }
+.device-status {
+  display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+  padding:4px 12px; border-radius:20px;
+}
+.device-status.online { background:rgba(52,211,153,.1); color:var(--emerald); }
+.device-status.offline { background:rgba(251,113,133,.1); color:var(--rose); }
+.device-id { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--tx-muted); margin-bottom:16px; position:relative; }
+
+.device-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; position:relative; }
+.device-stat {
+  text-align:center; padding:12px 6px; border-radius:var(--radius-md);
+  background:var(--bg-input); border:1px solid var(--border);
+}
+.device-stat-val { font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:var(--cyan); }
+.device-stat-lbl { font-size:10px; color:var(--tx-muted); margin-top:2px; }
+
+.device-actions { display:flex; gap:10px; margin-top:16px; position:relative; }
+.device-btn {
+  flex:1; padding:12px; border-radius:var(--radius-md); font-size:13px; font-weight:600;
+  border:1px solid var(--border); background:var(--bg-elevated); color:var(--tx-primary);
+  cursor:pointer; text-align:center; transition:all .2s;
+}
+.device-btn:active { transform:scale(.96); }
+.device-btn.primary { background:var(--cyan-glow); border-color:var(--border-active); color:var(--cyan); }
+
+/* Quick actions grid */
+.quick-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:20px; }
+.quick-action {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:18px 12px; border-radius:var(--radius-lg);
+  background:var(--bg-card); border:1px solid var(--border);
+  transition:all .2s; cursor:pointer;
+}
+.quick-action:active { transform:scale(.95); background:var(--bg-hover); }
+.quick-action-icon { font-size:26px; }
+.quick-action-label { font-size:12px; font-weight:600; color:var(--tx-secondary); }
+
+/* ── Stagger animations ─────────────── */
+.stagger-1 { animation-delay:.03s; }
+.stagger-2 { animation-delay:.08s; }
+.stagger-3 { animation-delay:.13s; }
+.stagger-4 { animation-delay:.18s; }
+.stagger-5 { animation-delay:.23s; }
+</style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="app-shell">
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo"><span class="logo-text">M</span></div>
+    <h1 class="header-title" id="pageTitle">配对</h1>
+  </div>
+  <div class="conn-badge" id="connBadge">
+    <span class="conn-dot"></span>
+    <span class="conn-text">已连接 · a1b2c3d4e5f6</span>
+  </div>
+</header>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ══ PAGE: Pair ══ -->
+  <div class="page active" id="page-pair">
+    <div class="pair-hero stagger-1">
+      <div class="pair-illustration">🔗</div>
+      <h2 class="pair-title">连接到 Mozi 引擎</h2>
+      <p class="pair-desc">输入桌面端显示的配对码，或扫描二维码快速建立安全连接。</p>
+    </div>
+    <div class="pair-form stagger-2">
+      <div class="input-group">
+        <label class="input-label">配对码</label>
+        <input class="input-field" type="text" placeholder="输入 6 位配对码" maxlength="6"
+               style="font-family:'JetBrains Mono',monospace;font-size:22px;text-align:center;letter-spacing:8px;">
+      </div>
+      <button class="btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        连接
+      </button>
+    </div>
+    <div class="pair-divider stagger-3">或</div>
+    <button class="pair-scan-btn stagger-4">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      扫描二维码
+    </button>
+  </div>
+
+  <!-- ══ PAGE: Sessions ══ -->
+  <div class="page" id="page-sessions">
+    <div class="section-header stagger-1">
+      <span class="section-title">活跃会话</span>
+      <span class="section-action">筛选 ▾</span>
+    </div>
+
+    <!-- mozi-agent group -->
+    <div class="group-chip stagger-1">📁 mozi-agent <span class="group-count">3</span></div>
+
+    <div class="session-card running stagger-2">
+      <div class="session-card-header">
+        <div class="session-avatar" style="background:linear-gradient(135deg,#00e5c7,#00b89e)">CS</div>
+        <div class="session-info">
+          <div class="session-name">claude-sonnet-4</div>
+          <div class="session-model">claude-sonnet-4-20250514</div>
+        </div>
+        <span class="session-status-dot running"></span>
+      </div>
+      <div class="session-meta">
+        <span class="session-tokens">12.4k tokens</span>
+        <span class="session-badge running">运行中</span>
+      </div>
+    </div>
+
+    <div class="session-card success stagger-3">
+      <div class="session-card-header">
+        <div class="session-avatar" style="background:linear-gradient(135deg,#34d399,#059669)">G4</div>
+        <div class="session-info">
+          <div class="session-name">gpt-4o</div>
+          <div class="session-model">gpt-4o-2024-08-06</div>
+        </div>
+        <span class="session-status-dot success"></span>
+      </div>
+      <div class="session-meta">
+        <span class="session-tokens">8.3k tokens</span>
+        <span class="session-badge success">已完成</span>
+      </div>
+    </div>
+
+    <div class="session-card idle stagger-4">
+      <div class="session-card-header">
+        <div class="session-avatar" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">DS</div>
+        <div class="session-info">
+          <div class="session-name">deepseek-v3</div>
+          <div class="session-model">deepseek-v3-0324</div>
+        </div>
+        <span class="session-status-dot idle"></span>
+      </div>
+      <div class="session-meta">
+        <span class="session-tokens">3.1k tokens</span>
+        <span class="session-badge idle">空闲</span>
+      </div>
+    </div>
+
+    <!-- web-crawler group -->
+    <div class="group-chip stagger-5">📁 web-crawler <span class="group-count">2</span></div>
+
+    <div class="session-card idle stagger-1">
+      <div class="session-card-header">
+        <div class="session-avatar" style="background:linear-gradient(135deg,#f5a623,#d97706)">CS</div>
+        <div class="session-info">
+          <div class="session-name">claude-sonnet-4</div>
+          <div class="session-model">claude-sonnet-4-20250514</div>
+        </div>
+        <span class="session-status-dot idle"></span>
+      </div>
+      <div class="session-meta">
+        <span class="session-tokens">15.7k tokens</span>
+        <span class="session-badge idle">待审阅</span>
+      </div>
+    </div>
+
+    <div class="session-card error stagger-2">
+      <div class="session-card-header">
+        <div class="session-avatar" style="background:linear-gradient(135deg,#fb7185,#e11d48)">G4</div>
+        <div class="session-info">
+          <div class="session-name">gpt-4o</div>
+          <div class="session-model">gpt-4o-2024-08-06</div>
+        </div>
+        <span class="session-status-dot error"></span>
+      </div>
+      <div class="session-meta">
+        <span class="session-tokens">22.5k tokens</span>
+        <span class="session-badge error">失败</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: Approvals ══ -->
+  <div class="page" id="page-approvals">
+    <div class="section-header stagger-1">
+      <span class="section-title">审批收件箱</span>
+      <span class="section-action">历史</span>
+    </div>
+
+    <div class="approval-summary stagger-1">
+      <div class="summary-stat">
+        <div class="summary-val amber">5</div>
+        <div class="summary-lbl">待审批</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-val emerald">247</div>
+        <div class="summary-lbl">已批准</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-val cyan">94%</div>
+        <div class="summary-lbl">通过率</div>
+      </div>
+    </div>
+
+    <div class="approval-card urgent stagger-2">
+      <div class="approval-type">⚠ 紧急 — 需人工确认</div>
+      <div class="approval-desc">
+        <strong>claude-sonnet-4</strong> 请求执行文件删除：<code>rm -rf /tmp/cache/*</code>
+      </div>
+      <div class="approval-footer">
+        <span class="approval-meta">mozi-agent · 刚刚</span>
+        <div class="approval-actions">
+          <button class="btn-sm btn-approve">批准</button>
+          <button class="btn-sm btn-deny">拒绝</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="approval-card stagger-3">
+      <div class="approval-type">⏳ 等待确认</div>
+      <div class="approval-desc">
+        <strong>gpt-4o</strong> 请求创建 PR：<code>feat: add rate limiter middleware</code>
+      </div>
+      <div class="approval-footer">
+        <span class="approval-meta">web-crawler · 3 分钟前</span>
+        <div class="approval-actions">
+          <button class="btn-sm btn-approve">批准</button>
+          <button class="btn-sm btn-deny">拒绝</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="approval-card auto-approved stagger-4">
+      <div class="approval-type">✓ 自动批准</div>
+      <div class="approval-desc">
+        <strong>deepseek-v3</strong> 读取配置文件：<code>config/database.yaml</code>
+      </div>
+      <div class="approval-footer">
+        <span class="approval-meta">data-pipeline · 8 分钟前</span>
+        <div class="approval-actions">
+          <button class="btn-sm btn-approve" disabled style="opacity:.5">已自动通过</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="approval-card stagger-5">
+      <div class="approval-type">⏳ 等待确认</div>
+      <div class="approval-desc">
+        <strong>claude-sonnet-4</strong> 请求安装 npm 包：<code>@types/node@latest</code>
+      </div>
+      <div class="approval-footer">
+        <span class="approval-meta">mozi-agent · 12 分钟前</span>
+        <div class="approval-actions">
+          <button class="btn-sm btn-approve">批准</button>
+          <button class="btn-sm btn-deny">拒绝</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: Tasks ══ -->
+  <div class="page" id="page-tasks">
+    <div class="section-header stagger-1">
+      <span class="section-title">定时任务</span>
+      <span class="section-action">+ 新建</span>
+    </div>
+
+    <div class="task-card stagger-1">
+      <div class="task-card-header">
+        <div class="task-icon sched">⏰</div>
+        <div class="task-info">
+          <div class="task-name">每日数据备份</div>
+          <div class="task-schedule">cron: 0 2 * * *</div>
+        </div>
+        <label class="task-toggle"><input type="checkbox" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="task-desc">每日凌晨 2 点自动执行数据库全量备份，加密后上传至对象存储。</div>
+      <div class="task-footer">
+        <span class="task-last-run">上次：今天 02:00 ✓</span>
+        <span class="task-next-run">下次：明天 02:00</span>
+      </div>
+    </div>
+
+    <div class="task-card stagger-2">
+      <div class="task-card-header">
+        <div class="task-icon cron">🔄</div>
+        <div class="task-info">
+          <div class="task-name">Token 用量报告</div>
+          <div class="task-schedule">cron: */30 * * * *</div>
+        </div>
+        <label class="task-toggle"><input type="checkbox" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="task-desc">每 30 分钟汇总各 Agent 的 Token 消耗，生成趋势图表并推送通知。</div>
+      <div class="task-footer">
+        <span class="task-last-run">上次：02:00 ✓</span>
+        <span class="task-next-run">下次：02:30</span>
+      </div>
+    </div>
+
+    <div class="task-card stagger-3">
+      <div class="task-card-header">
+        <div class="task-icon webhook">🪝</div>
+        <div class="task-info">
+          <div class="task-name">Webhook 同步</div>
+          <div class="task-schedule">event: push to main</div>
+        </div>
+        <label class="task-toggle"><input type="checkbox" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="task-desc">监听 GitHub push 事件，自动触发代码构建与部署流水线。</div>
+      <div class="task-footer">
+        <span class="task-last-run">上次：昨天 23:41 ✓</span>
+        <span class="task-next-run">等待触发…</span>
+      </div>
+    </div>
+
+    <div class="task-card stagger-4">
+      <div class="task-card-header">
+        <div class="task-icon sched">🧹</div>
+        <div class="task-info">
+          <div class="task-name">日志清理</div>
+          <div class="task-schedule">cron: 0 4 * * 0</div>
+        </div>
+        <label class="task-toggle"><input type="checkbox"><span class="toggle-track"></span></label>
+      </div>
+      <div class="task-desc">每周日凌晨 4 点清理 30 天前的旧日志文件，释放磁盘空间。</div>
+      <div class="task-footer">
+        <span class="task-last-run">上次：周日 04:00 ✓</span>
+        <span class="task-next-run">下次：周日 04:00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: Device ══ -->
+  <div class="page" id="page-device">
+    <div class="device-card stagger-1">
+      <div class="device-status-row">
+        <span class="device-name">iPhone 16 Pro</span>
+        <span class="device-status online">● 在线</span>
+      </div>
+      <div class="device-id">ID: a1b2c3d4e5f6g7h8</div>
+      <div class="device-stats">
+        <div class="device-stat">
+          <div class="device-stat-val">87%</div>
+          <div class="device-stat-lbl">电量</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-val">42ms</div>
+          <div class="device-stat-lbl">延迟</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-val">3.2h</div>
+          <div class="device-stat-lbl">在线时长</div>
+        </div>
+      </div>
+      <div class="device-actions">
+        <button class="device-btn primary">断开连接</button>
+        <button class="device-btn">设备详情</button>
+      </div>
+    </div>
+
+    <div class="section-header stagger-2" style="margin-top:24px;">
+      <span class="section-title">快捷操作</span>
+    </div>
+    <div class="quick-actions stagger-3">
+      <div class="quick-action">
+        <span class="quick-action-icon">📤</span>
+        <span class="quick-action-label">发送指令</span>
+      </div>
+      <div class="quick-action">
+        <span class="quick-action-icon">📍</span>
+        <span class="quick-action-label">定位设备</span>
+      </div>
+      <div class="quick-action">
+        <span class="quick-action-icon">🔔</span>
+        <span class="quick-action-label">推送通知</span>
+      </div>
+      <div class="quick-action">
+        <span class="quick-action-icon">🔄</span>
+        <span class="quick-action-label">重新配对</span>
+      </div>
+    </div>
+
+    <div class="device-card stagger-4" style="margin-top:16px;">
+      <div class="device-status-row">
+        <span class="device-name">iPad Pro M4</span>
+        <span class="device-status offline">● 离线</span>
+      </div>
+      <div class="device-id">ID: f9e8d7c6b5a4</div>
+      <div class="device-stats">
+        <div class="device-stat">
+          <div class="device-stat-val" style="color:var(--tx-muted)">—</div>
+          <div class="device-stat-lbl">电量</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-val" style="color:var(--tx-muted)">—</div>
+          <div class="device-stat-lbl">延迟</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-val" style="color:var(--tx-muted)">2天前</div>
+          <div class="device-stat-lbl">最后在线</div>
+        </div>
+      </div>
+      <div class="device-actions">
+        <button class="device-btn primary">唤醒设备</button>
+        <button class="device-btn">移除设备</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- Tab Bar -->
+<nav class="tab-bar">
+  <div class="tab-item active" data-tab="pair" onclick="switchTab('pair')">
+    <div class="tab-icon">🔗</div>
+    <span class="tab-label">配对</span>
+  </div>
+  <div class="tab-item" data-tab="sessions" onclick="switchTab('sessions')">
+    <div class="tab-icon">💬</div>
+    <span class="tab-label">会话</span>
+  </div>
+  <div class="tab-item" data-tab="approvals" onclick="switchTab('approvals')">
+    <div class="tab-icon">⚡</div>
+    <span class="tab-label">审批</span>
+  </div>
+  <div class="tab-item" data-tab="tasks" onclick="switchTab('tasks')">
+    <div class="tab-icon">⏰</div>
+    <span class="tab-label">任务</span>
+  </div>
+  <div class="tab-item" data-tab="device" onclick="switchTab('device')">
+    <div class="tab-icon">📱</div>
+    <span class="tab-label">设备</span>
+  </div>
+</nav>
+
+</div><!-- /app-shell -->
+
+<script>
+const titles = {
+  pair:'配对', sessions:'会话', approvals:'审批收件箱',
+  tasks:'定时任务', device:'设备管理'
+};
+
+function switchTab(tabId) {
+  // Update tab items
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  // Update pages
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + tabId));
+  // Update title
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl && titles[tabId]) {
+    titleEl.style.opacity = '0';
+    titleEl.style.transform = 'translateX(-10px)';
+    setTimeout(() => {
+      titleEl.textContent = titles[tabId];
+      titleEl.style.transition = 'all .25s ease';
+      titleEl.style.opacity = '1';
+      titleEl.style.transform = 'translateX(0)';
+    }, 120);
+  }
+  // Re-trigger page animation
+  const page = document.getElementById('page-' + tabId);
+  if (page) {
+    page.style.animation = 'none';
+    void page.offsetHeight;
+    page.style.animation = '';
+  }
+}
+</script>
+
+</body>
+</html>

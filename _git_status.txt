@@ -1,0 +1,32 @@
+﻿ M .workbuddy/memory/2026-09-12.md
+ M apps/mobile/src/App.tsx
+ M apps/mobile/src/pages/ApprovalsPage.tsx
+ M apps/mobile/src/pages/DevicePage.tsx
+ M apps/mobile/src/pages/PairPage.tsx
+ M apps/mobile/src/pages/SessionsPage.tsx
+ M apps/mobile/src/pages/ui.tsx
+ M apps/mobile/src/theme.ts
+ M packages/desktop/index.html
+ M packages/desktop/src/renderer/App.tsx
+ M packages/desktop/src/renderer/components/AnnotationOverlay.tsx
+ M packages/desktop/src/renderer/components/ApprovalCard.tsx
+ M packages/desktop/src/renderer/components/Dashboard.tsx
+ M packages/desktop/src/renderer/components/SessionView.tsx
+ M packages/desktop/src/renderer/components/SettingsPanel.tsx
+ M packages/desktop/src/renderer/components/Sidebar.tsx
+ M packages/desktop/src/renderer/components/SubAgentPanel.tsx
+ M packages/desktop/src/renderer/components/TokenCounter.tsx
+?? .workbuddy/memory/MEMORY.md
+?? _git_branch.txt
+?? _git_status.txt
+?? desktop-preview/
+?? desktop-redesign.html
+?? mobile-redesign.html
+?? packages/desktop/src/renderer/ErrorBoundary.tsx
+?? packages/desktop/src/renderer/components/PluginPanel.tsx
+?? packages/desktop/src/renderer/components/PullRequestPanel.tsx
+?? packages/desktop/src/renderer/components/SchedulePanel.tsx
+?? packages/desktop/src/renderer/components/SecurityPanel.tsx
+?? packages/desktop/src/renderer/components/SkillPanel.tsx
+?? packages/desktop/src/renderer/i18n.ts
+?? packages/desktop/src/renderer/styles.css

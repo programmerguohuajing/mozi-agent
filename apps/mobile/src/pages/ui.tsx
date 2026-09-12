@@ -31,11 +31,11 @@ export function Row({
 }
 
 const BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
-  gold: { bg: '#3a2f14', fg: colors.primary },
-  green: { bg: '#1e3320', fg: colors.success },
-  red: { bg: '#3a1e1e', fg: colors.danger },
-  blue: { bg: '#1e2a3a', fg: '#6fa8cf' },
-  gray: { bg: '#26262e', fg: colors.textDim },
+  gold: { bg: 'rgba(245,166,35,0.14)', fg: colors.amber },
+  green: { bg: 'rgba(52,211,153,0.14)', fg: colors.emerald },
+  red: { bg: 'rgba(251,113,133,0.14)', fg: colors.rose },
+  blue: { bg: 'rgba(0,229,199,0.12)', fg: colors.primary },
+  gray: { bg: 'rgba(123,143,168,0.12)', fg: colors.textDim },
 };
 
 export function Badge({ label, tone = 'gray' }: { label: string; tone?: keyof typeof BADGE_COLORS }): React.ReactElement {
@@ -91,12 +91,16 @@ export function SectionLabel({ children }: { children: React.ReactNode }): React
 
 export const uiStyles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
-    borderRadius: 10,
+    backgroundColor: colors.glass,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: 'rgba(0,229,199,0.10)',
     padding: spacing.lg,
     marginBottom: spacing.md,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
   },
   cardTitle: { color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: spacing.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
@@ -114,11 +118,17 @@ export const uiStyles = StyleSheet.create({
   },
   btnSmall: { paddingVertical: 7, paddingHorizontal: 10 },
   btnDisabled: { opacity: 0.4 },
-  btnPrimary: { backgroundColor: colors.primary },
-  btnSuccess: { backgroundColor: '#2a4a2a', borderWidth: 1, borderColor: colors.success },
-  btnDanger: { backgroundColor: '#3a1e1e', borderWidth: 1, borderColor: colors.danger },
+  btnPrimary: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  btnSuccess: { backgroundColor: 'rgba(52,211,153,0.16)', borderWidth: 1, borderColor: colors.emerald },
+  btnDanger: { backgroundColor: 'rgba(251,113,133,0.16)', borderWidth: 1, borderColor: colors.rose },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.cardBorder },
-  btnText: { color: '#0a0a0a', fontSize: 14, fontWeight: '700' },
+  btnText: { color: '#04121a', fontSize: 14, fontWeight: '700' },
   btnTextGhost: { color: colors.text },
   btnTextDisabled: { color: colors.textFaint },
   empty: { alignItems: 'center', padding: spacing.xl * 2 },

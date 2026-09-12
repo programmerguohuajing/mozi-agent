@@ -1,8 +1,5 @@
 /**
- * 设置中心（M10 §10.5④）：模型/Provider 管理、策略规则编辑器（表格 + JSON 双视图）、
- * MCP Server 管理、沙箱级别、成本上限。
- *
- * 安全：密钥字段只显示脱敏预览；输入后经 `config:set` → 主进程 safeStorage 加密。
+ * 设置中心 — Mozi Studio 生产级 UI。
  */
 import * as React from 'react';
 import type { McpServerInfo, ProviderSummary } from '@mozi/protocol';
@@ -24,20 +21,11 @@ export interface SettingsPanelProps {
 }
 
 const SANDBOX_LABELS: Record<number, string> = {
-  0: 'L0 直执行',
+  0: 'L0 直执行（不推荐）',
   1: 'L1 进程组超时强杀',
   2: 'L2 平台隔离（Seatbelt / Landlock）',
   3: 'L3 Docker 隔离',
 };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
-  return (
-    <section className="rounded-lg border border-neutral-700 p-3">
-      <h2 className="mb-2 text-sm font-medium text-neutral-200">{title}</h2>
-      {children}
-    </section>
-  );
-}
 
 export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
   const [jsonView, setJsonView] = React.useState(false);
@@ -46,118 +34,81 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
   const [keyDraft, setKeyDraft] = React.useState<Record<string, string>>({});
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3 overflow-auto p-4 text-sm">
-      <Section title="模型 / Provider">
-        <ul className="space-y-2">
-          {props.providers.map((p) => (
-            <li key={p.id} className="rounded border border-neutral-800 p-2">
-              <div className="flex items-center gap-2">
-                <span className="font-mono">{p.id}</span>
-                <span className="text-neutral-500">{p.model}</span>
-                <span className={`ml-auto text-xs ${p.hasApiKey ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {p.hasApiKey ? `已配置 ${p.maskedKey ?? ''}` : '未配置密钥'}
-                </span>
-              </div>
-              <div className="mt-1 flex gap-2">
-                <input
-                  type="password"
-                  className="flex-1 rounded bg-neutral-800 px-2 py-1 text-xs"
-                  placeholder="API Key（经 OS 加密存储）"
-                  value={keyDraft[p.id] ?? ''}
-                  onChange={(e) => setKeyDraft({ ...keyDraft, [p.id]: e.target.value })}
-                />
-                <button
-                  className="rounded bg-neutral-700 px-2 py-1 text-xs hover:bg-neutral-600"
-                  onClick={() => {
-                    props.onSetProviderKey(p.id, keyDraft[p.id] ?? '');
-                    setKeyDraft({ ...keyDraft, [p.id]: '' });
-                  }}
-                >
-                  保存
-                </button>
-                <button
-                  className="rounded bg-neutral-700 px-2 py-1 text-xs hover:bg-neutral-600"
-                  onClick={async () => {
-                    const r = await props.onTestProvider(p.id);
-                    setTestResult({
-                      ...testResult,
-                      [p.id]: r.ok ? `✓ ${r.latencyMs}ms` : `✗ ${r.error}`,
-                    });
-                  }}
-                >
-                  测试连接
-                </button>
-              </div>
-              {testResult[p.id] ? <div className="mt-1 text-xs text-neutral-400">{testResult[p.id]}</div> : null}
-            </li>
-          ))}
-          {props.providers.length === 0 ? (
-            <li className="text-xs text-neutral-600">（尚未添加 provider）</li>
-          ) : null}
-        </ul>
-      </Section>
+    <div className="settings">
+      <div className="settings-title">设置</div>
 
-      <Section title="策略规则">
-        <div className="mb-2 flex items-center gap-2">
-          <select
-            className="rounded bg-neutral-800 px-2 py-1 text-xs"
-            value={props.policyMode}
-            onChange={(e) => props.onSetPolicyMode(e.target.value as PolicyMode)}
-          >
+      <div className="setting-section">
+        <div className="setting-section-title"><span>🔌</span> 模型 / Provider</div>
+        {props.providers.map((p) => (
+          <div key={p.id} className="provider-card">
+            <div className="provider-top">
+              <span className="provider-id">{p.id}</span>
+              <span className="provider-model">{p.model}</span>
+              <span className={`provider-status ${p.hasApiKey ? 'configured' : 'not-configured'}`}>
+                {p.hasApiKey ? `✓ 已配置 ${p.maskedKey ?? ''}` : '⚠ 未配置密钥'}
+              </span>
+            </div>
+            <div className="input-row-group">
+              <input
+                type="password"
+                className="input-field"
+                placeholder="API Key（经 OS 加密存储）"
+                value={keyDraft[p.id] ?? ''}
+                onChange={(e) => setKeyDraft({ ...keyDraft, [p.id]: e.target.value })}
+              />
+              <button className="btn-sm" onClick={() => {
+                props.onSetProviderKey(p.id, keyDraft[p.id] ?? '');
+                setKeyDraft({ ...keyDraft, [p.id]: '' });
+              }}>保存</button>
+              <button className="btn-sm" onClick={async () => {
+                const r = await props.onTestProvider(p.id);
+                setTestResult({ ...testResult, [p.id]: r.ok ? `✓ ${r.latencyMs}ms` : `✗ ${r.error}` });
+              }}>测试连接</button>
+            </div>
+            {testResult[p.id] ? (
+              <div className={`test-result ${testResult[p.id]!.startsWith('✓') ? 'ok' : 'fail'}`}>
+                {testResult[p.id]}
+              </div>
+            ) : null}
+          </div>
+        ))}
+        {props.providers.length === 0 ? <div style={{ fontSize: 12, color: 'var(--text-3)' }}>（尚未添加 provider）</div> : null}
+      </div>
+
+      <div className="setting-section">
+        <div className="setting-section-title"><span>🛡</span> 策略规则</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <select className="select-field" value={props.policyMode} onChange={(e) => props.onSetPolicyMode(e.target.value as PolicyMode)}>
             <option value="readonly">readonly</option>
             <option value="auto">auto</option>
             <option value="full-auto">full-auto</option>
           </select>
-          <button
-            className="ml-auto rounded bg-neutral-700 px-2 py-1 text-xs hover:bg-neutral-600"
-            onClick={() => setJsonView(!jsonView)}
-          >
+          <button className="btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setJsonView(!jsonView)}>
             {jsonView ? '表格视图' : 'JSON 视图'}
           </button>
         </div>
         {jsonView ? (
           <div>
             <textarea
-              className="h-40 w-full rounded bg-neutral-800 p-2 font-mono text-xs"
+              style={{ height: 160, width: '100%', background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 8, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-0)', outline: 'none' }}
               value={rulesJson}
               onChange={(e) => setRulesJson(e.target.value)}
             />
-            <button
-              className="mt-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500"
-              onClick={() => {
-                try {
-                  props.onSetPolicyRules(JSON.parse(rulesJson));
-                } catch {
-                  /* 非法 JSON：保持视图，用户继续编辑 */
-                }
-              }}
-            >
-              应用
-            </button>
+            <button className="btn-sm primary" style={{ marginTop: 8 }} onClick={() => {
+              try { props.onSetPolicyRules(JSON.parse(rulesJson)); } catch { /* invalid JSON */ }
+            }}>应用</button>
           </div>
         ) : (
-          <table className="w-full text-xs">
-            <thead className="text-neutral-500">
-              <tr>
-                <th className="text-left">id</th>
-                <th className="text-left">match</th>
-                <th className="text-left">action</th>
-              </tr>
+          <table className="policy-table">
+            <thead>
+              <tr><th>ID</th><th>Match</th><th>Action</th></tr>
             </thead>
             <tbody>
               {props.policyRules.map((r) => (
-                <tr key={r.id} className="border-t border-neutral-800">
-                  <td className="font-mono">{r.id}</td>
-                  <td className="font-mono text-neutral-400">{JSON.stringify(r.match)}</td>
-                  <td
-                    className={
-                      r.action === 'allow'
-                        ? 'text-emerald-400'
-                        : r.action === 'deny'
-                          ? 'text-red-400'
-                          : 'text-amber-400'
-                    }
-                  >
+                <tr key={r.id}>
+                  <td>{r.id}</td>
+                  <td style={{ color: 'var(--text-2)' }}>{JSON.stringify(r.match)}</td>
+                  <td className={r.action === 'allow' ? 'action-allow' : r.action === 'deny' ? 'action-deny' : 'action-ask'}>
                     {r.action}
                   </td>
                 </tr>
@@ -165,79 +116,49 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
             </tbody>
           </table>
         )}
-      </Section>
+      </div>
 
-      <Section title="MCP Server 管理">
-        <ul className="space-y-1 text-xs">
-          {props.mcpServers.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 rounded border border-neutral-800 p-2">
-              <span className="font-mono">{m.id}</span>
-              <span className="text-neutral-500">{m.transport}</span>
-              <span
-                className={
-                  m.status === 'connected'
-                    ? 'text-emerald-400'
-                    : m.status === 'offline'
-                      ? 'text-red-400'
-                      : 'text-amber-400'
-                }
-              >
-                {m.status}
-              </span>
-              <span className="text-neutral-500">{m.toolCount} tools</span>
-              <span className="ml-auto text-neutral-500">sampling: {m.sampling}</span>
-            </li>
-          ))}
-          {props.mcpServers.length === 0 ? <li className="text-neutral-600">（未配置 MCP server）</li> : null}
-        </ul>
-      </Section>
+      <div className="setting-section">
+        <div className="setting-section-title"><span>🔗</span> MCP Server 管理</div>
+        {props.mcpServers.map((m) => (
+          <div key={m.id} className="mcp-card">
+            <span className="mcp-id">{m.id}</span>
+            <span className="mcp-transport">{m.transport}</span>
+            <span className={`mcp-status ${m.status}`}>
+              <span className={`status-dot ${m.status === 'connected' ? 'running' : m.status === 'offline' ? 'failed' : 'pending'}`} style={{ width: 6, height: 6 }}></span>
+              {m.status}
+            </span>
+            <span className="mcp-tools">{m.toolCount} tools</span>
+            <span className="mcp-sampling">sampling: {m.sampling ?? 'ask'}</span>
+          </div>
+        ))}
+        {props.mcpServers.length === 0 ? <div style={{ fontSize: 12, color: 'var(--text-3)' }}>（未配置 MCP server）</div> : null}
+      </div>
 
-      <Section title="沙箱级别">
-        <select
-          className="rounded bg-neutral-800 px-2 py-1 text-xs"
-          value={props.sandboxLevel}
-          onChange={(e) => props.onSetSandboxLevel(Number(e.target.value) as 0 | 1 | 2 | 3)}
-        >
+      <div className="setting-section">
+        <div className="setting-section-title"><span>🔒</span> 沙箱级别</div>
+        <select className="select-field" style={{ minWidth: 300 }} value={props.sandboxLevel} onChange={(e) => props.onSetSandboxLevel(Number(e.target.value) as 0 | 1 | 2 | 3)}>
           {[0, 1, 2, 3].map((l) => (
-            <option key={l} value={l}>
-              {SANDBOX_LABELS[l]}
-            </option>
+            <option key={l} value={l}>{SANDBOX_LABELS[l]}</option>
           ))}
         </select>
-      </Section>
+      </div>
 
-      <Section title="成本上限">
-        <div className="flex gap-3 text-xs">
-          <label className="flex items-center gap-1">
+      <div className="setting-section">
+        <div className="setting-section-title"><span>$</span> 成本上限</div>
+        <div className="cost-input-group">
+          <label className="cost-input-item">
             每会话 $
-            <input
-              type="number"
-              className="w-20 rounded bg-neutral-800 px-2 py-1"
-              value={props.costLimits.perSessionUsd ?? ''}
-              onChange={(e) =>
-                props.onSetCostLimits({
-                  ...props.costLimits,
-                  perSessionUsd: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            />
+            <input type="number" placeholder="5.00" value={props.costLimits.perSessionUsd ?? ''}
+              onChange={(e) => props.onSetCostLimits({ ...props.costLimits, perSessionUsd: e.target.value ? Number(e.target.value) : undefined })} />
           </label>
-          <label className="flex items-center gap-1">
+          <label className="cost-input-item">
             每日 $
-            <input
-              type="number"
-              className="w-20 rounded bg-neutral-800 px-2 py-1"
-              value={props.costLimits.perDayUsd ?? ''}
-              onChange={(e) =>
-                props.onSetCostLimits({
-                  ...props.costLimits,
-                  perDayUsd: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            />
+            <input type="number" placeholder="20.00" value={props.costLimits.perDayUsd ?? ''}
+              onChange={(e) => props.onSetCostLimits({ ...props.costLimits, perDayUsd: e.target.value ? Number(e.target.value) : undefined })} />
           </label>
         </div>
-      </Section>
+      </div>
     </div>
   );
 }

@@ -151,7 +151,7 @@ const pairStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a4a2a',
+    backgroundColor: 'rgba(52,211,153,0.18)',
     color: colors.success,
     textAlign: 'center',
     textAlignVertical: 'center',
@@ -161,7 +161,7 @@ const pairStyles = StyleSheet.create({
   okSub: { color: colors.textDim, fontSize: 12 },
   label: { color: colors.textDim, fontSize: 12, marginTop: spacing.sm, marginBottom: 4 },
   input: {
-    backgroundColor: '#0d0d18',
+    backgroundColor: colors.bgBase,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: 8,

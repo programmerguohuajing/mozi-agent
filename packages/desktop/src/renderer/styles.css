@@ -64,6 +64,8 @@
   /* 尺寸 */
   --sidebar-w: 272px;
   --header-h: 60px;
+  /* 输入栏内所有控件的统一高度（输入框/按钮/下拉/徽章同一基线） */
+  --control-h: 38px;
   --radius: 10px;
   --radius-sm: 6px;
   --radius-xs: 4px;
@@ -605,19 +607,28 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
   justify-content: center;
 }
-.input-row { display: flex; gap: 8px; }
+/* align-items 不能用默认的 stretch：.btn-send/.btn-tool/.btn-abort 竖向 padding 为 0，
+   一旦不是 stretch 就会被压成一行文字的高度，故显式指定统一高度。 */
+.input-row { display: flex; gap: 8px; align-items: center; }
+.input-row > .btn-send,
+.input-row > .btn-tool,
+.input-row > .btn-abort,
+.input-row > .model-selector { height: var(--control-h); border-radius: var(--radius); }
+.input-row > .perm-badge { height: 22px; }
 .input-textarea {
   flex: 1;
   background: var(--bg-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 14px;
+  padding: 8px 12px;
   color: var(--text-0);
   font-size: 14px;
+  line-height: 20px;
   font-family: var(--font-ui);
   resize: none;
-  min-height: 40px;
+  min-height: var(--control-h); /* 8 + 20 + 8 + 2 = 38，与右侧按钮同高 */
   max-height: 120px;
+  overflow-y: auto;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -649,9 +660,12 @@ input, textarea, select { font-family: inherit; }
   transition: all 0.15s;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  white-space: nowrap;
 }
 .btn-tool:hover { background: var(--bg-hover); color: var(--text-1); border-color: var(--border-focus); }
+/* 图标按钮：SVG 跟随文字色，不参与伸缩 */
+.btn-tool svg { flex: none; display: block; }
 .btn-abort {
   background: var(--danger-bg);
   color: var(--danger);

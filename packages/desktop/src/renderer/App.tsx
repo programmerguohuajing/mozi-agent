@@ -113,6 +113,15 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
   };
   React.useEffect(() => () => { if (statsTimer.current) clearTimeout(statsTimer.current); }, []);
 
+  /** 输入框随内容增高（1 行起步，最多 120px），避免固定行数把输入栏整体撑高。 */
+  const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  React.useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight + 2, 120)}px`;
+  }, [input]);
+
   const refresh = async (): Promise<void> => {
     const sessions = (await api.invoke('session:list', {})) as SessionSummary[];
     store.setSessions(sessions);
@@ -305,10 +314,18 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
               </div>
             ) : null}
             <div className="input-row">
-              <textarea className="input-textarea" placeholder={t('chat.input.placeholder')}
+              <textarea ref={inputRef} rows={1} className="input-textarea" placeholder={t('chat.input.placeholder')}
                 value={input} onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
-              <button className="btn-tool" onClick={() => void captureAndAnnotate()}>{t('chat.screenshot')}</button>
+              <button className="btn-tool" title={t('chat.screenshot.hint')} aria-label={t('chat.screenshot.hint')}
+                onClick={() => void captureAndAnnotate()}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"
+                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2.6 6.4A1.6 1.6 0 0 1 4.2 4.9h1.3l0.9 -1.6h3.2l0.9 1.6h1.3a1.6 1.6 0 0 1 1.6 1.5v5.4a1.6 1.6 0 0 1 -1.6 1.6H4.2a1.6 1.6 0 0 1 -1.6 -1.6z" />
+                  <circle cx="8" cy="9.2" r="2.3" />
+                </svg>
+                {t('chat.screenshot')}
+              </button>
               <div className="model-selector">
                 <select value={model} onChange={(e) => setModel(e.target.value)}>
                   {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}

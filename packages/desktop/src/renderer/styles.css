@@ -644,7 +644,8 @@ input, textarea, select { font-family: inherit; }
 .input-row > .btn-tool,
 .input-row > .btn-abort,
 .input-row > .model-selector { height: var(--control-h); border-radius: var(--radius); }
-.input-row > .perm-badge { height: 22px; }
+/* 徽标现在包在 .perm-menu 里（可点击 → 弹出三档权限模式），高度约束下沉一层。 */
+.input-row > .perm-menu > .perm-badge { height: 22px; }
 .input-textarea {
   flex: 1;
   background: var(--bg-1);
@@ -1787,6 +1788,67 @@ input, textarea, select { font-family: inherit; }
 .perm-badge.full { background: var(--danger-bg); color: var(--danger); }
 .perm-badge.limited { background: var(--warning-bg); color: var(--warning); }
 .perm-badge.readonly { background: var(--bg-3); color: var(--text-3); }
+
+/* ── 权限模式菜单：徽标可点击，菜单向上弹出（位于输入栏，下方无空间） ── */
+.perm-menu { position: relative; display: flex; align-items: center; }
+.perm-badge {
+  border: 1px solid transparent;
+  font-family: var(--font-ui);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.12s, border-color 0.12s;
+}
+.perm-badge:hover { filter: brightness(1.18); border-color: var(--border-focus); }
+.perm-badge.open { border-color: var(--border-focus); }
+.perm-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.perm-caret { flex-shrink: 0; opacity: 0.7; transition: transform 0.15s; }
+.perm-caret.open { transform: rotate(180deg); }
+.perm-menu-pop {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 6px;
+  width: 320px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.perm-menu-title {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+}
+.perm-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  transition: background 0.12s;
+}
+.perm-menu-item:hover { background: var(--bg-hover); }
+.perm-menu-item.active { background: var(--primary-bg); color: var(--primary); }
+.perm-menu-icon { flex-shrink: 0; font-size: 13px; line-height: 16px; }
+.perm-menu-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.perm-menu-item-title { font-size: 12px; font-weight: 600; line-height: 16px; }
+.perm-menu-item-desc { font-size: 11px; line-height: 15px; color: var(--text-3); white-space: normal; }
+.perm-menu-item.active .perm-menu-item-desc { color: inherit; opacity: 0.8; }
+.perm-menu-check { flex-shrink: 0; font-size: 11px; line-height: 16px; color: var(--primary); }
 
 /* ═══ Generic Page (PR / Schedule / Plugins / Security) ═══ */
 /* 关键：.content 是「flex:1 + overflow:hidden」的块级容器。若本元素保持 height:auto，

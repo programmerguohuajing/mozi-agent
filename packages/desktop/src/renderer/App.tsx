@@ -20,6 +20,7 @@ import { SchedulePanel, type ScheduleTask } from './components/SchedulePanel.js'
 import { PluginPanel } from './components/PluginPanel.js';
 import { SecurityPanel } from './components/SecurityPanel.js';
 import { AnnotationOverlay } from './components/AnnotationOverlay.js';
+import { PermissionMenu } from './components/PermissionMenu.js';
 import { TokenCounter } from './components/TokenCounter.js';
 
 export interface MoziApi {
@@ -363,7 +364,8 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
                   {MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
               </div>
-              <span className="perm-badge full">{t('chat.permission.full')}</span>
+              <PermissionMenu mode={policyMode}
+                onSelect={(m) => { setPolicyMode(m); void api.invoke('config:set', { patch: { policyMode: m } }); }} />
               <button className="btn-send" onClick={() => void send()}>{t('chat.send')}</button>
               <button className="btn-abort" onClick={() => void api.invoke('engine:abort', { sessionId: state.activeSessionId })}>{t('chat.abort')}</button>
             </div>

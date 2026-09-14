@@ -1983,6 +1983,9 @@ input, textarea, select { font-family: inherit; }
 .mcp-detail-actions {
   margin-left: auto;
   display: flex;
+  /* 不设 align-items 时默认 stretch，会把 ✕ 删除按钮（内容高约 18px）拉到与
+     「重启」按钮（padding 8px，约 35px）同高 → 显式居中对齐。 */
+  align-items: center;
   gap: 6px;
 }
 

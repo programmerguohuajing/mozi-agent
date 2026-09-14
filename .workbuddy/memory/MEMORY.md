@@ -36,6 +36,14 @@
 - vite 生产构建**压缩局部变量名** → 校验产物要 grep **字符串字面量 / class 名 / CSS 规则名**，不要 grep 变量名。esbuild（main bundle）默认 `charset:'ascii'`，中文变 `\uXXXX`。
 - renderer 的 `tsc -p tsconfig.renderer.json` 在本环境**本来就报一片错**（react 类型解析不全：`JSX.IntrinsicElements`/`useCallback`/`clientX`）→ 判断「是否引入新错误」必须 **A/B 对照**（还原改动前版本跑同一命令，比对错误集）。
 - **隔离提交的基线**：并发会话会在我操作期间高频重写同一批文件，**「改动前快照」与 HEAD 都可能不一致**（本轮发生过：pre↔post diff 混入对方的 provider 重构）⇒ 唯一权威基线是 `git show HEAD:<path>`，在其上手工重放自己的 hunk（Edit 精确匹配成功本身即「锚点存在」的证明），再用 `hash-object -w --path <rel>` + `update-index --cacheinfo` 只写 index。`ts.transpileModule`（parse-only，零副作用）可先校验语法。
+- **取 HEAD 基线要用 blob 而非 shell 重定向**：node `execFileSync('git',['cat-file','blob','HEAD:<path>'])` 拿 Buffer → `toString('utf8')` → 在 JS 里锚点断言+替换 → 写快照。PowerShell `git show | Out-File` 会改行尾、受控制台编码影响；blob 路线字节精确，还能自动探测 `\r\n`/`\n` 供插入文本复用。**最快的自检**：挑一个无并发改动的文件（如 `styles.css`），断言「重建快照 === 工作区文件」逐字节相等；再用 `git diff --cached HEAD --numstat` 做权威口径。
+- **端到端 harness：会话选中是竞态的**。点 `.session-item` 后输入栏可能出现、随后被 `refresh()` 重新挂载（`activeSessionId` 复位）→ 某一步查询元素得到 `null`，看起来像「点了按钮整个输入栏消失」。**每个交互步骤前都要轮询 ENSURE**（元素不在就重新点会话项，最多 30×300ms），不要只等固定 ms。诊断脚本需 `Runtime.enable` + `Log.enable` 并收集 `Runtime.exceptionThrown` / `consoleAPICalled`，再 dump `document.body.innerText`（ErrorBoundary 渲染整块 `<pre>`）。
+
+## 桌面端 renderer 约定
+- 组件用 `useApp()` 取 `t`（`renderer/i18n.ts`，`useApp` 无 Provider 会抛错）；文案一律进 `i18n.ts` 的 zh/en 两套字典，键名用点分命名空间（`chat.*` / `settings.*` / `perm.*`）。
+- 下拉/弹层参考已有 `.theme-dropdown` 家族（`position:relative` + `absolute` 菜单 + `.active` 高亮）。**输入栏里的弹层必须向上弹**（`bottom:100%`）：输入栏在窗口底部，向下弹会被裁。`.input-bar` 与 `.content` 是 `main` 下的兄弟节点，`main` 无 `overflow:hidden`，故向上弹不会被裁。
+- 控件高度统一走 `--control-h:38px`；`.input-row` 是 `align-items:center` 的 flex 行，行内小徽标需显式高度（`.input-row > .perm-menu > .perm-badge { height:22px }`）。
+- **权限模式（PolicyMode）三档 ↔ UI 文案**：`readonly`=请求批准 / `auto`=帮我批准 / `full-auto`=完全访问权限。徽标配色沿用 `.perm-badge` 变体 `readonly`(灰) / `limited`(琥珀) / `full`(红)。决策表见 `@mozi/policy` 的 `DEFAULT_TABLE`（readonly: write/exec deny；auto: exec ask；full-auto: 全 allow），另有 `BUILTIN_RULES`（`R_net` 外网命令 ask、`R_secrets` 写 .env ask、`R_rm_rf` deny）。入口两处共用同一 `config:set { policyMode }` 存储：输入栏徽标（`PermissionMenu.tsx`）与设置页下拉。
 
 ## 交付节奏 / 用户偏好
 - 全程不暂停推进：按 `docs/开发任务.md` 端到端执行整批任务，不在 capability 之间设人工 checkpoint。

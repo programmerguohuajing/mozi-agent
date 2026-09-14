@@ -4,8 +4,9 @@
  * 数据来源：packages/tools 内置 14 个工具 + IPC mcp:list + subagent/templates。
  */
 import * as React from 'react';
-import type { McpServerInfo } from '@mozi/protocol';
+import type { McpAddRequest, McpServerInfo } from '@mozi/protocol';
 import { useApp } from '../i18n.js';
+import { McpAddForm } from './McpAddForm.js';
 
 // ── 内置工具定义（与 packages/tools/src/registry.ts 的 builtinTools 对齐）──
 export interface ToolInfo {
@@ -57,7 +58,7 @@ export interface PluginPanelProps {
   mcpServers: McpServerInfo[];
   onMcpRestart: (id: string) => void;
   onMcpRemove: (id: string) => void;
-  onMcpAdd: () => void;
+  onMcpAdd: (req: McpAddRequest) => Promise<{ ok: boolean; error?: string }>;
 }
 
 type Tab = 'tools' | 'mcp' | 'agents';
@@ -65,6 +66,7 @@ type Tab = 'tools' | 'mcp' | 'agents';
 export function PluginPanel(props: PluginPanelProps): React.ReactElement {
   const { t } = useApp();
   const [tab, setTab] = React.useState<Tab>('tools');
+  const [showAddForm, setShowAddForm] = React.useState(false);
 
   const toolCount = BUILTIN_TOOLS.length;
   const mcpCount = props.mcpServers.length;
@@ -113,7 +115,9 @@ export function PluginPanel(props: PluginPanelProps): React.ReactElement {
           </button>
         </div>
         {tab === 'mcp' ? (
-          <button className="btn-sm primary" style={{ marginLeft: 'auto' }} onClick={props.onMcpAdd}>{t('plugins.mcp.add')}</button>
+          <button className="btn-sm primary" style={{ marginLeft: 'auto' }} onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? t('mcp.form.cancel') : t('plugins.mcp.add')}
+          </button>
         ) : null}
       </div>
 
@@ -142,6 +146,9 @@ export function PluginPanel(props: PluginPanelProps): React.ReactElement {
       {/* ── MCP 服务 Tab ── */}
       {tab === 'mcp' ? (
         <div>
+          {showAddForm ? (
+            <McpAddForm onSubmit={props.onMcpAdd} onCancel={() => setShowAddForm(false)} />
+          ) : null}
           {props.mcpServers.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🔗</div>

@@ -2,8 +2,9 @@
  * 设置中心 — Mozi Studio 生产级 UI。
  */
 import * as React from 'react';
-import type { McpServerInfo, ProviderSummary } from '@mozi/protocol';
+import type { McpAddRequest, McpServerInfo, ProviderSummary } from '@mozi/protocol';
 import type { PolicyMode, PolicyRule } from '@mozi/shared';
+import { McpAddForm } from './McpAddForm.js';
 
 export interface SettingsPanelProps {
   providers: ProviderSummary[];
@@ -18,6 +19,9 @@ export interface SettingsPanelProps {
   onSetPolicyRules: (rules: PolicyRule[]) => void;
   onSetSandboxLevel: (level: 0 | 1 | 2 | 3) => void;
   onSetCostLimits: (limits: { perSessionUsd?: number; perDayUsd?: number }) => void;
+  onMcpAdd: (req: McpAddRequest) => Promise<{ ok: boolean; error?: string }>;
+  onMcpRemove: (id: string) => void;
+  onMcpRestart: (id: string) => void;
 }
 
 const SANDBOX_LABELS: Record<number, string> = {
@@ -32,6 +36,9 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
   const [rulesJson, setRulesJson] = React.useState(JSON.stringify(props.policyRules, null, 2));
   const [testResult, setTestResult] = React.useState<Record<string, string>>({});
   const [keyDraft, setKeyDraft] = React.useState<Record<string, string>>({});
+
+  // MCP 新增表单开关
+  const [showMcpForm, setShowMcpForm] = React.useState(false);
 
   return (
     <div className="settings">
@@ -119,7 +126,21 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
       </div>
 
       <div className="setting-section">
-        <div className="setting-section-title"><span>🔗</span> MCP Server 管理</div>
+        <div className="setting-section-title">
+          <span>🔗</span> MCP Server 管理
+          <button
+            className="btn-sm primary"
+            style={{ marginLeft: 'auto', fontSize: 12 }}
+            onClick={() => setShowMcpForm(!showMcpForm)}
+          >
+            {showMcpForm ? '取消' : '+ 添加 MCP'}
+          </button>
+        </div>
+
+        {showMcpForm ? (
+          <McpAddForm onSubmit={props.onMcpAdd} onCancel={() => setShowMcpForm(false)} />
+        ) : null}
+
         {props.mcpServers.map((m) => (
           <div key={m.id} className="mcp-card">
             <span className="mcp-id">{m.id}</span>
@@ -130,9 +151,17 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
             </span>
             <span className="mcp-tools">{m.toolCount} tools</span>
             <span className="mcp-sampling">sampling: {m.sampling ?? 'ask'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button className="btn-sm" onClick={() => props.onMcpRestart(m.id)}>重启</button>
+              <button className="skill-delete-btn" title="移除" onClick={() => props.onMcpRemove(m.id)}>✕</button>
+            </span>
           </div>
         ))}
-        {props.mcpServers.length === 0 ? <div style={{ fontSize: 12, color: 'var(--text-3)' }}>（未配置 MCP server）</div> : null}
+        {props.mcpServers.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            （未配置 MCP server）点击右上角「+ 添加 MCP」接入 stdio / http / sse 服务
+          </div>
+        ) : null}
       </div>
 
       <div className="setting-section">

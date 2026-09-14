@@ -281,7 +281,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
             <PluginPanel mcpServers={mcpServers}
               onMcpRestart={(id) => void api.invoke('mcp:restart', { id }).then(refresh)}
               onMcpRemove={(id) => void api.invoke('mcp:remove', { id }).then(refresh)}
-              onMcpAdd={() => {}} />
+              onMcpAdd={async (req) => { const r = (await api.invoke('mcp:add', req)) as { ok: boolean; error?: string }; void refresh(); return r; }} />
           ) : null}
           {nav === 'security' ? (
             <SecurityPanel sandboxLevel={sandboxLevel} policyMode={policyMode}
@@ -297,7 +297,10 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
               onSetPolicyMode={(m) => { setPolicyMode(m); void api.invoke('config:set', { patch: { policyMode: m } }); }}
               onSetPolicyRules={(r) => { setPolicyRules(r); void api.invoke('config:set', { patch: { policyRules: r } }); }}
               onSetSandboxLevel={(l) => { setSandboxLevel(l); void api.invoke('config:set', { patch: { sandboxLevel: l } }); }}
-              onSetCostLimits={(lim) => { setCostLimits(lim); void api.invoke('config:set', { patch: { costLimits: lim } }); }} />
+              onSetCostLimits={(lim) => { setCostLimits(lim); void api.invoke('config:set', { patch: { costLimits: lim } }); }}
+              onMcpAdd={async (req) => { const r = (await api.invoke('mcp:add', req)) as { ok: boolean; error?: string }; void refresh(); return r; }}
+              onMcpRemove={(id) => void api.invoke('mcp:remove', { id }).then(refresh)}
+              onMcpRestart={(id) => void api.invoke('mcp:restart', { id }).then(refresh)} />
           ) : null}
         </div>
 

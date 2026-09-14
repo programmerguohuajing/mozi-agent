@@ -37,6 +37,10 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Local build/verify scratch dirs (not part of the repo)
+.build/
+.shot/
+
 # IDE
 .idea/
 .vscode/*

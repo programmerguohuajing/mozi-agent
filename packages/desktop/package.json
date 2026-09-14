@@ -4,7 +4,7 @@
   "description": "Electron desktop app (main + renderer).",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/main/electron-main.js",
+  "main": "./dist/main/bootstrap.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -17,7 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json",
     "test": "vitest run",
     "dev": "vite",
-    "electron": "electron ./dist/main/electron-main.js",
+    "electron": "electron ./dist/main/bootstrap.js",
     "build:renderer": "vite build"
   },
   "dependencies": {

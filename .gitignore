@@ -27,8 +27,8 @@ benchmark/.work/
 
 # Desktop / mobile builds
 apps/mobile/.expo/
-apps/desktop/release/
-packages/desktop/release/
+apps/desktop/release*/
+packages/desktop/release*/
 *.dmg
 *.exe
 *.AppImage

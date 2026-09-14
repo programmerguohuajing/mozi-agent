@@ -123,28 +123,38 @@ export const ALLOWED_SEND: SendChannel[] = [
 /**
  * preload 的 invoke 转发实现（不含 electron 引用，便于单测）。
  * `rawInvoke` 由 preload 注入 `ipcRenderer.invoke`。
+ *
+ * 渲染进程传入**不带前缀**的通道名（如 `session:list`），
+ * 本函数先校验白名单，再添加 `mozi:` 前缀转发给 `ipcRenderer.invoke`，
+ * 与主进程 `ipcMain.handle` 注册的带前缀通道名一致。
  */
 export function createPreloadInvoker(
   rawInvoke: (channel: string, payload: unknown) => Promise<unknown>,
 ): (channel: string, payload: unknown) => Promise<unknown> {
-  const allow = new Set<string>(ALLOWED_INVOKE.map(ipcChannelName));
+  const allow = new Set<string>(ALLOWED_INVOKE);
   return (channel, payload) => {
     if (!allow.has(channel)) {
       return Promise.reject(new Error(`channel not allowed: ${channel}`));
     }
-    return rawInvoke(channel, payload);
+    return rawInvoke(ipcChannelName(channel as InvokeChannel), payload);
   };
 }
 
-/** preload 的事件订阅实现（channel 白名单校验 + 退订）。 */
+/**
+ * preload 的事件订阅实现（channel 白名单校验 + 退订）。
+ *
+ * 渲染进程传入**不带前缀**的通道名（如 `engine:event`），
+ * 本函数先校验白名单，再添加 `mozi:` 前缀转发给 `ipcRenderer.on`，
+ * 与主进程 `webContents.send` 注册的带前缀通道名一致。
+ */
 export function createPreloadSubscriber(
   rawOn: (channel: string, listener: (payload: unknown) => void) => () => void,
 ): (channel: string, listener: (payload: unknown) => void) => () => void {
-  const allow = new Set<string>(ALLOWED_SEND.map(ipcChannelName));
+  const allow = new Set<string>(ALLOWED_SEND);
   return (channel, listener) => {
     if (!allow.has(channel)) {
       throw new Error(`channel not allowed: ${channel}`);
     }
-    return rawOn(channel, listener);
+    return rawOn(ipcChannelName(channel as SendChannel), listener);
   };
 }

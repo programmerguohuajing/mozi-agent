@@ -21,7 +21,10 @@
     "dev": "vite",
     "electron": "electron ./dist/main/index.cjs",
     "package": "node scripts/package.mjs",
-    "package:dir": "node scripts/package.mjs --dir"
+    "package:dir": "node scripts/package.mjs --dir",
+    "package:mac": "node scripts/package.mjs --mac",
+    "package:mac:intel": "node scripts/package.mjs --mac --arch x64",
+    "package:mac:silicon": "node scripts/package.mjs --mac --arch arm64"
   },
   "dependencies": {
     "@mozi/shared": "workspace:*",
@@ -79,7 +82,17 @@
     },
     "mac": {
       "icon": "build/icon.png",
-      "target": ["dmg"]
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": null
     },
     "linux": {
       "icon": "build/icon.png",

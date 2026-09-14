@@ -615,17 +615,17 @@ describe('§10.5② 渲染进程 store：UI 状态与事件流一致', () => {
 
 describe('§10.2 进程安全：preload 通道白名单', () => {
   it('createPreloadInvoker：白名单外通道 → reject', async () => {
-    const { createPreloadInvoker, ipcChannelName } = await import('@mozi/desktop');
+    const { createPreloadInvoker } = await import('@mozi/desktop');
     const invoke = createPreloadInvoker(async () => 'ok');
     await expect(invoke('evil:channel', {})).rejects.toThrow(/not allowed/);
-    await expect(invoke(ipcChannelName('session:list'), {})).resolves.toBe('ok');
+    await expect(invoke('session:list', {})).resolves.toBe('ok');
   });
 
   it('createPreloadSubscriber：白名单外订阅 → throw', async () => {
-    const { createPreloadSubscriber, ipcChannelName } = await import('@mozi/desktop');
+    const { createPreloadSubscriber } = await import('@mozi/desktop');
     const sub = createPreloadSubscriber(() => () => {});
     expect(() => sub('evil', () => {})).toThrow(/not allowed/);
-    expect(typeof sub(ipcChannelName('engine:event'), () => {})).toBe('function');
+    expect(typeof sub('engine:event', () => {})).toBe('function');
   });
 });
 

@@ -9,10 +9,7 @@
 import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { boot, type ElectronModule } from './electron-main.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** 把运行期 electron 适配为 ElectronModule 最小接口。 */
 const electron = {
@@ -22,9 +19,13 @@ const electron = {
   ...(safeStorage ? { safeStorage } : {}),
 } as unknown as ElectronModule;
 
-const rendererIndex = path.resolve(__dirname, '..', 'renderer', 'index.html');
-const preloadPath = path.resolve(__dirname, '..', 'preload.js');
-const iconPath = path.resolve(__dirname, '..', '..', 'build', 'icon.png');
+// 资源路径一律以「应用根目录」为锚点解析：`electron .`（dev）与打包后
+// （`resources/app.asar`）语义一致，且不依赖 __dirname / import.meta.url ——
+// 因此可安全打包为 CommonJS（见 scripts/bundle.mjs），也便于 asar 内寻址。
+const appRoot = app.getAppPath();
+const rendererIndex = path.join(appRoot, 'dist', 'renderer', 'index.html');
+const preloadPath = path.join(appRoot, 'dist', 'preload.cjs');
+const iconPath = path.join(appRoot, 'build', 'icon.png');
 
 boot({
   electron,

@@ -4,7 +4,7 @@
   "description": "Electron desktop app (main + renderer).",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/main/bootstrap.js",
+  "main": "./dist/main/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -14,11 +14,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "bundle": "node scripts/bundle.mjs",
+    "build:renderer": "vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json",
     "test": "vitest run",
     "dev": "vite",
-    "electron": "electron ./dist/main/bootstrap.js",
-    "build:renderer": "vite build"
+    "electron": "electron ./dist/main/index.cjs",
+    "package": "node scripts/package.mjs",
+    "package:dir": "node scripts/package.mjs --dir"
   },
   "dependencies": {
     "@mozi/shared": "workspace:*",
@@ -31,6 +34,8 @@
     "electron": "^33.0.0"
   },
   "devDependencies": {
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.21.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vite": "^5.4.0"
@@ -38,10 +43,47 @@
   "build": {
     "appId": "com.mozi.desktop",
     "productName": "Mozi",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "build/**/*"],
-    "win": { "icon": "build/icon.png" },
-    "mac": { "icon": "build/icon.png" },
-    "linux": { "icon": "build/icon.png" }
+    "copyright": "Copyright © 2026 Mozi",
+    "asar": true,
+    "electronVersion": "33.4.11",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/main/index.cjs",
+      "dist/preload.cjs",
+      "dist/renderer/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mozi",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": ["dmg"]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": ["AppImage"]
+    }
   }
 }

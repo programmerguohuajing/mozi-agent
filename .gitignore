@@ -7,6 +7,8 @@ dist/
 build/
 out/
 *.tsbuildinfo
+# Vite 在加载 vite.config.ts 时生成的临时文件（异常退出时会残留）
+*.timestamp-*.mjs
 
 # Coverage
 coverage/
@@ -26,9 +28,15 @@ benchmark/.work/
 # Desktop / mobile builds
 apps/mobile/.expo/
 apps/desktop/release/
+packages/desktop/release/
 *.dmg
 *.exe
 *.AppImage
+
+# 桌面端图标等构建资源：上面的 `build/` 是整目录忽略，
+# 这里显式放行 packages/desktop/build（安装包/窗口图标依赖它）。
+!packages/desktop/build/
+!packages/desktop/build/**
 
 # Logs & temp
 logs/

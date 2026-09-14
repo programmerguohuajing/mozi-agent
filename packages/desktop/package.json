@@ -57,6 +57,7 @@
       "dist/main/index.cjs",
       "dist/preload.cjs",
       "dist/renderer/**/*",
+      "dist/prompts/**/*",
       "build/icon.png",
       "package.json"
     ],

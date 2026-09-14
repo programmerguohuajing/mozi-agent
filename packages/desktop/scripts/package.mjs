@@ -111,6 +111,7 @@ function stage() {
     ['dist/main/index.cjs', 'dist/main/index.cjs'],
     ['dist/preload.cjs', 'dist/preload.cjs'],
     ['dist/renderer', 'dist/renderer'],
+    ['dist/prompts', 'dist/prompts'],
     ['build/icon.png', 'build/icon.png'],
     ['build/icon.ico', 'build/icon.ico'],
   ];

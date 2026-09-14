@@ -90,6 +90,41 @@ const BASE_OPTIONS = {
   legalComments: 'none',
 };
 
+/**
+ * 复制提示词资源（packages/core/src/prompts/**.md）到运行期产物目录。
+ *
+ * 这些 `.md` 是运行期 `PromptAssets` 按文件路径读取的真源，但 tsc / esbuild 都只
+ * 处理代码、不会自动带上它们 —— 漏掉这一步，打包后的应用一发送消息就会报
+ * 「prompts 目录未找到（identity.md 缺失）」。目标 `<outDir>/prompts` 恰好落在
+ * 打包后 `dist/main/index.cjs` 的 `__dirname/../prompts` = `dist/prompts` 候选路径上。
+ */
+export function copyPromptAssets(outDir) {
+  const srcDir = path.join(REPO_ROOT, 'packages', 'core', 'src', 'prompts');
+  const destDir = path.join(outDir, 'prompts');
+  if (!fs.existsSync(path.join(srcDir, 'identity.md'))) {
+    throw new Error(`[bundle] 缺少提示词资源：${srcDir}/identity.md`);
+  }
+  let count = 0;
+  const walk = (src, dest) => {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+      const s = path.join(src, entry.name);
+      const d = path.join(dest, entry.name);
+      if (entry.isDirectory()) walk(s, d);
+      else if (entry.name.endsWith('.md')) {
+        fs.copyFileSync(s, d);
+        count += 1;
+      }
+    }
+  };
+  walk(srcDir, destDir);
+  // 自检：目标目录必须真的含 identity.md，否则产物依旧不可用。
+  if (!fs.existsSync(path.join(destDir, 'identity.md'))) {
+    throw new Error(`[bundle] 提示词复制失败：${path.join(destDir, 'identity.md')} 不存在`);
+  }
+  console.log(`[bundle] prompts -> ${path.relative(REPO_ROOT, destDir)}  (${count} 个 .md)`);
+}
+
 export async function bundle() {
   const esbuild = require(resolveTool('esbuild'));
   const alias = workspaceAliases();
@@ -128,6 +163,9 @@ export async function bundle() {
     const kb = (Buffer.byteLength(code) / 1024).toFixed(1);
     console.log(`[bundle] ${t.label.padEnd(7)} -> ${path.relative(REPO_ROOT, t.outfile)}  (${kb} kB)`);
   }
+
+  // 资源：提示词 .md 必须随产物分发（tsc / esbuild 都不会自动带上）。
+  copyPromptAssets(path.join(DESKTOP_DIR, 'dist'));
 
   return {
     main: path.join(DESKTOP_DIR, 'dist', 'main', 'index.cjs'),

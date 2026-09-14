@@ -28,6 +28,15 @@
 - `desktop/scripts/package.mjs` 的 `cleanReleaseDir()` 与宿主 safe-delete 守卫冲突（rmSync 与 renameSync 双失败即抛错）。**逃生门：`MOZI_RELEASE_DIR` 指向不存在的全新目录**，该函数直接 return。
 - `packages/desktop/release/**/app.asar` 被外部句柄占用时**可原地覆盖、不可删除**（EBUSY/EPERM）；落产物用 `copyFileSync` 覆盖而非 move/delete。
 
+## 真机验证 / 隔离提交（重要，新增）
+- **本机 `ELECTRON_RUN_AS_NODE=1`**：会让 `electron.exe` 退化成纯 Node（`require('electron')` 拿不到 API、`--no-sandbox` 报 node 风格 `bad option`、脚本静默无输出）。用真实 Electron 跑验证**必须 `delete env.ELECTRON_RUN_AS_NODE`**。此前「本沙箱无法启动 electron.exe」的结论是误判，真因即此变量。
+- **端到端驱动渲染进程不需要 puppeteer**：node 22 自带全局 `fetch` + `WebSocket` —— 产物加 `--remote-debugging-port=<p>`，`fetch 127.0.0.1:<p>/json/list` 取 `webSocketDebuggerUrl`，发 `Runtime.evaluate`（`awaitPromise:true, returnByValue:true`）即可读 DOM / 调 `window.mozi.invoke`。
+- 模拟点击用 `dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}))`；**`element.click()` 不保证触发 React onClick**。2560×1440 截图的 base64(≈688KB) 经 IPC 回传需 **≥5s** 才稳定，等 4s 会误判「没反应」。
+- **asar 内容校验必须 `asar.extractAll()` 后读文件**；`extractFile()` 会失败，且易被 try/catch 吞成「全项 false」的假阴性。
+- vite 生产构建**压缩局部变量名** → 校验产物要 grep **字符串字面量 / class 名 / CSS 规则名**，不要 grep 变量名。esbuild（main bundle）默认 `charset:'ascii'`，中文变 `\uXXXX`。
+- renderer 的 `tsc -p tsconfig.renderer.json` 在本环境**本来就报一片错**（react 类型解析不全：`JSX.IntrinsicElements`/`useCallback`/`clientX`）→ 判断「是否引入新错误」必须 **A/B 对照**（还原改动前版本跑同一命令，比对错误集）。
+- **隔离提交的基线**：并发会话会在我操作期间高频重写同一批文件，**「改动前快照」与 HEAD 都可能不一致**（本轮发生过：pre↔post diff 混入对方的 provider 重构）⇒ 唯一权威基线是 `git show HEAD:<path>`，在其上手工重放自己的 hunk（Edit 精确匹配成功本身即「锚点存在」的证明），再用 `hash-object -w --path <rel>` + `update-index --cacheinfo` 只写 index。`ts.transpileModule`（parse-only，零副作用）可先校验语法。
+
 ## 交付节奏 / 用户偏好
 - 全程不暂停推进：按 `docs/开发任务.md` 端到端执行整批任务，不在 capability 之间设人工 checkpoint。
 - 每次代码改完直接 commit + push；跨会话要能清晰复述上一轮的问题与决策。

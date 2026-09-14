@@ -701,7 +701,8 @@ input, textarea, select { font-family: inherit; }
 .empty-state-hint { font-size: 13px; color: var(--text-3); }
 
 /* ═══ Dashboard ═══ */
-.dashboard { padding: 24px 28px; overflow-y: auto; width: 100%; }
+/* 同 .page-container：必须显式 height:100%，否则在 .content 内被裁切、无法滚动。 */
+.dashboard { padding: 24px 28px; overflow-y: auto; height: 100%; width: 100%; }
 .dash-title { font-size: 20px; font-weight: 600; color: var(--text-0); margin-bottom: 4px; }
 .dash-subtitle { font-size: 13px; color: var(--text-3); margin-bottom: 24px; }
 
@@ -1122,6 +1123,7 @@ input, textarea, select { font-family: inherit; }
 .skills-page {
   padding: 24px 28px;
   overflow-y: auto;
+  height: 100%;
   width: 100%;
 }
 .skills-header {
@@ -1757,9 +1759,13 @@ input, textarea, select { font-family: inherit; }
 .perm-badge.readonly { background: var(--bg-3); color: var(--text-3); }
 
 /* ═══ Generic Page (PR / Schedule / Plugins / Security) ═══ */
+/* 关键：.content 是「flex:1 + overflow:hidden」的块级容器。若本元素保持 height:auto，
+   它会随内容无限长高、被父级直接裁掉，自身永远没有溢出 → overflow-y 形同虚设、页面无法滚动。
+   必须显式吃满父高，滚动条才会出现。 */
 .page-container {
   padding: 24px 28px;
   overflow-y: auto;
+  height: 100%;
   width: 100%;
 }
 .page-title { font-size: 20px; font-weight: 600; color: var(--text-0); margin-bottom: 4px; }
@@ -1846,7 +1852,9 @@ input, textarea, select { font-family: inherit; }
   transition: border-color 0.15s;
 }
 .plugin-card:hover { border-color: var(--border); box-shadow: var(--shadow-sm); }
-.plugin-top { display: flex; gap: 12px; margin-bottom: 10px; }
+/* align-items 默认 stretch 会把 .risk-badge 这种单行 span 拉到与 36px 图标同高（徽章虚高），
+   故显式顶对齐，让徽章回归内容高度并与工具名同一行。 */
+.plugin-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
 .plugin-icon {
   width: 36px; height: 36px;
   border-radius: var(--radius-sm);
@@ -1906,11 +1914,13 @@ input, textarea, select { font-family: inherit; }
 .risk-badge {
   font-size: 10px;
   font-weight: 600;
+  line-height: 1.4;
   padding: 2px 8px;
   border-radius: 4px;
   border: 1px solid;
   white-space: nowrap;
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
 /* ═══ MCP Detail List ═══ */

@@ -75,7 +75,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
   const [mcpServers, setMcpServers] = React.useState<McpServerInfo[]>([]);
   const [sandboxLevel, setSandboxLevel] = React.useState<0 | 1 | 2 | 3>(1);
   const [costLimits, setCostLimits] = React.useState<{ perSessionUsd?: number; perDayUsd?: number }>({});
-  const [stats, setStats] = React.useState<DashboardStats>({ tokensByDay: [], toolCalls: [], approvals: { allow: 247, deny: 22 }, costByModel: [] });
+  const [stats, setStats] = React.useState<DashboardStats>({ tokensByDay: [], toolCalls: [], approvals: { allow: 0, deny: 0 }, costByModel: [] });
   const [input, setInput] = React.useState('');
   const [attachments, setAttachments] = React.useState<Array<{ contentId: string; base64: string; thumbnail: string }>>([]);
   const [annotation, setAnnotation] = React.useState<{ base64: string; width: number; height: number } | null>(null);
@@ -88,12 +88,30 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
   React.useEffect(() => store.subscribe(setState), [store]);
 
   React.useEffect(() => {
-    const offEvent = api.on('engine:event', (p) => store.apply((p as { sessionId: string; event: never }).sessionId, (p as { event: never }).event));
+    const offEvent = api.on('engine:event', (p) => {
+      store.apply((p as { sessionId: string; event: never }).sessionId, (p as { event: never }).event);
+      // 事件流会改变仪表盘聚合（token/工具调用/审批），节流后重取。
+      scheduleStatsRefresh();
+    });
     const offStatus = api.on('session:status', (p) => store.status((p as { sessionId: string }).sessionId, (p as { state: never }).state));
     void refresh();
     return () => { offEvent(); offStatus(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** 仪表盘统计：从后端真实聚合，未产生任何会话事件时为空。 */
+  const refreshStats = async (): Promise<void> => {
+    const dash = (await api.invoke('dashboard:stats', {})) as DashboardStats;
+    setStats(dash ?? { tokensByDay: [], toolCalls: [], approvals: { allow: 0, deny: 0 }, costByModel: [] });
+  };
+
+  // 事件频繁时避免每次都打 IPC：合并到一次尾随调用。
+  const statsTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleStatsRefresh = (): void => {
+    if (statsTimer.current) clearTimeout(statsTimer.current);
+    statsTimer.current = setTimeout(() => { void refreshStats(); }, 400);
+  };
+  React.useEffect(() => () => { if (statsTimer.current) clearTimeout(statsTimer.current); }, []);
 
   const refresh = async (): Promise<void> => {
     const sessions = (await api.invoke('session:list', {})) as SessionSummary[];
@@ -105,6 +123,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
     setSandboxLevel((cfg.settings.sandboxLevel as 0 | 1 | 2 | 3) ?? 1);
     setCostLimits((cfg.settings.costLimits as { perSessionUsd?: number; perDayUsd?: number }) ?? {});
     setMcpServers((await api.invoke('mcp:list', {})) as McpServerInfo[]);
+    await refreshStats();
   };
 
   const activeView = state.activeSessionId ? state.views[state.activeSessionId] : undefined;

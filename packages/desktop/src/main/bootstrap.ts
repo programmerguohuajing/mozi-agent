@@ -6,7 +6,7 @@
  * 这里通过最小接口延迟绑定 electron，不依赖 electron 的类型副作用（electron 作为
  * optionalDependency 安装，类型可能离线缺失，故用 `as unknown as ElectronModule` 桥接）。
  */
-import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
+import { app, BrowserWindow, desktopCapturer, ipcMain, safeStorage, screen } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { boot, type ElectronModule } from './electron-main.js';
@@ -17,6 +17,9 @@ const electron = {
   BrowserWindow,
   ipcMain,
   ...(safeStorage ? { safeStorage } : {}),
+  // 输入栏"截图"按钮依赖屏幕捕获；缺失时桥接层会给出明确错误而非静默失败。
+  ...(desktopCapturer ? { desktopCapturer } : {}),
+  ...(screen ? { screen } : {}),
 } as unknown as ElectronModule;
 
 // 资源路径一律以「应用根目录」为锚点解析：`electron .`（dev）与打包后

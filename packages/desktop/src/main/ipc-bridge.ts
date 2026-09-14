@@ -36,11 +36,26 @@ export interface IpcBridgeDeps {
   mcp: McpManager;
   /** 内置浏览器服务（截图标注）。 */
   browser?: BrowserService;
+  /**
+   * 屏幕截图能力（renderer 输入栏"截图"按钮）：
+   * 截取整屏并返回 PNG base64 + 真实像素尺寸。由主进程用 electron.desktopCapturer 注入。
+   */
+  captureScreen?: ScreenCapturer;
   /** 传输：注册 handler + 推送 send。 */
   channel: ChannelServer;
   /** 当前接收方标识（窗口 id / 连接 id），用于多窗口聚焦判定。 */
   recipientId?: string;
 }
+
+/** 屏幕截图结果：`base64` 为不带 data: 前缀的 PNG；`width/height` 为真实像素尺寸（标注坐标依赖）。 */
+export interface ScreenCaptureResult {
+  base64: string;
+  width: number;
+  height: number;
+}
+
+/** 屏幕截图器（主进程注入；不可用时抛错，由 handler 转为 `{ error }`）。 */
+export type ScreenCapturer = () => Promise<ScreenCaptureResult>;
 
 export class IpcBridge {
   private readonly sessionWindow = new Map<string, string>();
@@ -49,7 +64,7 @@ export class IpcBridge {
 
   /** 注册全部 invoke handler。 */
   install(): void {
-    const { channel, service, settings, diff, mcp, browser } = this.deps;
+    const { channel, service, settings, diff, mcp, browser, captureScreen } = this.deps;
 
     channel.handle('session:create', async (req) => {
       const summary = await service.create(req);
@@ -137,9 +152,26 @@ export class IpcBridge {
 
     channel.handle('diff:applyPartial', (req: PartialApplyRequest) => diff.applyPartial(req));
 
-    // ── 内置浏览器：截图标注 ──────────────────────────────────
+    // ── 输入栏"截图"：截取整屏 → 标注 → 作为附件 ──────────────
     channel.handle('browser:capture', async () => {
-      if (!browser) return { error: 'Browser service not available' };
+      // 首选：主进程桌面屏幕捕获（desktopCapturer），返回真实像素尺寸供标注定位。
+      if (captureScreen) {
+        try {
+          const shot = await captureScreen();
+          return {
+            contentId: `screen-${Date.now()}`,
+            base64: shot.base64,
+            width: shot.width,
+            height: shot.height,
+          };
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : String(e) };
+        }
+      }
+      // 退化：内置浏览器页面截图（未注入屏幕捕获时）。
+      if (!browser) {
+        return { error: '截图不可用：主进程未注入屏幕捕获能力（electron.desktopCapturer）' };
+      }
       try {
         const result = await browser.screenshot();
         return { contentId: result.contentId, base64: result.base64, width: 0, height: 0 };

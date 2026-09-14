@@ -79,6 +79,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
   const [input, setInput] = React.useState('');
   const [attachments, setAttachments] = React.useState<Array<{ contentId: string; base64: string; thumbnail: string }>>([]);
   const [annotation, setAnnotation] = React.useState<{ base64: string; width: number; height: number } | null>(null);
+  const [captureError, setCaptureError] = React.useState<string | null>(null);
   const [skills, setSkills] = React.useState<SkillInfo[]>(BUILTIN_SKILLS);
   const [model, setModel] = React.useState('claude-sonnet-4');
   const [prs] = React.useState<PRInfo[]>(MOCK_PRS);
@@ -154,15 +155,29 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
     await api.invoke('run:start', { sessionId: state.activeSessionId, text: text + att });
   };
 
+  /** 输入栏"截图"：截取屏幕 → 打开标注层；失败必须可见（此前静默 return 导致"点了没反应"）。 */
   const captureAndAnnotate = async (): Promise<void> => {
-    const r = (await api.invoke('browser:capture', {})) as { base64?: string; width?: number; height?: number; error?: string };
-    if (r.error || !r.base64) return;
-    setAnnotation({ base64: r.base64, width: r.width ?? 1200, height: r.height ?? 800 });
+    setCaptureError(null);
+    try {
+      const r = (await api.invoke('browser:capture', {})) as {
+        base64?: string;
+        width?: number;
+        height?: number;
+        error?: string;
+      };
+      if (r.base64) {
+        setAnnotation({ base64: r.base64, width: r.width || 1200, height: r.height || 800 });
+        return;
+      }
+      setCaptureError(r.error ?? t('chat.screenshot.failed'));
+    } catch (e) {
+      setCaptureError(e instanceof Error ? e.message : t('chat.screenshot.failed'));
+    }
   };
 
   const onAnnotationConfirm = async (b64: string): Promise<void> => {
     const result = (await api.invoke('browser:saveAnnotated', { base64: b64, sessionId: state.activeSessionId })) as { ok: boolean; contentId: string };
-    if (result.ok) setAttachments((prev) => [...prev, { contentId: result.contentId, base64: b64, thumbnail: `data:image/png;base64,${b64.slice(0, 1000)}` }]);
+    if (result.ok) setAttachments((prev) => [...prev, { contentId: result.contentId, base64: b64, thumbnail: `data:image/png;base64,${b64}` }]);
     setAnnotation(null);
   };
 
@@ -306,6 +321,20 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
 
         {nav === 'chat' && activeView ? (
           <div className="input-bar">
+            {captureError ? (
+              <div className="input-error" role="alert">
+                <span className="input-error-text">
+                  {t('chat.screenshot.failed')}：{captureError}
+                </span>
+                <button
+                  className="input-error-close"
+                  onClick={() => setCaptureError(null)}
+                  aria-label={t('chat.screenshot.dismiss')}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
             {attachments.length > 0 ? (
               <div className="input-attachments">
                 {attachments.map((a) => (

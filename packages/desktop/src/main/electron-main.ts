@@ -11,7 +11,7 @@
 import path from 'node:path';
 import { ProviderRegistry } from '@mozi/providers';
 import { AgentService } from './agent-service.js';
-import { IpcBridge } from './ipc-bridge.js';
+import { IpcBridge, type ScreenCapturer } from './ipc-bridge.js';
 import { DiffReviewService } from './diff-service.js';
 import { SettingsStore, type SafeStorageLike } from './settings-store.js';
 import { McpManager } from './mcp-manager.js';
@@ -34,6 +34,32 @@ export interface ElectronModule {
   ipcMain: IpcMainLike;
   safeStorage?: SafeStorageLike;
   Notification?: new (opts: { title: string; body: string }) => { show(): void };
+  /** 屏幕捕获源（输入栏"截图"按钮：截取整屏 → 标注 → 作为附件）。 */
+  desktopCapturer?: {
+    getSources(opts: {
+      types: Array<'screen' | 'window'>;
+      thumbnailSize?: { width: number; height: number };
+    }): Promise<ElectronDesktopSource[]>;
+  };
+  /** 显示器信息（用于按物理像素分辨率截图，避免高 DPI 下模糊）。 */
+  screen?: {
+    getPrimaryDisplay(): {
+      id: number;
+      size: { width: number; height: number };
+      scaleFactor: number;
+    };
+  };
+}
+
+/** Electron `desktopCapturer` 返回的单个捕获源（最小契约）。 */
+export interface ElectronDesktopSource {
+  id: string;
+  name: string;
+  display_id?: string;
+  thumbnail: {
+    toPNG(): Buffer;
+    getSize(): { width: number; height: number };
+  };
 }
 
 export interface ElectronBrowserWindow extends WebContentsLike {
@@ -112,6 +138,24 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
 
   const channel = new ElectronChannelServer(electron.ipcMain, () => windows);
   let bridge: IpcBridge;
+
+  /** 整屏截图（输入栏"截图"按钮）：thumbnailSize 取物理像素，避免高 DPI 下模糊。 */
+  const captureScreen: ScreenCapturer = async () => {
+    const dc = electron.desktopCapturer;
+    if (!dc) throw new Error('desktopCapturer 不可用（主进程未注入 electron.desktopCapturer）');
+    const display = electron.screen?.getPrimaryDisplay();
+    const scale = display?.scaleFactor ?? 1;
+    const width = Math.max(1, Math.round((display?.size.width ?? 1280) * scale));
+    const height = Math.max(1, Math.round((display?.size.height ?? 800) * scale));
+    const sources = await dc.getSources({ types: ['screen'], thumbnailSize: { width, height } });
+    const primary =
+      (display && sources.find((s) => s.display_id && String(s.display_id) === String(display.id))) ||
+      sources[0];
+    if (!primary) throw new Error('未找到可截图的屏幕源（desktopCapturer 返回空）');
+    const size = primary.thumbnail.getSize();
+    return { base64: primary.thumbnail.toPNG().toString('base64'), width: size.width, height: size.height };
+  };
+
   const service = new AgentService({
     sessionDir: path.join(userData, 'sessions'),
     providers,
@@ -121,7 +165,14 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
     sandboxLevel: settings.sandboxLevel(),
   });
 
-  bridge = new IpcBridge({ service, settings, diff, mcp, channel });
+  bridge = new IpcBridge({
+    service,
+    settings,
+    diff,
+    mcp,
+    channel,
+    ...(electron.desktopCapturer ? { captureScreen } : {}),
+  });
   bridge.install();
 
   const iconPath = opts.iconPath ?? path.join(path.dirname(opts.rendererIndex), 'build', 'icon.png');

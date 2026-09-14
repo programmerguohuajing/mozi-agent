@@ -583,6 +583,36 @@ input, textarea, select { font-family: inherit; }
   background: var(--bg-2);
 }
 .input-attachments { display: flex; gap: 6px; margin-bottom: 8px; }
+/* 截图失败提示：必须有可见反馈（此前失败被静默吞掉，按钮像"点了没反应"） */
+.input-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-xs);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.input-error-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.input-error-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.input-error-close:hover { background: var(--danger-bg); }
 .attachment-thumb {
   width: 60px;
   height: 40px;

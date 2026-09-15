@@ -265,7 +265,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
   const [unsetWorkspaceIds, setUnsetWorkspaceIds] = React.useState<Set<string>>(new Set());
   // ── 任务浏览器面板（每会话独立开关）──
   // 打开后：会话视图右侧分栏内嵌 webview；agent 的 browser 工具操作同一页面；
-  // 输入栏「截图」按钮仅在浏览器打开时显示（截取 webview 当前页面）。
+  // 浏览器面板工具栏提供「标注」按钮（截取 webview 当前页面 → 标注 → 附件）。
   const [browserSessions, setBrowserSessions] = React.useState<Record<string, boolean>>({});
   const browserCaptureRef = React.useRef<BrowserCaptureFn | null>(null);
 
@@ -640,6 +640,31 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
                 </div>
               ) : null}
             </div>
+            {state.activeSessionId ? (
+              <button
+                type="button"
+                className={`header-icon-btn${browserOpen ? ' active' : ''}`}
+                title={browserOpen ? t('chat.browser.close') : t('chat.browser.open')}
+                aria-pressed={browserOpen}
+                onClick={toggleBrowser}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="8" cy="8" r="6.2" />
+                  <path d="M1.8 8h12.4" />
+                  <path d="M8 1.8c-2.2 2-3.3 4-3.3 6.2s1.1 4.2 3.3 6.2c2.2-2 3.3-4 3.3-6.2s-1.1-4.2-3.3-6.2z" />
+                </svg>
+              </button>
+            ) : null}
             <div className="status-chip">
               <span className={`status-dot ${activeView?.state ?? 'idle'}`} />
               <span>{activeView ? t(`status.${activeView.state}`) : t('status.idle')}</span>
@@ -691,6 +716,9 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
                     setBrowserSessions((prev) => ({ ...prev, [state.activeSessionId!]: false }))
                   }
                   captureRef={browserCaptureRef}
+                  onCapture={() => void captureAndAnnotate()}
+                  captureError={captureError}
+                  onDismissCaptureError={() => setCaptureError(null)}
                 />
               </div>
             ) : (
@@ -949,9 +977,6 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
             removeAttachment={(contentId) =>
               setAttachments((p) => p.filter((x) => x.contentId !== contentId))
             }
-            captureAndAnnotate={() => void captureAndAnnotate()}
-            captureError={captureError}
-            dismissCaptureError={() => setCaptureError(null)}
             abortError={abortError}
             dismissAbortError={() => setAbortError(null)}
             policyMode={policyMode}
@@ -961,8 +986,6 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
             }}
             planMode={planMode}
             onPlanModeChange={setPlanMode}
-            browserOpen={browserOpen}
-            onToggleBrowser={toggleBrowser}
             skills={skills}
             selectedSkills={selectedSkills}
             onToggleSkill={(id) =>

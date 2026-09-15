@@ -61,6 +61,12 @@ export interface BrowserPanelProps {
   onClose: () => void;
   /** 宿主持有的截图函数 ref：面板就绪时注入，卸载时清空。 */
   captureRef: BrowserCaptureRef;
+  /** 触发「标注」：截取当前页面并打开标注层（宿主维护 annotation 状态）。 */
+  onCapture: () => void;
+  /** 截图失败提示（由宿主 captureAndAnnotate 设置）。 */
+  captureError?: string | null;
+  /** 关闭截图失败提示。 */
+  onDismissCaptureError?: () => void;
 }
 
 /** 补全 URL：无协议时默认 https://。 */
@@ -245,6 +251,30 @@ export function BrowserPanel(props: BrowserPanelProps): React.ReactElement {
           }}
         />
         {loading ? <span className="browser-loading" aria-hidden="true" /> : null}
+        {/* 标注：截取当前页面 → 标注层（宿主管理 annotation 状态） */}
+        <button
+          type="button"
+          className="browser-tool-btn"
+          title={t('chat.browser.annotate')}
+          aria-label={t('chat.browser.annotate')}
+          onClick={() => props.onCapture()}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M2.6 6.4A1.6 1.6 0 0 1 4.2 4.9h1.3l0.9 -1.6h3.2l0.9 1.6h1.3a1.6 1.6 0 0 1 1.6 1.5v5.4a1.6 1.6 0 0 1 -1.6 1.6H4.2a1.6 1.6 0 0 1 -1.6 -1.6z" />
+            <circle cx="8" cy="9.2" r="2.3" />
+          </svg>
+          {t('chat.browser.annotate')}
+        </button>
         <button
           type="button"
           className="browser-close-btn"
@@ -262,6 +292,20 @@ export function BrowserPanel(props: BrowserPanelProps): React.ReactElement {
       {error ? (
         <div className="browser-error" role="alert">
           {error}
+        </div>
+      ) : null}
+      {props.captureError ? (
+        <div className="browser-error" role="alert">
+          <span className="browser-error-text">
+            {t('chat.screenshot.failed')}：{props.captureError}
+          </span>
+          <button
+            className="browser-error-close"
+            onClick={() => props.onDismissCaptureError?.()}
+            aria-label={t('chat.screenshot.dismiss')}
+          >
+            ✕
+          </button>
         </div>
       ) : null}
       <div className="browser-webview-host" ref={hostRef} />

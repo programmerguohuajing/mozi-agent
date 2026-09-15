@@ -2407,6 +2407,32 @@ select {
   background: var(--primary-bg);
 }
 
+/* 顶栏浏览器图标按钮：仅在存在会话时显示，悬浮展示文字提示 */
+.header-icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.header-icon-btn:hover {
+  color: var(--text-0);
+  border-color: var(--border-focus);
+  background: var(--bg-hover);
+}
+.header-icon-btn.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-bg);
+}
+
 .theme-dropdown {
   position: relative;
 }
@@ -3232,6 +3258,32 @@ select {
   background: var(--danger-bg);
   color: var(--danger);
 }
+/* 标注按钮：截图当前页面并打开标注层 */
+.browser-tool-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.browser-tool-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+  border-color: var(--border-focus);
+}
+.browser-tool-btn svg {
+  flex: none;
+  display: block;
+}
 .browser-title {
   padding: 4px 12px;
   font-size: 11px;
@@ -3242,12 +3294,33 @@ select {
   border-bottom: 1px solid var(--border-light);
 }
 .browser-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 12px;
   font-size: 12px;
   color: var(--danger);
   background: var(--danger-bg);
   border-bottom: 1px solid rgba(251, 113, 133, 0.3);
   overflow-wrap: anywhere;
+}
+.browser-error-text {
+  flex: 1;
+  min-width: 0;
+}
+.browser-error-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--danger);
+  font-size: 11px;
+  cursor: pointer;
+}
+.browser-error-close:hover {
+  background: rgba(251, 113, 133, 0.2);
 }
 /* webview 宿主：填满剩余空间；webview 元素由 BrowserPanel 命令式插入 */
 .browser-webview-host {
@@ -3256,7 +3329,11 @@ select {
   position: relative;
   background: var(--bg-1);
 }
+/* webview 在 flex 容器里用 height:100% 会回退到默认尺寸（约 150px），
+   故改用绝对定位填满宿主。.browser-webview-host 已 position:relative。 */
 .browser-webview {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: none;

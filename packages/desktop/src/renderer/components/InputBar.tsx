@@ -8,7 +8,8 @@ import type { PolicyMode } from '@mozi/shared';
  *   - @ 引用：输入 `@` 弹出文件/文件夹浏览与全局搜索（workspace:listEntries），
  *     ↑↓ 选择、Enter/Tab 插入、Esc 关闭；发送时展开为绝对路径清单
  *   - 「+」菜单：选择项目文件夹 / 引用文件 / 计划模式 / 技能 / MCP 服务
- *   - 截图标注 / 权限模式 / 发送 / 中止
+ *   - 权限模式 / 发送 / 中止
+ *   - 附件缩略图展示（截图标注由浏览器面板工具栏触发）
  */
 import * as React from 'react';
 import { buildTextWithMentions, detectMention, insertMention } from '../../shared/mentions.js';
@@ -37,19 +38,12 @@ export interface InputBarProps {
   abort: () => void;
   attachments: Array<{ contentId: string; base64: string; thumbnail: string }>;
   removeAttachment: (contentId: string) => void;
-  captureAndAnnotate: () => void;
-  captureError: string | null;
-  dismissCaptureError: () => void;
   abortError: string | null;
   dismissAbortError: () => void;
   policyMode: PolicyMode;
   onPolicyModeChange: (m: PolicyMode) => void;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
-  /** 浏览器面板是否打开（截图按钮仅在打开时显示）。 */
-  browserOpen: boolean;
-  /** 打开 / 关闭浏览器面板（右侧分栏内嵌 webview）。 */
-  onToggleBrowser: () => void;
   skills: SkillSummary[];
   selectedSkills: string[];
   onToggleSkill: (id: string) => void;
@@ -262,21 +256,6 @@ export function InputBar(props: InputBarProps): React.ReactElement {
         )}
       </div>
 
-      {props.captureError ? (
-        <div className="input-error" role="alert">
-          <span className="input-error-text">
-            {t('chat.screenshot.failed')}：{props.captureError}
-          </span>
-          <button
-            className="input-error-close"
-            onClick={props.dismissCaptureError}
-            aria-label={t('chat.screenshot.dismiss')}
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
-
       {props.attachments.length > 0 ? (
         <div className="input-attachments">
           {props.attachments.map((a) => (
@@ -377,58 +356,6 @@ export function InputBar(props: InputBarProps): React.ReactElement {
             setTimeout(() => setMention(null), 120);
           }}
         />
-
-        {/* 浏览器开关：打开右侧内嵌浏览器面板（agent 的 browser 工具操作同一页面） */}
-        <button
-          type="button"
-          className={`btn-tool btn-browser${props.browserOpen ? ' active' : ''}`}
-          title={props.browserOpen ? t('chat.browser.close') : t('chat.browser.open')}
-          aria-pressed={props.browserOpen}
-          onClick={props.onToggleBrowser}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="8" cy="8" r="6.2" />
-            <path d="M1.8 8h12.4" />
-            <path d="M8 1.8c-2.2 2-3.3 4-3.3 6.2s1.1 4.2 3.3 6.2c2.2-2 3.3-4 3.3-6.2s-1.1-4.2-3.3-6.2z" />
-          </svg>
-          {t('chat.browser')}
-        </button>
-
-        {/* 截图：仅在浏览器面板打开时显示（截取 webview 当前页面 → 标注 → 附件） */}
-        {props.browserOpen ? (
-          <button
-            className="btn-tool"
-            title={t('chat.screenshot.hint')}
-            aria-label={t('chat.screenshot.hint')}
-            onClick={() => props.captureAndAnnotate()}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M2.6 6.4A1.6 1.6 0 0 1 4.2 4.9h1.3l0.9 -1.6h3.2l0.9 1.6h1.3a1.6 1.6 0 0 1 1.6 1.5v5.4a1.6 1.6 0 0 1 -1.6 1.6H4.2a1.6 1.6 0 0 1 -1.6 -1.6z" />
-              <circle cx="8" cy="9.2" r="2.3" />
-            </svg>
-            {t('chat.screenshot')}
-          </button>
-        ) : null}
 
         <PermissionMenu mode={props.policyMode} onSelect={props.onPolicyModeChange} />
 

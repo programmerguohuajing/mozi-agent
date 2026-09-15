@@ -70,6 +70,7 @@ const zh: Dict = {
   'chat.browser.back': '后退',
   'chat.browser.forward': '前进',
   'chat.browser.reload': '刷新',
+  'chat.browser.annotate': '标注',
   // 输入栏「+」菜单（项目文件夹 / 引用文件 / 计划模式 / 技能 / MCP）
   'chat.plus.title': '添加',
   'chat.plus.group.add': '添加',
@@ -360,6 +361,7 @@ const en: Dict = {
   'chat.browser.back': 'Back',
   'chat.browser.forward': 'Forward',
   'chat.browser.reload': 'Reload',
+  'chat.browser.annotate': 'Annotate',
   // "+" menu in input bar (workspace / mentions / plan mode / skills / MCP)
   'chat.plus.title': 'Add',
   'chat.plus.group.add': 'Add',

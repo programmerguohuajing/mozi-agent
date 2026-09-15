@@ -105,7 +105,7 @@ export function loadHooks(opts: LoadHooksOptions): LoadResult {
   const fp = fingerprintFile(projPath);
   if (fp) {
     const projFile = readHooksFile(projPath, warnings);
-    if (projFile && projFile.hooks.length) {
+    if (projFile?.hooks.length) {
       const commands = projFile.hooks.map((h) => String((h as HookSpec).run ?? ''));
       if (opts.headless) {
         warnings.push(
@@ -147,12 +147,17 @@ export function approveProjectHooks(
 ): void {
   const p = projectApprovalPath(workspace);
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify({ fingerprint, approvedAt, commands } satisfies ProjectHookApproval, null, 2));
+  fs.writeFileSync(
+    p,
+    JSON.stringify({ fingerprint, approvedAt, commands } satisfies ProjectHookApproval, null, 2),
+  );
 }
 
 export function readApproval(workspace: string): ProjectHookApproval | undefined {
   try {
-    return JSON.parse(fs.readFileSync(projectApprovalPath(workspace), 'utf8')) as ProjectHookApproval;
+    return JSON.parse(
+      fs.readFileSync(projectApprovalPath(workspace), 'utf8'),
+    ) as ProjectHookApproval;
   } catch {
     return undefined;
   }

@@ -54,6 +54,14 @@ export type AgentEvent =
       summary: string;
       ts: string;
     }
+  // v1.3 新增：上下文占用快照（每轮 step 开始时发出；UI 上下文面板真实数据源）
+  | {
+      type: 'context.usage';
+      usedTokens: number;
+      budgetTokens: number;
+      turnIndex: number;
+      ts: string;
+    }
   // 用量与终止
   | { type: 'token.usage'; usage: TokenUsage; ts: string }
   | { type: 'turn.completed'; usage: TokenUsage; steps: number; ts: string }

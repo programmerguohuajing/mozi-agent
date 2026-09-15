@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { SessionStore, autoApproveGateway, createEngine } from '@mozi/core';
+import { type ApprovalGateway, SessionStore, autoApproveGateway, createEngine } from '@mozi/core';
 import { ProviderRegistry, ScriptedProvider, type ScriptedTurn } from '@mozi/providers';
 /**
  * M1 引擎集成测试（T7）：用 ScriptedProvider 确定性回放驱动 AgentEngine 跑通主循环。
@@ -77,7 +77,9 @@ describe('AgentEngine M1 主循环', () => {
   it('asks for approval on shell under auto, and honors a deny', async () => {
     // mv 是 side-effect 命令（风险分析 ask），echo 属 safe 白名单会直接放行
     const reg = makeProvider([
-      { toolCalls: [{ name: 'shell', arguments: { command: 'mv a.txt b.txt' }, riskLevel: 'exec' }] },
+      {
+        toolCalls: [{ name: 'shell', arguments: { command: 'mv a.txt b.txt' }, riskLevel: 'exec' }],
+      },
       { content: 'done' },
     ]);
     const engine = createEngine({
@@ -207,5 +209,69 @@ describe('AgentEngine M1 主循环', () => {
     expect((toolMsg as { isError: boolean }).isError).toBe(false);
     // 至少包含：user / assistant(toolcalls) / tool
     expect(resumed.messages.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('abort during pending approval interrupts immediately (deny + user_interrupt)', async () => {
+    // 场景：工具在等 UI 审批（request 永不 resolve），用户点「中止」。
+    // 修复前：abort 信号被 awaitApproval 忽略，会话挂死到 10 分钟超时；
+    // 修复后：立即按 deny 收尾，事件流以 task.completed(user_interrupt) 结束。
+    const reg = makeProvider([
+      {
+        toolCalls: [{ name: 'shell', arguments: { command: 'mv a.txt b.txt' }, riskLevel: 'exec' }],
+      },
+      { content: 'done' },
+    ]);
+    // biome-ignore lint/style/useConst: 引擎创建后需回填给审批网关闭包，声明与赋值分离。
+    let engine!: ReturnType<typeof createEngine>;
+    // 挂起式审批网关：request 被调用的那一刻引擎已挂在审批等待上，
+    // 在下一个 tick 触发 abort —— 若修复无效，本测试将挂满 10 分钟而超时失败。
+    const hangingApproval: ApprovalGateway = {
+      request: () =>
+        new Promise<'allow' | 'deny'>((_resolve) => {
+          queueMicrotask(() => engine.abort('s7', 'user_interrupt'));
+          // 故意不 resolve：只有 abort 能解除等待。
+        }),
+      resolve: () => {},
+    };
+    engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      approval: hangingApproval,
+      policyMode: 'auto',
+    });
+
+    const out = await collect(engine.run({ sessionId: 's7', text: 'need approval' }));
+
+    const required = out.find((e) => (e as { type: string }).type === 'tool.approval.required');
+    expect(required).toBeTruthy();
+
+    const resolved = out.find((e) => (e as { type: string }).type === 'tool.approval.resolved');
+    expect((resolved as { decision: string }).decision).toBe('deny');
+
+    const toolDone = out.find((e) => (e as { type: string }).type === 'tool.completed');
+    expect((toolDone as { result: { isError: boolean } }).result.isError).toBe(true);
+
+    const completed = out.find((e) => (e as { type: string }).type === 'task.completed');
+    expect((completed as { reason: string }).reason).toBe('user_interrupt');
+  });
+
+  it('empty model response yields explicit error instead of silent completion', async () => {
+    // 空 turn：无 content / toolCalls —— 修复前会静默 task.completed(model_finished)。
+    const reg = makeProvider([{}]);
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      approval: autoApproveGateway('allow'),
+      policyMode: 'full-auto',
+    });
+    const events = await collect(engine.run({ sessionId: 's8', text: 'say something' }));
+
+    const err = events.find((e) => e.type === 'error');
+    expect(err).toBeTruthy();
+    expect((err as { error: { message: string } }).error.message).toMatch(/空响应/);
+    // 不应再有"正常完成"事件（错误必须可见）。
+    expect(events.find((e) => e.type === 'task.completed')).toBeFalsy();
   });
 });

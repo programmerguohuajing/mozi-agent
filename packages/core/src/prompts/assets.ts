@@ -107,10 +107,7 @@ export class PromptAssets {
       }
     }
     throw new Error(
-      'prompts 目录未找到（identity.md 缺失）。已探测以下路径：\n' +
-        candidates.map((c) => `  - ${c}`).join('\n') +
-        '\n请确认 packages/core/src/prompts 已随代码部署；' +
-        '构建时运行 `node packages/core/scripts/copy-prompts.mjs` 会复制到 dist/prompts。',
+      `prompts 目录未找到（identity.md 缺失）。已探测以下路径：\n${candidates.map((c) => `  - ${c}`).join('\n')}\n请确认 packages/core/src/prompts 已随代码部署；构建时运行 \`node packages/core/scripts/copy-prompts.mjs\` 会复制到 dist/prompts。`,
     );
   }
 
@@ -163,9 +160,9 @@ export class PromptAssets {
     const root = this.dir();
     const files: string[] = [];
     const walk = (d: string, prefix: string): void => {
-      for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) =>
-        a.name < b.name ? -1 : 1,
-      )) {
+      for (const e of fs
+        .readdirSync(d, { withFileTypes: true })
+        .sort((a, b) => (a.name < b.name ? -1 : 1))) {
         const rel = prefix ? `${prefix}/${e.name}` : e.name;
         if (e.isDirectory()) walk(path.join(d, e.name), rel);
         else if (e.name.endsWith('.md')) files.push(rel);
@@ -173,7 +170,10 @@ export class PromptAssets {
     };
     walk(root, '');
     const h = createHash('sha256');
-    for (const f of files) h.update(f).update('\0').update(fs.readFileSync(path.join(root, f)));
+    for (const f of files)
+      h.update(f)
+        .update('\0')
+        .update(fs.readFileSync(path.join(root, f)));
     return h.digest('hex').slice(0, 8);
   }
 }

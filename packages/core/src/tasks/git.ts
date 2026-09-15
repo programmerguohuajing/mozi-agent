@@ -3,10 +3,22 @@
  * 全部经子进程 git CLI（跨平台）；非 git 目录降级为目录快照 + patch 文件。
  */
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 
-function git(cwd: string | undefined, ...args: string[]): { ok: boolean; stdout: string; stderr: string } {
+function git(
+  cwd: string | undefined,
+  ...args: string[]
+): { ok: boolean; stdout: string; stderr: string } {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 60_000 });
   return { ok: r.status === 0, stdout: (r.stdout ?? '').trim(), stderr: (r.stderr ?? '').trim() };
 }

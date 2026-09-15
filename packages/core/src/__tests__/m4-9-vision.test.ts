@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  type ImageDimensions,
   MAX_IMAGE_BYTES,
   ScreenshotService,
   UnsupportedImageError,
@@ -13,9 +13,9 @@ import {
   readDimensions,
   sniffFormat,
   validateVerifyStep,
-  type ImageDimensions,
 } from '@mozi/core';
 import { screenshotTool } from '@mozi/tools';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * M17 多模态测试（§17.5）：
@@ -100,9 +100,21 @@ describe('M17 图像头部解析（零依赖）', () => {
   });
 
   it('readDimensions 三种格式', () => {
-    expect(readDimensions(makePng(100, 50), 'png')).toEqual({ width: 100, height: 50, format: 'png' });
-    expect(readDimensions(makeJpeg(320, 240), 'jpeg')).toEqual({ width: 320, height: 240, format: 'jpeg' });
-    expect(readDimensions(makeWebp(800, 600), 'webp')).toEqual({ width: 800, height: 600, format: 'webp' });
+    expect(readDimensions(makePng(100, 50), 'png')).toEqual({
+      width: 100,
+      height: 50,
+      format: 'png',
+    });
+    expect(readDimensions(makeJpeg(320, 240), 'jpeg')).toEqual({
+      width: 320,
+      height: 240,
+      format: 'jpeg',
+    });
+    expect(readDimensions(makeWebp(800, 600), 'webp')).toEqual({
+      width: 800,
+      height: 600,
+      format: 'webp',
+    });
   });
 
   it('estimateImageTokens 使用 OpenAI 公式 (w×h)/750', () => {
@@ -313,9 +325,9 @@ describe('M17 screenshot 工具与服务', () => {
 
   it('ScreenshotService：browser 模式未装 playwright → 明确提示', async () => {
     const svc = new ScreenshotService({ mediaDir });
-    await expect(
-      svc.screenshot({ target: { kind: 'browser', url: 'http://x' } }),
-    ).rejects.toThrow(/playwright-core/);
+    await expect(svc.screenshot({ target: { kind: 'browser', url: 'http://x' } })).rejects.toThrow(
+      /playwright-core/,
+    );
   });
 });
 
@@ -340,9 +352,9 @@ describe('M17 VerifyStep 校验（§17.4）', () => {
         true,
       ),
     ).toEqual({ ok: true });
-    expect(
-      validateVerifyStep({ kind: 'screenshot', url: '', expectation: 'x' }, true).ok,
-    ).toBe(false);
+    expect(validateVerifyStep({ kind: 'screenshot', url: '', expectation: 'x' }, true).ok).toBe(
+      false,
+    );
     expect(
       validateVerifyStep({ kind: 'screenshot', url: 'http://x', expectation: '' }, true).ok,
     ).toBe(false);

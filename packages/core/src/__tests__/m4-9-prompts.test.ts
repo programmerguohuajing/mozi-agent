@@ -2,17 +2,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
 import {
   ContextManager,
   PROMPT_BUDGET_TOKENS,
   PromptAssembler,
   PromptAssets,
+  type Session,
   estimatePromptTokens,
   expandCapabilities,
-  type Session,
 } from '@mozi/core';
 import { defaultConfig } from '@mozi/shared';
+import { describe, expect, it } from 'vitest';
 
 /**
  * M15 提示词系统工程测试（§15.7）：
@@ -20,11 +20,7 @@ import { defaultConfig } from '@mozi/shared';
  * L3 按 policy mode 分支、L4 接入后 L0 物理在先、超长模型降级 identity-lite。
  */
 
-const PROMPTS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  'prompts',
-);
+const PROMPTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'prompts');
 
 function makeSession(over: Partial<Session> = {}): Session {
   const config = { ...defaultConfig(), ...(over.config ?? {}) };
@@ -186,7 +182,7 @@ describe('M15 接入 ContextManager（L4）', () => {
       const session = makeSession();
       const view = cm.build(session);
       expect(view.prompt).toBeDefined();
-      expect(view.prompt!.promptHash).toMatch(/^[0-9a-f]{12}$/);
+      expect(view.prompt?.promptHash).toMatch(/^[0-9a-f]{12}$/);
       // L0 在系统提示最前（物理在先 → L4 无法覆盖安全准则）
       expect(view.systemText.startsWith('你是墨子')).toBe(true);
       // L4 来源标注语 + 内容都在，且位于 L0 之后
@@ -195,7 +191,7 @@ describe('M15 接入 ContextManager（L4）', () => {
       expect(view.systemText.indexOf('你是墨子')).toBeLessThan(
         view.systemText.indexOf('以下为项目自定义约定'),
       );
-      expect(view.messages[0]!.role).toBe('system');
+      expect(view.messages[0]?.role).toBe('system');
     } finally {
       fs.rmSync(ws, { recursive: true, force: true });
     }

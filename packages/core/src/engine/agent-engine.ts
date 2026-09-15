@@ -24,13 +24,19 @@ import {
   checkSessionCost,
   toMoziError,
 } from '@mozi/shared';
-import type { BrowserAccess, MemoryAccess, ToolRegistry, VisionAccess, Workspace } from '@mozi/tools';
-import type { MemoryManager } from '../memory/manager.js';
-import type { HookRunner, HookPayload } from '../hooks/runner.js';
-import type { HookEvent, HookOutcome, ResolvedHook } from '../hooks/types.js';
+import type {
+  BrowserAccess,
+  MemoryAccess,
+  ToolRegistry,
+  VisionAccess,
+  Workspace,
+} from '@mozi/tools';
 import { compactMessages, shouldCompact } from '../context/compactor.js';
+import type { BuildView, ContextManager } from '../context/context-manager.js';
 import { FreshnessTracker } from '../context/freshness.js';
-import type { ContextManager, BuildView } from '../context/context-manager.js';
+import type { HookPayload, HookRunner } from '../hooks/runner.js';
+import type { HookEvent, HookOutcome, ResolvedHook } from '../hooks/types.js';
+import type { MemoryManager } from '../memory/manager.js';
 import type { Session, SessionStore } from '../session/session-store.js';
 import type { SubAgentSupervisor } from '../subagent/supervisor.js';
 import { type ApprovalGateway, InteractiveApprovalGateway } from './approve.js';
@@ -273,6 +279,11 @@ export class AgentEngine {
       };
       return;
     }
+    // 已有会话（resume / 二次消息）：loadOrCreate 的 override 不生效，
+    // 此处显式合并 —— UI 每轮传入的 overrides（如切换模型）必须即时生效。
+    if (input.overrides) {
+      session.config = { ...session.config, ...input.overrides };
+    }
     session.running = true;
     if (!session.parentSessionId) this.deps.sessions.updateRunning(session.id, true);
     this.active.set(session.id, session);
@@ -291,11 +302,21 @@ export class AgentEngine {
       session.messages.push({ role: 'user', content: [{ type: 'text', text: input.text }] });
 
       // ---- M18 生命周期钩子：session:start（一次）----
-      await this.runHooks('session:start', { input: input.text, model: session.config.models.executor }, false, sid);
+      await this.runHooks(
+        'session:start',
+        { input: input.text, model: session.config.models.executor },
+        false,
+        sid,
+      );
       // ---- M16 会话启动：提示待确认记忆候选（如有）----
       this.deps.memoryManager?.onSessionStart();
       // ---- M18 turn:start（一次）----
-      await this.runHooks('turn:start', { turnIndex: 0, model: session.config.models.executor }, false, sid);
+      await this.runHooks(
+        'turn:start',
+        { turnIndex: 0, model: session.config.models.executor },
+        false,
+        sid,
+      );
 
       const limits = session.limits;
       for (let step = 0; step < limits.maxSteps; step++) {
@@ -312,11 +333,21 @@ export class AgentEngine {
 
         const hn = this.hookNotes.get(sid);
         const view = this.deps.context.build(session, {
-          dirtyFiles: tracker.checkDirty().map((abs) =>
-            FreshnessTracker.relativize(abs, this.workspace.root),
-          ),
+          dirtyFiles: tracker
+            .checkDirty()
+            .map((abs) => FreshnessTracker.relativize(abs, this.workspace.root)),
           ...(hn ? { hookNotes: [...hn.inherited, ...hn.fresh] } : {}),
         });
+        // ── 上下文占用快照（UI 上下文面板数据源）：本轮发送给模型的估算 token ──
+        const ctxEvent: AgentEvent = {
+          type: 'context.usage',
+          usedTokens: view.estimatedTokens,
+          budgetTokens: this.deps.context.budgetFor(session),
+          turnIndex: step,
+          ts: now(),
+        };
+        yield ctxEvent;
+        this.log(session, ctxEvent);
         const provider = this.deps.providers.resolve(session.config.models.executor);
         const stream = provider.chat({
           messages: view.messages,
@@ -334,6 +365,27 @@ export class AgentEngine {
         reply = stream.result();
         if (ac.signal.aborted) {
           yield { type: 'task.completed', reason: 'user_interrupt', ts: now() };
+          break;
+        }
+
+        // ── 空响应兜底（修复"发完即完成、不报错"）──
+        // provider 层已对"整个流零事件"抛错；这里兜底"流合法但内容为空"
+        //（content / reasoning / toolCalls 全空），给出明确错误而非静默完成。
+        if (
+          !reply.content &&
+          !reply.reasoning &&
+          (!reply.toolCalls || reply.toolCalls.length === 0)
+        ) {
+          yield {
+            type: 'error',
+            error: {
+              code: ErrorCodes.ERR_PROVIDER_UNAVAILABLE,
+              message: `模型 ${session.config.models.executor} 返回了空响应（无文本 / 工具调用）。请检查 Provider 配置（Base URL / API Key / 模型名）或该端点是否可用。`,
+              recoverable: true,
+            },
+            recoverable: true,
+            ts: now(),
+          };
           break;
         }
 
@@ -373,7 +425,12 @@ export class AgentEngine {
         if (!session.parentSessionId) this.deps.sessions.saveMeta(session.id, session.meta);
 
         // ── M18 turn:end 钩子 + 提示滚动（本轮 fresh → 下轮 inherited）──
-        await this.runHooks('turn:end', { turnIndex: step, steps: step + 1, usage: session.usage }, false, sid);
+        await this.runHooks(
+          'turn:end',
+          { turnIndex: step, steps: step + 1, usage: session.usage },
+          false,
+          sid,
+        );
         const hnEnd = this.hookNotes.get(sid);
         if (hnEnd) {
           hnEnd.inherited = hnEnd.fresh;
@@ -470,7 +527,12 @@ export class AgentEngine {
     });
     if (!check.should) return;
     // ── M18 compact:pre 钩子 ──
-    await this.runHooks('compact:pre', { turnsSinceLastCompact: session.meta.turnsSinceLastCompact ?? 0 }, false, sid);
+    await this.runHooks(
+      'compact:pre',
+      { turnsSinceLastCompact: session.meta.turnsSinceLastCompact ?? 0 },
+      false,
+      sid,
+    );
     const provider = this.deps.providers.resolve(session.config.models.executor);
     const result = await compactMessages(session.messages, provider, session.id);
     if (!result) {
@@ -491,26 +553,52 @@ export class AgentEngine {
     this.log(session, ev);
     emit(ev);
     // ── M18 compact:post 钩子 ──
-    await this.runHooks('compact:post', { removedTurns: result.removedTurns, savedTokens: result.savedTokens }, false, sid);
+    await this.runHooks(
+      'compact:post',
+      { removedTurns: result.removedTurns, savedTokens: result.savedTokens },
+      false,
+      sid,
+    );
   }
 
-  /** 等待审批：超时自动 deny（M6 §6.1.3 / M12 §12.7，默认 10 分钟）。 */
+  /**
+   * 等待审批：超时自动 deny（M6 §6.1.3 / M12 §12.7，默认 10 分钟）。
+   * 用户中止（engine.abort / AbortSignal）时立即返回 deny —— 否则会话会
+   * 挂在审批等待上，中止按钮形同虚设（桌面 §10.3 engine:abort）。
+   */
   private async awaitApproval(
     session: Session,
     call: ToolCall,
     reason: Parameters<ApprovalGateway['request']>[1],
+    signal?: AbortSignal,
   ): Promise<'allow' | 'deny'> {
-    const timeoutMs = session.limits.toolTimeoutMs > 0 ? Math.max(session.limits.toolTimeoutMs, 600_000) : 600_000;
+    const timeoutMs =
+      session.limits.toolTimeoutMs > 0 ? Math.max(session.limits.toolTimeoutMs, 600_000) : 600_000;
     let timer: NodeJS.Timeout | undefined;
+    let onAbort: (() => void) | undefined;
     try {
       return await Promise.race([
         this.approval.request(call, reason),
         new Promise<'deny'>((resolve) => {
           timer = setTimeout(() => resolve('deny'), timeoutMs);
         }),
+        // 中止 → 立即按 deny 处理（事件流仍完整：resolved(deny) + task.completed(user_interrupt)）。
+        ...(signal
+          ? [
+              new Promise<'deny'>((resolve) => {
+                if (signal.aborted) {
+                  resolve('deny');
+                  return;
+                }
+                onAbort = (): void => resolve('deny');
+                signal.addEventListener('abort', onAbort, { once: true });
+              }),
+            ]
+          : []),
       ]);
     } finally {
       if (timer) clearTimeout(timer);
+      if (onAbort && signal) signal.removeEventListener('abort', onAbort);
     }
   }
 
@@ -538,7 +626,11 @@ export class AgentEngine {
 
     push({ type: 'tool.requested', call, ts: now() });
 
-    const decision = this.deps.policy.evaluate(call, session.config.policy, this.deps.evaluateOptions ?? {});
+    const decision = this.deps.policy.evaluate(
+      call,
+      session.config.policy,
+      this.deps.evaluateOptions ?? {},
+    );
     let allowed = false;
     if (decision.type === 'allow') {
       allowed = true;
@@ -570,7 +662,7 @@ export class AgentEngine {
         return evs;
       }
       push({ type: 'tool.approval.required', call, reason: decision.reason, ts: now() });
-      const answer = await this.awaitApproval(session, call, decision.reason);
+      const answer = await this.awaitApproval(session, call, decision.reason, signal);
       push({
         type: 'tool.approval.resolved',
         callId: call.id,
@@ -695,15 +787,20 @@ export class AgentEngine {
       });
     }
     // ── M18 tool:post 钩子（无论成功/失败均触发）──
-    await this.runHooks('tool:post', { tool: call.name, callId: call.id, isError: result.isError }, false, sid);
+    await this.runHooks(
+      'tool:post',
+      { tool: call.name, callId: call.id, isError: result.isError },
+      false,
+      sid,
+    );
     return evs;
   }
 
   /** 工具执行后更新新鲜度基准（§5.6）：读过的文件记基准，shell 后全量重扫。 */
   private recordFreshness(session: Session, call: ToolCall, tracker: FreshnessTracker): void {
     const args = (call.arguments ?? {}) as Record<string, unknown>;
-    if (READ_FILE_TOOLS.has(call.name) && typeof args['path'] === 'string') {
-      tracker.markRead(this.workspace.resolve(args['path'] as string));
+    if (READ_FILE_TOOLS.has(call.name) && typeof args.path === 'string') {
+      tracker.markRead(this.workspace.resolve(args.path as string));
       return;
     }
     if (call.name === 'shell') {

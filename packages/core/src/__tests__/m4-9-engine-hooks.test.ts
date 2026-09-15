@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   HookRunner,
   MemoryStore,
+  type ResolvedHook,
   SessionStore,
   autoApproveGateway,
   createEngine,
-  type ResolvedHook,
 } from '@mozi/core';
 import { ProviderRegistry, ScriptedProvider, type ScriptedTurn } from '@mozi/providers';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * M4.9 引擎接线集成测试（#22）：
@@ -57,7 +57,14 @@ function firedTracker(): { runner: HookRunner; events: Set<string> } {
 }
 
 function allHooks(): ResolvedHook[] {
-  const events = ['session:start', 'session:end', 'turn:start', 'turn:end', 'tool:pre', 'tool:post'] as const;
+  const events = [
+    'session:start',
+    'session:end',
+    'turn:start',
+    'turn:end',
+    'tool:pre',
+    'tool:post',
+  ] as const;
   return events.map((event, i) => ({ event, run: event, origin: 'user', source: '/x', index: i }));
 }
 
@@ -68,7 +75,11 @@ describe('M4.9 引擎 hook 接线', () => {
       sessionDir,
       workspaceRoot: dir,
       providers: makeProvider([
-        { toolCalls: [{ name: 'write_file', arguments: { path: 'a.txt', content: 'hi' }, riskLevel: 'write' }] },
+        {
+          toolCalls: [
+            { name: 'write_file', arguments: { path: 'a.txt', content: 'hi' }, riskLevel: 'write' },
+          ],
+        },
         { content: 'done' },
       ]),
       approval: autoApproveGateway('allow'),
@@ -78,7 +89,14 @@ describe('M4.9 引擎 hook 接线', () => {
     });
     await collect(engine.run({ sessionId: 's1', text: 'write a.txt' }));
 
-    for (const e of ['session:start', 'turn:start', 'turn:end', 'session:end', 'tool:pre', 'tool:post']) {
+    for (const e of [
+      'session:start',
+      'turn:start',
+      'turn:end',
+      'session:end',
+      'tool:pre',
+      'tool:post',
+    ]) {
       expect(events.has(e)).toBe(true);
     }
     // 工具确实执行成功
@@ -88,13 +106,23 @@ describe('M4.9 引擎 hook 接线', () => {
   it('tool:pre block 阻止工具执行（文件不落地）', async () => {
     const runner = new HookRunner({
       workspace: dir,
-      execFn: async () => ({ code: 2, stdout: 'blocked', stderr: '', timedOut: false, failed: false }),
+      execFn: async () => ({
+        code: 2,
+        stdout: 'blocked',
+        stderr: '',
+        timedOut: false,
+        failed: false,
+      }),
     });
     const engine = createEngine({
       sessionDir,
       workspaceRoot: dir,
       providers: makeProvider([
-        { toolCalls: [{ name: 'write_file', arguments: { path: 'b.txt', content: 'hi' }, riskLevel: 'write' }] },
+        {
+          toolCalls: [
+            { name: 'write_file', arguments: { path: 'b.txt', content: 'hi' }, riskLevel: 'write' },
+          ],
+        },
         { content: 'done' },
       ]),
       approval: autoApproveGateway('allow'),
@@ -138,7 +166,7 @@ describe('M4.9 记忆工具接线（M16）', () => {
 
     const hits = store.search('pnpm');
     expect(hits.length).toBeGreaterThan(0);
-    expect(hits[0]!.entry.content).toContain('pnpm');
+    expect(hits[0]?.entry.content).toContain('pnpm');
   });
 });
 

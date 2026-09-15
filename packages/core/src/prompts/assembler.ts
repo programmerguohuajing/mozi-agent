@@ -121,12 +121,9 @@ export class PromptAssembler {
     if (estimatePromptTokens(text) > PROMPT_BUDGET_TOKENS) {
       // 裁剪序 1：L2 未使用工具的准则段压缩（整段丢弃，仅保留核心工具段）。
       const coreCaps = this.capabilities(input.enabledTools ?? ['*'], { coreOnly: true });
-      const rebuilt = [
-        identity,
-        env.full,
-        coreCaps,
-        notes ?? '',
-      ].filter((p) => p && p.trim().length > 0);
+      const rebuilt = [identity, env.full, coreCaps, notes ?? ''].filter(
+        (p) => p && p.trim().length > 0,
+      );
       // L0 与 L3 必须保留；L2 降级为核心段。
       const candidate = rebuilt.join('\n\n');
       if (estimatePromptTokens(candidate) < estimatePromptTokens(text)) {
@@ -176,7 +173,9 @@ export class PromptAssembler {
       `- 执行模型: ${e.model ?? 'unknown'}`,
     ];
     if (typeof e.depth === 'number' && e.depth > 0) {
-      lines.push(`- 你是子智能体（${e.agentType ?? 'general'}，深度 ${e.depth}）：只完成被委派的子任务，不要扩大范围。`);
+      lines.push(
+        `- 你是子智能体（${e.agentType ?? 'general'}，深度 ${e.depth}）：只完成被委派的子任务，不要扩大范围。`,
+      );
     }
     return { full: lines.join('\n'), minimal };
   }

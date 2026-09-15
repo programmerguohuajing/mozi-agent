@@ -32,7 +32,10 @@ export function containsSecret(text: string): boolean {
 export function redactSecret(text: string): string {
   let out = text;
   for (const re of SECRET_PATTERNS) {
-    out = out.replace(new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`), '[REDACTED]');
+    out = out.replace(
+      new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`),
+      '[REDACTED]',
+    );
   }
   return out;
 }

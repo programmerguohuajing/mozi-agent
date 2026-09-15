@@ -17,7 +17,10 @@ export function estimateTokens(text: string): number {
 
 export function estimateMessageTokens(msg: ChatMessage): number {
   if (msg.role === 'user') {
-    return msg.content.reduce((n, part) => n + (part.type === 'text' ? estimateTokens(part.text) : 800), 0);
+    return msg.content.reduce(
+      (n, part) => n + (part.type === 'text' ? estimateTokens(part.text) : 800),
+      0,
+    );
   }
   if (msg.role === 'assistant') {
     let n = estimateTokens(msg.content ?? '');
@@ -45,10 +48,7 @@ export interface CompactOptions {
   turnsSinceLastCompact: number;
 }
 
-export function shouldCompact(
-  messages: ChatMessage[],
-  opts: CompactOptions,
-): CompactTriggerCheck {
+export function shouldCompact(messages: ChatMessage[], opts: CompactOptions): CompactTriggerCheck {
   const total = messages.reduce((n, m) => n + estimateMessageTokens(m), 0);
   if (total / opts.budgetTokens < opts.threshold) {
     return { should: false };
@@ -124,7 +124,12 @@ export async function compactMessages(
   messages: ChatMessage[],
   provider: LLMProvider,
   sessionId?: string,
-): Promise<{ messages: ChatMessage[]; removedTurns: number; savedTokens: number; summary: string } | null> {
+): Promise<{
+  messages: ChatMessage[];
+  removedTurns: number;
+  savedTokens: number;
+  summary: string;
+} | null> {
   const { compact, keep } = selectCompactRegion(messages);
   if (compact.length === 0) return null;
   try {

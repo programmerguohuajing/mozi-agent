@@ -51,17 +51,33 @@ function partsAt(ts: number, tz: string | undefined): LocalParts {
     });
     fmtCache.set(key, fmt);
   }
-  const map = new Map<string, string>(fmt.formatToParts(new Date(ts)).map((p) => [p.type, p.value]));
-  const n = (t: string): number => Number(map.get(t) ?? NaN);
+  const map = new Map<string, string>(
+    fmt.formatToParts(new Date(ts)).map((p) => [p.type, p.value]),
+  );
+  const n = (t: string): number => Number(map.get(t) ?? Number.NaN);
   const w = (map.get('weekday') ?? '').toLowerCase();
-  return { y: n('year'), mo: n('month'), d: n('day'), dow: SHORT_DOW[w] ?? 0, h: n('hour'), mi: n('minute') };
+  return {
+    y: n('year'),
+    mo: n('month'),
+    d: n('day'),
+    dow: SHORT_DOW[w] ?? 0,
+    h: n('hour'),
+    mi: n('minute'),
+  };
 }
 
 /** 将「时区本地时刻」转 UTC 时间戳（按显示偏移迭代校正，最多 4 次） */
-function tzToUtc(y: number, mo: number, d: number, h: number, mi: number, tz: string | undefined): number {
+function tzToUtc(
+  y: number,
+  mo: number,
+  d: number,
+  h: number,
+  mi: number,
+  tz: string | undefined,
+): number {
   let ts = Date.UTC(y, mo - 1, d, h, mi);
   for (let i = 0; i < 4; i++) {
-const p = partsAt(ts, tz);
+    const p = partsAt(ts, tz);
     if (p.y === y && p.mo === mo && p.d === d && p.h === h && p.mi === mi) return ts;
     // 当前 ts 在 tz 下显示为 p（相对目标偏差 Δ 分钟）；反向修正一次即可收敛
     ts += (h - p.h) * 3_600_000 + (mi - p.mi) * 60_000;
@@ -106,7 +122,8 @@ function parseField(field: string, min: number, max: number): Set<number> {
 /** 解析 5 字段 cron 表达式（分 时 日 月 周；周 0/7 均视为周日） */
 export function parseCron(expression: string): CronFields {
   const fields = expression.trim().split(/\s+/);
-  if (fields.length !== 5) throw new Error(`cron 需要 5 个字段，实际 ${fields.length}: ${expression}`);
+  if (fields.length !== 5)
+    throw new Error(`cron 需要 5 个字段，实际 ${fields.length}: ${expression}`);
   const [minS, hourS, domS, monthS, dowS] = fields as [string, string, string, string, string];
   const dom = parseField(domS, 1, 31);
   const dow = parseField(dowS, 0, 7);
@@ -171,7 +188,10 @@ export function nextRunAfter(from: Date, c: CronFields, timeZone?: string): Date
         ts = tzToUtc(p.y, p.mo, p.d, p.h, nm, timeZone);
       } else {
         const nh = nextIn(c.hour, p.h + 1, 23);
-        ts = nh === undefined ? tzToUtc(p.y, p.mo, p.d + 1, 0, 0, timeZone) : tzToUtc(p.y, p.mo, p.d, nh, 0, timeZone);
+        ts =
+          nh === undefined
+            ? tzToUtc(p.y, p.mo, p.d + 1, 0, 0, timeZone)
+            : tzToUtc(p.y, p.mo, p.d, nh, 0, timeZone);
       }
       continue;
     }

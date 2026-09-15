@@ -73,7 +73,11 @@ export async function sendWebhook(
       clearTimeout(timer);
     }
   }
-  return { ok: false, channel: 'webhook', error: String((lastError as Error)?.message ?? lastError) };
+  return {
+    ok: false,
+    channel: 'webhook',
+    error: String((lastError as Error)?.message ?? lastError),
+  };
 }
 
 /** 构建 webhook 载荷（含可选的报告摘要，默认 1k 字符截断） */

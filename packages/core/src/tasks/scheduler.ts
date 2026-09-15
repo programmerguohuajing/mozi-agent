@@ -4,11 +4,11 @@
  */
 import { mkdirSync } from 'node:fs';
 import type { ProviderRegistry } from '@mozi/providers';
-import { TaskStore } from './store.js';
 import { TaskLocks } from './locks.js';
-import { nextRunAt, planTick } from './solver.js';
 import { buildWebhookPayload, sendWebhook } from './notify.js';
 import { executeTaskOnce } from './runner.js';
+import { nextRunAt, planTick } from './solver.js';
+import type { TaskStore } from './store.js';
 import type { MissedPolicy, RunRecord, TaskSpec } from './types.js';
 import { DEFAULT_TASK_OPTIONS } from './types.js';
 
@@ -67,7 +67,14 @@ export class TaskScheduler {
 
   /** tick 主循环：一次调用至多触发一轮到期任务 */
   async tick(): Promise<TickResult> {
-    const result: TickResult = { locked: false, triggered: [], skippedOverlap: [], missed: 0, disabled: [], errors: [] };
+    const result: TickResult = {
+      locked: false,
+      triggered: [],
+      skippedOverlap: [],
+      missed: 0,
+      disabled: [],
+      errors: [],
+    };
     const now = this.clock();
 
     // L1 tick 锁：OS tick 与 daemon 并存时互斥；拿不到直接退出
@@ -112,7 +119,8 @@ export class TaskScheduler {
           const run = await this.runTask(next, 'schedule', plan.missed);
           result.triggered.push(task.id);
           if (run.disabledByCircuitBreaker) result.disabled.push(task.id);
-          if (run.record.status !== 'success') result.errors.push(`${task.id}:${run.record.status}`);
+          if (run.record.status !== 'success')
+            result.errors.push(`${task.id}:${run.record.status}`);
           updated.push(run.task);
         } catch (e) {
           result.errors.push(`${task.id}:${String((e as Error).message ?? e)}`);
@@ -138,7 +146,10 @@ export class TaskScheduler {
       const run = await this.runTask(task, 'manual', 0);
       // 手动触发后重新排程
       const nextAt = nextRunAt(task.schedule, new Date());
-      const finalTask: TaskSpec = { ...run.task, state: { ...run.task.state, nextRunAt: nextAt.toISOString() } };
+      const finalTask: TaskSpec = {
+        ...run.task,
+        state: { ...run.task.state, nextRunAt: nextAt.toISOString() },
+      };
       this.store.update(finalTask.id, finalTask);
       return { ...run, task: finalTask };
     } finally {
@@ -147,7 +158,11 @@ export class TaskScheduler {
   }
 
   /** 单任务执行编排：产物隔离执行 + 状态更新 + 熔断 + 通知 */
-  private async runTask(task: TaskSpec, trigger: 'schedule' | 'manual', missedRuns: number): Promise<RunTaskResult> {
+  private async runTask(
+    task: TaskSpec,
+    trigger: 'schedule' | 'manual',
+    missedRuns: number,
+  ): Promise<RunTaskResult> {
     const { record } = await executeTaskOnce(task, {
       providers: this.providers(),
       runsDir: this.runsDir,
@@ -190,7 +205,8 @@ export class TaskScheduler {
     if (!cfg || !cfg.webhook) return;
     const on = cfg.on ?? [];
     const failed = record.status !== 'success';
-    const should = (failed && on.includes('failed')) || (!failed && on.includes('completed')) || disabled;
+    const should =
+      (failed && on.includes('failed')) || (!failed && on.includes('completed')) || disabled;
     if (!should) return;
     const payload = buildWebhookPayload(record, task.name, {
       includeReport: cfg.includeReport ?? true,

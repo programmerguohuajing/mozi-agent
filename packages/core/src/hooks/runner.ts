@@ -9,16 +9,16 @@
  * 失败隔离：崩溃/不存在 → onExit['*']（默认 continue）+ 事件记录；连续失败 10 次自动禁用
  * 执行通道：不过沙箱（等同用户直接执行），但全部执行进审计日志
  */
-import { exec, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, exec } from 'node:child_process';
 import {
   DEFAULT_HOOK_TIMEOUT_MS,
   HOOK_FAILURE_LIMIT,
   HOOK_OUTPUT_LIMIT,
-  MAX_HOOK_TIMEOUT_MS,
   type HookAction,
   type HookEvent,
   type HookMatch,
   type HookOutcome,
+  MAX_HOOK_TIMEOUT_MS,
   type ResolvedHook,
 } from './types.js';
 
@@ -34,7 +34,13 @@ export interface HookRunnerOptions {
   execFn?: (
     command: string,
     opts: { cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; stdin: string },
-  ) => Promise<{ code: number | null; stdout: string; stderr: string; timedOut: boolean; failed: boolean }>;
+  ) => Promise<{
+    code: number | null;
+    stdout: string;
+    stderr: string;
+    timedOut: boolean;
+    failed: boolean;
+  }>;
   /** 审计回调（§18.4：全部执行进审计日志）。 */
   audit?: (ev: { hook: ResolvedHook; payload: HookPayload; outcome: HookOutcome }) => void;
   /** 告警回调（超时 / 自动禁用）。 */
@@ -110,7 +116,11 @@ export class HookRunner {
       Math.max(h.timeoutMs ?? DEFAULT_HOOK_TIMEOUT_MS, 1),
       MAX_HOOK_TIMEOUT_MS,
     );
-    const stdin = JSON.stringify({ ...payload, sessionId: ctx.sessionId, workspace: this.opts.workspace });
+    const stdin = JSON.stringify({
+      ...payload,
+      sessionId: ctx.sessionId,
+      workspace: this.opts.workspace,
+    });
     // 环境：仅暴露事件与会话 id；不继承 mozi 进程密钥（白名单式构造）
     const env: NodeJS.ProcessEnv = {
       HOOK_EVENT: h.event,
@@ -123,11 +133,23 @@ export class HookRunner {
     };
 
     const started = Date.now();
-    let res: { code: number | null; stdout: string; stderr: string; timedOut: boolean; failed: boolean };
+    let res: {
+      code: number | null;
+      stdout: string;
+      stderr: string;
+      timedOut: boolean;
+      failed: boolean;
+    };
     try {
       res = await this.exec(h.run, { cwd: this.opts.workspace, env, timeoutMs, stdin });
     } catch (e) {
-      res = { code: null, stdout: '', stderr: e instanceof Error ? e.message : String(e), timedOut: false, failed: true };
+      res = {
+        code: null,
+        stdout: '',
+        stderr: e instanceof Error ? e.message : String(e),
+        timedOut: false,
+        failed: true,
+      };
     }
     const durationMs = Date.now() - started;
 
@@ -146,10 +168,11 @@ export class HookRunner {
       this.failures.set(id, n);
       if (n >= HOOK_FAILURE_LIMIT) {
         this.disabled.add(id);
-        this.opts.onWarning?.(
-          `hook 连续失败 ${n} 次，已自动禁用：${h.run}`,
-          { event: h.event, source: h.source, index: h.index },
-        );
+        this.opts.onWarning?.(`hook 连续失败 ${n} 次，已自动禁用：${h.run}`, {
+          event: h.event,
+          source: h.source,
+          index: h.index,
+        });
       }
     } else {
       this.failures.set(id, 0);
@@ -166,7 +189,7 @@ export class HookRunner {
       failed: res.failed,
       ...(res.code === 0 ? { note: extractNote(stdout) } : {}),
     };
-    if (!outcome.note) delete outcome.note;
+    if (!outcome.note) outcome.note = undefined;
     return outcome;
   }
 
@@ -187,7 +210,13 @@ export class HookRunner {
   private exec(
     command: string,
     o: { cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; stdin: string },
-  ): Promise<{ code: number | null; stdout: string; stderr: string; timedOut: boolean; failed: boolean }> {
+  ): Promise<{
+    code: number | null;
+    stdout: string;
+    stderr: string;
+    timedOut: boolean;
+    failed: boolean;
+  }> {
     if (this.opts.execFn) return this.opts.execFn(command, o);
     return new Promise((resolve) => {
       let timedOut = false;
@@ -195,11 +224,17 @@ export class HookRunner {
       try {
         child = exec(
           command,
-          { cwd: o.cwd, env: o.env, timeout: o.timeoutMs, windowsHide: true, maxBuffer: HOOK_OUTPUT_LIMIT * 4 },
+          {
+            cwd: o.cwd,
+            env: o.env,
+            timeout: o.timeoutMs,
+            windowsHide: true,
+            maxBuffer: HOOK_OUTPUT_LIMIT * 4,
+          },
           (err, stdout, stderr) => {
             const code =
               err && typeof (err as { code?: unknown }).code === 'number'
-                ? ((err as { code: number }).code)
+                ? (err as { code: number }).code
                 : err
                   ? null
                   : 0;
@@ -214,7 +249,13 @@ export class HookRunner {
         );
       } catch (e) {
         // 命令不存在：exec 同步抛错
-        resolve({ code: null, stdout: '', stderr: e instanceof Error ? e.message : String(e), timedOut: false, failed: true });
+        resolve({
+          code: null,
+          stdout: '',
+          stderr: e instanceof Error ? e.message : String(e),
+          timedOut: false,
+          failed: true,
+        });
         return;
       }
       const timer = setTimeout(() => {

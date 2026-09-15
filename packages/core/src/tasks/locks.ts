@@ -58,13 +58,25 @@ export class TaskLocks {
     return this.acquireWithRetry(name, purpose, maxWaitMs);
   }
 
-  private async acquireWithRetry(name: string, purpose: string | undefined, maxWaitMs: number): Promise<boolean> {
+  private async acquireWithRetry(
+    name: string,
+    purpose: string | undefined,
+    maxWaitMs: number,
+  ): Promise<boolean> {
     const started = Date.now();
     for (;;) {
       const p = this.lockPath(name);
       try {
         mkdirSync(p); // 原子：已存在则抛 EEXIST
-        writeFileSync(join(p, 'holder.json'), JSON.stringify({ pid: process.pid, acquiredAt: Date.now(), purpose } satisfies LockHolder), 'utf8');
+        writeFileSync(
+          join(p, 'holder.json'),
+          JSON.stringify({
+            pid: process.pid,
+            acquiredAt: Date.now(),
+            purpose,
+          } satisfies LockHolder),
+          'utf8',
+        );
         return true;
       } catch {
         const info = this.info(name);

@@ -29,9 +29,7 @@ export interface ImageDimensions {
 
 export interface OcrProvider {
   /** 提取文本与置信度（0-1）。默认无 OCR → 返回 undefined。 */
-  recognize(
-    buf: Buffer,
-  ): Promise<{ text: string; confidence: number } | undefined>;
+  recognize(buf: Buffer): Promise<{ text: string; confidence: number } | undefined>;
 }
 
 /** 缩放器（可注入；默认不缩放并如实报告）。 */
@@ -129,7 +127,13 @@ export function readDimensions(buf: Buffer, format: ImageFormat): ImageDimension
       }
       const marker = buf[off + 1] ?? 0;
       // SOF0..SOF15（跳过 DHT/DAC 等）
-      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      if (
+        marker >= 0xc0 &&
+        marker <= 0xcf &&
+        marker !== 0xc4 &&
+        marker !== 0xc8 &&
+        marker !== 0xcc
+      ) {
         return {
           height: buf.readUInt16BE(off + 5),
           width: buf.readUInt16BE(off + 7),
@@ -141,7 +145,7 @@ export function readDimensions(buf: Buffer, format: ImageFormat): ImageDimension
     }
     throw new UnsupportedImageError('JPEG 未找到 SOF 尺寸段');
   }
-  // webp：VP8X / VP8L / VP8 
+  // webp：VP8X / VP8L / VP8
   const fourCC = buf.toString('ascii', 12, 16);
   if (fourCC === 'VP8X') {
     const w = 1 + ((buf[24] ?? 0) | ((buf[25] ?? 0) << 8) | ((buf[26] ?? 0) << 16));
@@ -279,7 +283,9 @@ export class VisionPipeline {
   /** 构造注入给 provider 的 UserContent（支持视觉时）。 */
   toUserContent(img: ProcessedImage, alt?: string): UserContent {
     if (img.mode === 'image') {
-      return alt ? { type: 'image', dataUrl: img.dataUrl, alt } : { type: 'image', dataUrl: img.dataUrl };
+      return alt
+        ? { type: 'image', dataUrl: img.dataUrl, alt }
+        : { type: 'image', dataUrl: img.dataUrl };
     }
     return {
       type: 'text',
@@ -294,7 +300,5 @@ export class VisionPipeline {
  */
 export function imagePlaceholder(contentId: string, ocrText?: string): string {
   const summary = (ocrText ?? '').slice(0, 100);
-  return summary
-    ? `[图片：${contentId}，OCR 摘要：${summary}]`
-    : `[图片：${contentId}]`;
+  return summary ? `[图片：${contentId}，OCR 摘要：${summary}]` : `[图片：${contentId}]`;
 }

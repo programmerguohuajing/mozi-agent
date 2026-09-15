@@ -5,9 +5,6 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ProviderRegistry } from '@mozi/providers';
-import type { TaskSpec } from './types.js';
-import type { RunRecord } from './types.js';
-import { runHeadless, type HeadlessOutcome } from './headless.js';
 import {
   commitWorktree,
   diffDirectories,
@@ -16,6 +13,9 @@ import {
   worktreeAdd,
   worktreeRemove,
 } from './git.js';
+import { type HeadlessOutcome, runHeadless } from './headless.js';
+import type { TaskSpec } from './types.js';
+import type { RunRecord } from './types.js';
 
 export interface RunOnceOptions {
   providers: ProviderRegistry;
@@ -32,7 +32,10 @@ export interface RunOnceResult {
 }
 
 /** 执行一次任务（不含 state 更新/通知——由调度器统一负责） */
-export async function executeTaskOnce(spec: TaskSpec, opts: RunOnceOptions): Promise<RunOnceResult> {
+export async function executeTaskOnce(
+  spec: TaskSpec,
+  opts: RunOnceOptions,
+): Promise<RunOnceResult> {
   const startedAt = new Date().toISOString();
   const ts = Date.now();
   const runId = `run-${ts}`;
@@ -138,7 +141,11 @@ export async function executeTaskOnce(spec: TaskSpec, opts: RunOnceOptions): Pro
   };
 
   // 运行记录落盘（§13.8：run-<ts>.json 与 run-<ts>/ 会话目录并列于 runs/<taskId>/）
-  writeFileSync(join(opts.runsDir, spec.id, `${runId}.json`), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
+  writeFileSync(
+    join(opts.runsDir, spec.id, `${runId}.json`),
+    `${JSON.stringify(record, null, 2)}\n`,
+    'utf8',
+  );
   return { record, reportFile };
 }
 
@@ -170,13 +177,17 @@ function buildReportMd(
   artifacts: NonNullable<RunRecord['artifacts']>,
 ): string {
   const lines: string[] = [];
-  lines.push(`# 定时任务运行报告`);
+  lines.push('# 定时任务运行报告');
   lines.push('');
   lines.push(`- 任务：${spec.name}（${spec.id}）`);
   lines.push(`- 运行：${runId} @ ${startedAt} → ${new Date().toISOString()}`);
-  lines.push(`- 状态：${outcome.exitCode === 0 ? '✅ 成功' : outcome.finishReason === 'timeout' ? '⏱ 超时' : '❌ 失败'}${outcome.finishReason ? `（${outcome.finishReason}）` : ''}`);
+  lines.push(
+    `- 状态：${outcome.exitCode === 0 ? '✅ 成功' : outcome.finishReason === 'timeout' ? '⏱ 超时' : '❌ 失败'}${outcome.finishReason ? `（${outcome.finishReason}）` : ''}`,
+  );
   if (outcome.usage) {
-    lines.push(`- 用量：in ${outcome.usage.inputTokens} / out ${outcome.usage.outputTokens} tokens${outcome.usage.costUsd !== undefined ? `（$ ${outcome.usage.costUsd.toFixed(4)}）` : ''}`);
+    lines.push(
+      `- 用量：in ${outcome.usage.inputTokens} / out ${outcome.usage.outputTokens} tokens${outcome.usage.costUsd !== undefined ? `（$ ${outcome.usage.costUsd.toFixed(4)}）` : ''}`,
+    );
   }
   if (artifacts.branch) lines.push(`- 产物分支：${artifacts.branch}`);
   if (artifacts.patchFile) lines.push(`- 产物 patch：${artifacts.patchFile}`);

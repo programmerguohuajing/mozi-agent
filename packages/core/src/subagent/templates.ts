@@ -143,18 +143,18 @@ function parseBudgetK(raw: string | undefined, fallback: number): number {
 }
 
 function toTemplate(name: string, fields: Record<string, string>, body: string): AgentTemplate {
-  const policy = (fields['policy'] ?? 'auto').trim() as PolicyMode;
+  const policy = (fields.policy ?? 'auto').trim() as PolicyMode;
   const valid: PolicyMode[] = ['readonly', 'auto', 'full-auto'];
   return {
-    type: fields['type']?.trim() || name,
-    description: fields['description']?.trim() || `${name} sub-agent`,
+    type: fields.type?.trim() || name,
+    description: fields.description?.trim() || `${name} sub-agent`,
     systemPrompt: body.trim() || `You are the ${name} sub-agent.`,
     policy: valid.includes(policy) ? policy : 'auto',
-    allowedTools: parseTools(fields['tools']),
-    allowSubAgents: fields['allow_subagents'] === 'true',
-    maxSteps: Number.parseInt(fields['steps'] ?? '30', 10) || 30,
-    contextBudgetTokens: parseBudgetK(fields['budget'], 32_000),
-    timeoutMs: Number.parseInt(fields['timeoutMs'] ?? '300000', 10) || 300_000,
+    allowedTools: parseTools(fields.tools),
+    allowSubAgents: fields.allow_subagents === 'true',
+    maxSteps: Number.parseInt(fields.steps ?? '30', 10) || 30,
+    contextBudgetTokens: parseBudgetK(fields.budget, 32_000),
+    timeoutMs: Number.parseInt(fields.timeoutMs ?? '300000', 10) || 300_000,
   };
 }
 

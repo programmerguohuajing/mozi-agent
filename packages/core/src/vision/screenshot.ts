@@ -13,7 +13,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { VisionPipeline, type OcrProvider } from './pipeline.js';
+import { type OcrProvider, VisionPipeline } from './pipeline.js';
 
 export interface ScreenshotServiceOptions {
   mediaDir: string;
@@ -150,7 +150,11 @@ export class ScreenshotService {
       execFile(
         cmd,
         args,
-        { timeout: timeoutMs, windowsHide: true, env: env ? { ...process.env, ...env } : process.env },
+        {
+          timeout: timeoutMs,
+          windowsHide: true,
+          env: env ? { ...process.env, ...env } : process.env,
+        },
         (err, stdout) => {
           if (err) reject(err);
           else resolve(stdout);

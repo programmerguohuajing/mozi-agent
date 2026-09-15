@@ -8,7 +8,7 @@
  *  - 会话启动时暴露 pending 候选供 UI 提示
  */
 import type { Session } from '../session/session-store.js';
-import { MemoryStore } from './store.js';
+import type { MemoryStore } from './store.js';
 import type { MemoryEntry, PendingMemory } from './types.js';
 
 /** 半自动提取触发阈值（§16.2 路径②）。 */

@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  FreshnessTracker,
+  SessionStore,
   createEngine,
   createTemplateRegistry,
-  FreshnessTracker,
   intersectTools,
-  SessionStore,
   tighten,
   truncateSummary,
 } from '@mozi/core';
@@ -65,7 +65,13 @@ describe('todo_list 工具（§3.3.7）', () => {
         { content: 'planned' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
     const events = await collect(engine.run({ sessionId: 'todo1', text: 'plan' }));
     const done = events.find((e) => e.type === 'tool.completed');
     expect(done?.result.isError).toBe(false);
@@ -76,12 +82,25 @@ describe('todo_list 工具（§3.3.7）', () => {
   it('list 返回当前清单', async () => {
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'todo_list', arguments: { operation: 'update', tasks: [{ id: '1', title: 'A', status: 'done' }] } }] },
+        {
+          toolCalls: [
+            {
+              name: 'todo_list',
+              arguments: { operation: 'update', tasks: [{ id: '1', title: 'A', status: 'done' }] },
+            },
+          ],
+        },
         { toolCalls: [{ name: 'todo_list', arguments: { operation: 'list' } }] },
         { content: 'ok' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
     const events = await collect(engine.run({ sessionId: 'todo2', text: 'go' }));
     const dones = events.filter((e) => e.type === 'tool.completed');
     expect(dones[1]?.result.content).toContain('[x] 1. A');
@@ -104,7 +123,13 @@ describe('todo_list 工具（§3.3.7）', () => {
         { content: 'done' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
     await collect(engine.run({ sessionId: 'todo3', text: 'go' }));
 
     // 新 store 从 meta.json 恢复
@@ -139,11 +164,15 @@ describe('文件新鲜度（§5.6）', () => {
   it('引擎在第二轮注入脏文件提示', async () => {
     const seen: string[] = [];
     const reg = new ProviderRegistry();
-    const sp = new ScriptedProvider([
-      { toolCalls: [{ name: 'read_file', arguments: { path: 'w.txt' }, riskLevel: 'read' }] },
-      { content: 'r1' },
-      { content: 'r2' },
-    ], 'scripted', 'scripted-model');
+    const sp = new ScriptedProvider(
+      [
+        { toolCalls: [{ name: 'read_file', arguments: { path: 'w.txt' }, riskLevel: 'read' }] },
+        { content: 'r1' },
+        { content: 'r2' },
+      ],
+      'scripted',
+      'scripted-model',
+    );
     const orig = sp.chat.bind(sp);
     sp.chat = (req) => {
       const sys = req.messages.find((m) => m.role === 'system');
@@ -153,7 +182,13 @@ describe('文件新鲜度（§5.6）', () => {
     reg.register(sp);
     reg.alias('deepseek-chat', 'scripted');
     reg.alias('executor', 'scripted');
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
 
     fs.writeFileSync(path.join(dir, 'w.txt'), 'v1');
     await collect(engine.run({ sessionId: 'f1', text: 'read w' }));
@@ -171,16 +206,26 @@ describe('Auto-Compact 接线（§5.4）', () => {
     const turns = [];
     for (let i = 0; i < 30; i++) {
       turns.push({
-        content: 'x'.repeat(3000) + ` s${i}`,
+        content: `${'x'.repeat(3000)} s${i}`,
         toolCalls: [{ name: 'glob', arguments: { pattern: '**/*.ts' }, riskLevel: 'read' }],
       });
     }
     turns.push({ content: 'SUMMARY task=fix' });
     turns.push({ content: 'final' });
     const reg = makeRegistry({ '*': turns });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
     const events = await collect(
-      engine.run({ sessionId: 'c1', text: 'long', overrides: { context: { maxTokens: 4000, autoCompactThreshold: 0.8 } } }),
+      engine.run({
+        sessionId: 'c1',
+        text: 'long',
+        overrides: { context: { maxTokens: 4000, autoCompactThreshold: 0.8 } },
+      }),
     );
     const compacted = events.find((e) => e.type === 'context.compacted');
     expect(compacted).toBeTruthy();
@@ -190,7 +235,13 @@ describe('Auto-Compact 接线（§5.4）', () => {
 
   it('历史过短不触发压缩', async () => {
     const reg = makeRegistry({ '*': [{ content: 'hi' }] });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', enableSubAgents: false });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      enableSubAgents: false,
+    });
     const events = await collect(engine.run({ sessionId: 'c2', text: 'short' }));
     expect(events.some((e) => e.type === 'context.compacted')).toBe(false);
   });
@@ -218,7 +269,7 @@ describe('子智能体：摘要截断（§12.9）', () => {
   it('超长时丢建议段、保结论段', () => {
     const short = truncateSummary('## 结论\nok');
     expect(short.truncated).toBe(false);
-    const long = '## 结论\n' + '内容'.repeat(3000) + '\n## 相关文件\n- a.ts:1\n## 建议\n丢弃我';
+    const long = `## 结论\n${'内容'.repeat(3000)}\n## 相关文件\n- a.ts:1\n## 建议\n丢弃我`;
     const r = truncateSummary(long);
     expect(r.truncated).toBe(true);
     expect(r.text).not.toContain('丢弃我');
@@ -231,7 +282,16 @@ describe('子智能体：模板加载（§12.3）', () => {
     fs.mkdirSync(path.join(dir, '.mozi', 'agents'), { recursive: true });
     fs.writeFileSync(
       path.join(dir, '.mozi', 'agents', 'db.md'),
-      ['---', 'type: db-migration', 'description: migrations', 'policy: auto', 'tools: [read_file, shell]', 'budget: 48k', '---', '你是迁移专家。'].join('\n'),
+      [
+        '---',
+        'type: db-migration',
+        'description: migrations',
+        'policy: auto',
+        'tools: [read_file, shell]',
+        'budget: 48k',
+        '---',
+        '你是迁移专家。',
+      ].join('\n'),
     );
     const reg = createTemplateRegistry(dir);
     expect(reg.resolve('explore')?.policy).toBe('readonly');
@@ -249,7 +309,15 @@ describe('子智能体：端到端 spawn（§12.4/§12.8/§12.10）', () => {
     const live: string[] = [];
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'task', arguments: { agent: 'explore', prompt: '找鉴权代码' }, riskLevel: 'meta' }] },
+        {
+          toolCalls: [
+            {
+              name: 'task',
+              arguments: { agent: 'explore', prompt: '找鉴权代码' },
+              riskLevel: 'meta',
+            },
+          ],
+        },
         { content: '主任务完成' },
       ],
       '*/subs/sub-*': [
@@ -271,10 +339,13 @@ describe('子智能体：端到端 spawn（§12.4/§12.8/§12.10）', () => {
     expect(live).toContain('subagent.progress');
 
     const taskDone = events.find(
-      (e) => e.type === 'tool.completed' && (e.result.meta as { subSessionId?: string })?.subSessionId,
+      (e) =>
+        e.type === 'tool.completed' && (e.result.meta as { subSessionId?: string })?.subSessionId,
     );
     expect(taskDone).toBeTruthy();
-    expect((taskDone as { result: { content: string } }).result.content).toContain('<subagent type="explore"');
+    expect((taskDone as { result: { content: string } }).result.content).toContain(
+      '<subagent type="explore"',
+    );
     expect((taskDone as { result: { content: string } }).result.content).toContain('## 结论');
     expect((taskDone as { result: { isError: boolean } }).result.isError).toBe(false);
 
@@ -289,14 +360,26 @@ describe('子智能体：端到端 spawn（§12.4/§12.8/§12.10）', () => {
   it('深度超限 → isError 且不创建子会话', async () => {
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'task', arguments: { agent: 'general', prompt: 'x' }, riskLevel: 'meta' }] },
+        {
+          toolCalls: [
+            { name: 'task', arguments: { agent: 'general', prompt: 'x' }, riskLevel: 'meta' },
+          ],
+        },
         { content: 'done' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', subagent: { maxDepth: 0 } });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      subagent: { maxDepth: 0 },
+    });
     const events = await collect(engine.run({ sessionId: 'd0', text: 'spawn' }));
     const rejected = events.find(
-      (e) => e.type === 'tool.completed' && (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
+      (e) =>
+        e.type === 'tool.completed' &&
+        (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
     );
     expect(rejected).toBeTruthy();
     expect(fs.existsSync(path.join(sessionDir, 'd0', 'subs'))).toBe(false);
@@ -305,14 +388,25 @@ describe('子智能体：端到端 spawn（§12.4/§12.8/§12.10）', () => {
   it('未知模板 → isError 且列出可用模板', async () => {
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'task', arguments: { agent: 'nope', prompt: 'x' }, riskLevel: 'meta' }] },
+        {
+          toolCalls: [
+            { name: 'task', arguments: { agent: 'nope', prompt: 'x' }, riskLevel: 'meta' },
+          ],
+        },
         { content: 'done' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto' });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+    });
     const events = await collect(engine.run({ sessionId: 'u1', text: 'spawn' }));
     const rejected = events.find(
-      (e) => e.type === 'tool.completed' && (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
+      (e) =>
+        e.type === 'tool.completed' &&
+        (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
     );
     expect((rejected as { result: { content: string } }).result.content).toContain('explore');
   });
@@ -331,10 +425,18 @@ describe('子智能体：端到端 spawn（§12.4/§12.8/§12.10）', () => {
       ],
       '*/subs/sub-*': [{ content: '## 结论\nok' }],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto', subagent: { maxPerTurn: 2 } });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+      subagent: { maxPerTurn: 2 },
+    });
     const events = await collect(engine.run({ sessionId: 'pt1', text: 'spawn 3' }));
     const rejected = events.filter(
-      (e) => e.type === 'tool.completed' && (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
+      (e) =>
+        e.type === 'tool.completed' &&
+        (e.result.meta as { errorKind?: string })?.errorKind === 'subagent-rejected',
     );
     expect(rejected.length).toBe(1);
   });
@@ -344,15 +446,32 @@ describe('子智能体：权限收紧端到端（§12.6）', () => {
   it('full-auto 父 × explore 子写文件 → 被 readonly 拒绝', async () => {
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'task', arguments: { agent: 'explore', prompt: '写文件' }, riskLevel: 'meta' }] },
+        {
+          toolCalls: [
+            { name: 'task', arguments: { agent: 'explore', prompt: '写文件' }, riskLevel: 'meta' },
+          ],
+        },
         { content: 'done' },
       ],
       '*/subs/sub-*': [
-        { toolCalls: [{ name: 'write_file', arguments: { path: 'evil.txt', content: 'x' }, riskLevel: 'write' }] },
+        {
+          toolCalls: [
+            {
+              name: 'write_file',
+              arguments: { path: 'evil.txt', content: 'x' },
+              riskLevel: 'write',
+            },
+          ],
+        },
         { content: '## 结论\n只读，未写' },
       ],
     });
-    const engine = createEngine({ sessionDir, workspaceRoot: dir, providers: reg, policyMode: 'full-auto' });
+    const engine = createEngine({
+      sessionDir,
+      workspaceRoot: dir,
+      providers: reg,
+      policyMode: 'full-auto',
+    });
     await collect(engine.run({ sessionId: 'tight1', text: 'spawn' }));
 
     expect(fs.existsSync(path.join(dir, 'evil.txt'))).toBe(false);
@@ -364,14 +483,23 @@ describe('子智能体：权限收紧端到端（§12.6）', () => {
 describe('子智能体：审批冒泡（§12.7）', () => {
   it('子 ask → 宿主通道 subagent.approval.required → resolveApproval 放行', async () => {
     const live: Array<{ type: string; callId?: string; agentType?: string }> = [];
+    // biome-ignore lint/style/useConst: engine 创建后才回填，宿主 onEvent 闭包需先引用。
     let engineRef: { resolveApproval: (s: string, c: string, d: 'allow' | 'deny') => void };
     const reg = makeRegistry({
       '*': [
-        { toolCalls: [{ name: 'task', arguments: { agent: 'general', prompt: 'run mv' }, riskLevel: 'meta' }] },
+        {
+          toolCalls: [
+            { name: 'task', arguments: { agent: 'general', prompt: 'run mv' }, riskLevel: 'meta' },
+          ],
+        },
         { content: 'done' },
       ],
       '*/subs/sub-*': [
-        { toolCalls: [{ name: 'shell', arguments: { command: 'mv a.txt b.txt' }, riskLevel: 'exec' }] },
+        {
+          toolCalls: [
+            { name: 'shell', arguments: { command: 'mv a.txt b.txt' }, riskLevel: 'exec' },
+          ],
+        },
         { content: '## 结论\n已执行' },
       ],
     });

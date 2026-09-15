@@ -1,25 +1,38 @@
-import { PolicyEngine } from '@mozi/policy';
-import type { ProviderRegistry } from '@mozi/providers';
 /**
  * 引擎工厂：组装 providers / tools / policy / context / sessions / workspace。
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { type AgentEvent, type CostLimits, type PolicyMode, defaultConfig, type SandboxRunner, checkSessionCost } from '@mozi/shared';
-import { createSandbox } from '@mozi/sandbox';
 import { McpBridge, type McpServerEntry } from '@mozi/mcp-client';
-import { Workspace, createBuiltinRegistry, type BrowserAccess, type MemoryAccess, type VisionAccess } from '@mozi/tools';
+import { PolicyEngine } from '@mozi/policy';
+import type { ProviderRegistry } from '@mozi/providers';
+import { createSandbox } from '@mozi/sandbox';
+import {
+  type AgentEvent,
+  type CostLimits,
+  type PolicyMode,
+  type SandboxRunner,
+  checkSessionCost,
+  defaultConfig,
+} from '@mozi/shared';
+import {
+  type BrowserAccess,
+  type MemoryAccess,
+  type VisionAccess,
+  Workspace,
+  createBuiltinRegistry,
+} from '@mozi/tools';
 import { ContextManager } from '../context/context-manager.js';
-import { type Session, SessionStore } from '../session/session-store.js';
-import { PromptAssembler } from '../prompts/assembler.js';
+import { loadHooks } from '../hooks/config.js';
+import { HookRunner } from '../hooks/runner.js';
+import type { ResolvedHook } from '../hooks/types.js';
 import { MemoryManager } from '../memory/manager.js';
 import { MemoryStore } from '../memory/store.js';
-import { ScreenshotService } from '../vision/screenshot.js';
-import { HookRunner } from '../hooks/runner.js';
-import { loadHooks } from '../hooks/config.js';
-import type { ResolvedHook } from '../hooks/types.js';
-import { SubAgentSupervisor, type SubAgentConfig } from '../subagent/supervisor.js';
+import { PromptAssembler } from '../prompts/assembler.js';
+import { type Session, SessionStore } from '../session/session-store.js';
+import { type SubAgentConfig, SubAgentSupervisor } from '../subagent/supervisor.js';
 import { createTemplateRegistry } from '../subagent/templates.js';
+import { ScreenshotService } from '../vision/screenshot.js';
 import { AgentEngine, type EngineDeps } from './agent-engine.js';
 import type { ApprovalGateway } from './approve.js';
 
@@ -100,7 +113,8 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
   const memoryManager = new MemoryManager({ store: memoryStore });
   // M17 视觉：screenshot 服务（落盘 + OCR）。
   const visionService =
-    opts.visionService ?? new ScreenshotService({ mediaDir: path.join(opts.workspaceRoot, '.mozi', 'media') });
+    opts.visionService ??
+    new ScreenshotService({ mediaDir: path.join(opts.workspaceRoot, '.mozi', 'media') });
 
   const context = new ContextManager({
     systemPrompt: opts.systemPrompt,
@@ -123,9 +137,7 @@ function createEngineInternal(opts: CreateEngineOptions): CreatedEngine {
     mcp = new McpBridge(opts.mcpServers, {
       registry: tools,
       emit: opts.onMcpEvent,
-      roots: () => [
-        { uri: `file://${opts.workspaceRoot.replace(/\\/g, '/')}`, name: 'workspace' },
-      ],
+      roots: () => [{ uri: `file://${opts.workspaceRoot.replace(/\\/g, '/')}`, name: 'workspace' }],
     });
   }
 
@@ -200,21 +212,23 @@ function memoryAccessFrom(store: MemoryStore): MemoryAccess {
         { layer: req.layer, type: req.type, content: req.content, evidence: req.evidence },
         req.evidence,
       );
-      return { entry: { id: r.entry.id, content: r.entry.content }, merged: r.merged, replaced: r.replaced };
+      return {
+        entry: { id: r.entry.id, content: r.entry.content },
+        merged: r.merged,
+        replaced: r.replaced,
+      };
     },
     search(query, opts) {
-      return store
-        .search(query, { layer: opts?.layer, limit: opts?.limit })
-        .map((h) => ({
-          entry: {
-            id: h.entry.id,
-            layer: h.entry.layer,
-            type: h.entry.type,
-            content: h.entry.content,
-            source: h.entry.source,
-          },
-          score: h.score,
-        }));
+      return store.search(query, { layer: opts?.layer, limit: opts?.limit }).map((h) => ({
+        entry: {
+          id: h.entry.id,
+          layer: h.entry.layer,
+          type: h.entry.type,
+          content: h.entry.content,
+          source: h.entry.source,
+        },
+        score: h.score,
+      }));
     },
     forget(id) {
       return store.forget(id);

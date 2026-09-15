@@ -29,13 +29,15 @@ export function validateVerifyStep(
   executorVisionCapable: boolean,
 ): { ok: true } | { ok: false; error: string } {
   if (!step) return { ok: true };
-  if (step.kind !== 'screenshot') return { ok: false, error: `未知的验证步骤类型：${String(step.kind)}` };
+  if (step.kind !== 'screenshot')
+    return { ok: false, error: `未知的验证步骤类型：${String(step.kind)}` };
   if (!step.url) return { ok: false, error: '截图验证步骤缺少 url' };
   if (!step.expectation) return { ok: false, error: '截图验证步骤缺少 expectation' };
   if (!executorVisionCapable) {
     return {
       ok: false,
-      error: '该任务包含截图验证步骤，executor 模型必须支持视觉（vision-capable），请更换模型后重试。',
+      error:
+        '该任务包含截图验证步骤，executor 模型必须支持视觉（vision-capable），请更换模型后重试。',
     };
   }
   return { ok: true };

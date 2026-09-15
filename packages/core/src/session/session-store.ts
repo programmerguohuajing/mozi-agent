@@ -95,7 +95,7 @@ export class SessionStore {
   resume(id: string): Session {
     const events = this.readEvents(id);
     let config = defaultConfig();
-    let savedMeta: Partial<SessionMeta> = {};
+    const savedMeta: Partial<SessionMeta> = {};
     try {
       const meta = JSON.parse(fs.readFileSync(this.metaPath(id), 'utf8'));
       if (meta?.config) config = meta.config as SessionConfig;

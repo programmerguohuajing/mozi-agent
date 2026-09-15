@@ -9,7 +9,7 @@ import { estimateTokens } from '../context/compactor.js';
 import type { HookRunner } from '../hooks/runner.js';
 import type { ResolvedHook } from '../hooks/types.js';
 import type { Session, SessionStore } from '../session/session-store.js';
-import { TemplateRegistry } from './templates.js';
+import type { TemplateRegistry } from './templates.js';
 
 export interface SubAgentConfig {
   /** 全局同时运行子 Agent 上限（默认 3；超出排队）。 */
@@ -123,7 +123,10 @@ export interface SupervisorDeps {
 const SUMMARY_CAP_TOKENS = 4000;
 
 /** 截断摘要：>4k token 时保留「结论 + 相关文件」段，优先丢弃「建议」段（§12.9）。 */
-export function truncateSummary(text: string, capTokens = SUMMARY_CAP_TOKENS): { text: string; truncated: boolean } {
+export function truncateSummary(
+  text: string,
+  capTokens = SUMMARY_CAP_TOKENS,
+): { text: string; truncated: boolean } {
   if (estimateTokens(text) <= capTokens) return { text, truncated: false };
   const lines = text.split('\n');
   const kept: string[] = [];
@@ -188,9 +191,7 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
     // ── 校验链（同步预留计数：task 为并行组，必须同步占位防竞态） ──
     const depth = parent.depth ?? 0;
     if (depth + 1 > this.cfg.maxDepth) {
-      return err(
-        `已达最大子智能体深度 ${this.cfg.maxDepth}（防递归失控），请在当前上下文直接执行`,
-      );
+      return err(`已达最大子智能体深度 ${this.cfg.maxDepth}（防递归失控），请在当前上下文直接执行`);
     }
     const reserved = this.reserveTurnSlot(parent.id);
     if (reserved === null) {
@@ -199,7 +200,9 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
     const template = this.deps.templates.resolve(spec.agent);
     if (!template) {
       this.releaseTurnSlot(parent.id);
-      const available = this.templates().map((t) => t.type).join(', ');
+      const available = this.templates()
+        .map((t) => t.type)
+        .join(', ');
       return err(`未知子智能体模板 '${spec.agent}'。可用模板：${available}`);
     }
 
@@ -271,10 +274,12 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
     let lastAssistant = '';
     let steps = 0;
     const callNames = new Map<string, string>();
-    let maxSteps = template.maxSteps;
+    const maxSteps = template.maxSteps;
     // 注册实时出口：审批等阻塞事件在等待前即桥接到宿主事件流（§12.7）。
     this.deps.engine.setEventSink?.(subSessionId, (e) =>
-      this.bridge(emit, subSessionId, template.type, e, callNames, maxSteps, (n) => (steps = n)),
+      this.bridge(emit, subSessionId, template.type, e, callNames, maxSteps, (n) => {
+        steps = n;
+      }),
     );
     try {
       const prompt = await this.buildPrompt(template.systemPrompt, spec, ctx);
@@ -289,15 +294,9 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
         // 低频桥接 + 审批冒泡（§12.7/§12.8）。审批事件已由 sink 即时发出，
         // 此处去重：仅桥接非审批类事件。
         if (ev.type !== 'tool.approval.required') {
-          this.bridge(
-            emit,
-            subSessionId,
-            template.type,
-            ev,
-            callNames,
-            maxSteps,
-            (n) => (steps = n),
-          );
+          this.bridge(emit, subSessionId, template.type, ev, callNames, maxSteps, (n) => {
+            steps = n;
+          });
         }
         if (ev.type === 'message.completed' && ev.message.role === 'assistant') {
           if (ev.message.content) lastAssistant = ev.message.content;
@@ -405,13 +404,10 @@ export class SubAgentSupervisor implements SubAgentDispatcher {
           /* skip unreadable */
         }
       }
-      if (injected.length) parts.push('\n# 预注入文件\n' + injected.join('\n'));
+      if (injected.length) parts.push(`\n# 预注入文件\n${injected.join('\n')}`);
     }
     parts.push(
-      '\n（工作区：' +
-        ctx.workspace.root +
-        '。任务即将结束时请输出最终结构化摘要：## 结论 / ## 相关文件（file:line）/ ## 建议。' +
-        '该摘要是你唯一能传回主任务的产物，遗漏即丢失。）',
+      `\n（工作区：${ctx.workspace.root}。任务即将结束时请输出最终结构化摘要：## 结论 / ## 相关文件（file:line）/ ## 建议。该摘要是你唯一能传回主任务的产物，遗漏即丢失。）`,
     );
     return `${systemPrompt}\n\n---\n${parts.join('\n')}`;
   }

@@ -1,15 +1,15 @@
+import type { ProviderRegistry } from '@mozi/providers';
 /**
  * Headless 执行（M4.5 / M13 §13.6 ②③④）：组装无人值守引擎 → engine.run() → 事件收集 → 报告。
  * 复用 M1 全链路（工具/子智能体/MCP 可用）；审批一律 deny（ask 已被策略静态化，I1）。
  */
 import type { AgentEvent, TokenUsage } from '@mozi/shared';
-import type { ProviderRegistry } from '@mozi/providers';
-import { createEngine } from '../engine/factory.js';
-import { autoApproveGateway } from '../engine/approve.js';
 import type { AgentEngine } from '../engine/agent-engine.js';
+import { autoApproveGateway } from '../engine/approve.js';
+import { createEngine } from '../engine/factory.js';
 import { UNATTENDED_SYSTEM_PROMPT } from './types.js';
-import { buildUnattendedPolicy, effectiveRunConfig } from './unattended.js';
 import type { TaskSpec } from './types.js';
+import { buildUnattendedPolicy, effectiveRunConfig } from './unattended.js';
 
 export interface HeadlessOutcome {
   exitCode: number;

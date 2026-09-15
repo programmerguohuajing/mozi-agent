@@ -28,7 +28,9 @@ export class TaskStore {
       const raw = readFileSync(this.file, 'utf8');
       const data = JSON.parse(raw) as TaskListFile;
       if (data.schemaVersion !== SCHEMA_VERSION) {
-        throw new Error(`tasks.json schemaVersion 不兼容：${data.schemaVersion} != ${SCHEMA_VERSION}`);
+        throw new Error(
+          `tasks.json schemaVersion 不兼容：${data.schemaVersion} != ${SCHEMA_VERSION}`,
+        );
       }
       return data.tasks ?? [];
     } catch (e) {

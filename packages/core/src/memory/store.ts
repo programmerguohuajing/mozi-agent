@@ -14,15 +14,21 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Session } from '../session/session-store.js';
-import { VectorStub, type EmbeddingProvider } from './embedding.js';
-import { Bm25Index, containsSecret, cosine, editSimilarity, estimateTokens, keyTerms, redactSecret } from './text-utils.js';
+import { type EmbeddingProvider, VectorStub } from './embedding.js';
+import {
+  Bm25Index,
+  containsSecret,
+  cosine,
+  editSimilarity,
+  estimateTokens,
+  keyTerms,
+  redactSecret,
+} from './text-utils.js';
 import {
   DEDUP_COSINE,
   DEDUP_EDIT_SIMILARITY,
   MEMORY_CAPS,
   MEMORY_INJECT_BUDGET,
-  RETRIEVAL_THRESHOLD,
-  RETRIEVAL_TOP_K,
   type MemoryEntry,
   type MemoryLayer,
   type MemorySource,
@@ -30,6 +36,8 @@ import {
   type MemoryWriteRequest,
   type MemoryWriteResult,
   type PendingMemory,
+  RETRIEVAL_THRESHOLD,
+  RETRIEVAL_TOP_K,
 } from './types.js';
 
 export interface MemoryStoreOptions {
@@ -46,7 +54,11 @@ export interface MemoryStoreOptions {
   /** 自动写入（§16.2 路径③）；默认 false（走 pending 确认）。 */
   autoWrite?: boolean;
   /** 审计回调（§16.5：全部 memory 写/删进审计日志）。 */
-  audit?: (ev: { op: 'write' | 'merge' | 'forget' | 'evict'; entry: MemoryEntry | string; detail?: string }) => void;
+  audit?: (ev: {
+    op: 'write' | 'merge' | 'forget' | 'evict';
+    entry: MemoryEntry | string;
+    detail?: string;
+  }) => void;
 }
 
 interface StoreFiles {
@@ -169,7 +181,11 @@ export class MemoryStore {
         ];
       }
       this.persist(layer);
-      this.audit?.({ op: 'merge', entry: dup, detail: dup.history ? 'contradiction-overwrite' : 'dedup-merge' });
+      this.audit?.({
+        op: 'merge',
+        entry: dup,
+        detail: dup.history ? 'contradiction-overwrite' : 'dedup-merge',
+      });
       return { entry: dup, merged: true, replaced: dup.history ? before : undefined };
     }
 
@@ -303,9 +319,7 @@ export class MemoryStore {
       const e = byId.get(h.id);
       if (e) e.hits = (e.hits ?? 0) + 1;
     }
-    return hits
-      .map((h) => ({ entry: byId.get(h.id)!, score: h.score }))
-      .filter((x) => x.entry);
+    return hits.map((h) => ({ entry: byId.get(h.id)!, score: h.score })).filter((x) => x.entry);
   }
 
   /**
@@ -323,9 +337,9 @@ export class MemoryStore {
     if (!semantic.length) return { hits: [], mode: 'vector' };
 
     const [qv] = await this.embedding.embed([query]);
-    if (qv && qv.length) {
+    if (qv?.length) {
       const scored = semantic
-        .filter((e) => e.embedding && e.embedding.length)
+        .filter((e) => e.embedding?.length)
         .map((e) => ({ entry: e, score: cosine(qv, e.embedding!) }))
         .filter((x) => x.score >= threshold)
         .sort((a, b) => b.score - a.score)
@@ -403,12 +417,14 @@ export class MemoryStore {
   }
 
   /** 导出（可选脱敏，§16.5）。 */
-  export(opts: { redacted?: boolean } = {}): { user: MemoryEntry[]; project: MemoryEntry[]; semantic: MemoryEntry[] } {
+  export(opts: { redacted?: boolean } = {}): {
+    user: MemoryEntry[];
+    project: MemoryEntry[];
+    semantic: MemoryEntry[];
+  } {
     this.ensureLoaded();
     const red = (list: MemoryEntry[]): MemoryEntry[] =>
-      !opts.redacted
-        ? list
-        : list.map((e) => ({ ...e, content: redactSecret(e.content) }));
+      !opts.redacted ? list : list.map((e) => ({ ...e, content: redactSecret(e.content) }));
     return {
       user: red(this.entries('user')),
       project: red(this.entries('project')),
@@ -529,12 +545,13 @@ function writeJsonl(file: string, list: unknown[]): void {
   }
 }
 
-function writeMd(file: string, list: MemoryEntry[], title: string): void {  try {
+function writeMd(file: string, list: MemoryEntry[], title: string): void {
+  try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const lines = [
       `# ${title}`,
       '',
-      `> 由 mozi 记忆系统维护（M16）。可直接编辑，但格式变更可能被下次写入覆盖。`,
+      '> 由 mozi 记忆系统维护（M16）。可直接编辑，但格式变更可能被下次写入覆盖。',
       `> 共 ${list.length} 条。`,
       '',
     ];
@@ -544,8 +561,7 @@ function writeMd(file: string, list: MemoryEntry[], title: string): void {  try 
       lines.push(e.content);
       lines.push('');
       lines.push(
-        `- source: ${e.source}　created: ${e.createdAt}　updated: ${e.updatedAt}` +
-          (e.evidence ? `　evidence: ${e.evidence}` : ''),
+        `- source: ${e.source}　created: ${e.createdAt}　updated: ${e.updatedAt}${e.evidence ? `　evidence: ${e.evidence}` : ''}`,
       );
       if (e.history?.length) {
         lines.push(`- history: ${e.history.length} 条被覆盖（可追溯）`);

@@ -1,11 +1,12 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import {
   TaskLocks,
   TaskScheduler,
+  type TaskSpec,
   TaskStore,
   buildUnattendedPolicy,
   countMissedRuns,
@@ -16,7 +17,6 @@ import {
   runHeadless,
   sendWebhook,
   validateTaskConfig,
-  type TaskSpec,
 } from '@mozi/core';
 import { PolicyEngine } from '@mozi/policy';
 import { ProviderRegistry, ScriptedProvider, type ScriptedTurn } from '@mozi/providers';
@@ -101,10 +101,16 @@ describe('cron 求解', () => {
 
   it('interval 对齐整分钟；once 过期返回 from', () => {
     const from = new Date('2026-01-01T10:03:30Z');
-    expect(nextRunAt({ kind: 'interval', everyMinutes: 15 }, from).toISOString()).toBe('2026-01-01T10:19:00.000Z');
+    expect(nextRunAt({ kind: 'interval', everyMinutes: 15 }, from).toISOString()).toBe(
+      '2026-01-01T10:19:00.000Z',
+    );
     const future = new Date('2026-12-31T00:00:00Z');
-    expect(nextRunAt({ kind: 'once', at: '2026-12-31T00:00:00Z' }, from).getTime()).toBe(future.getTime());
-    expect(nextRunAt({ kind: 'once', at: '2020-01-01T00:00:00Z' }, from).getTime()).toBe(from.getTime());
+    expect(nextRunAt({ kind: 'once', at: '2026-12-31T00:00:00Z' }, from).getTime()).toBe(
+      future.getTime(),
+    );
+    expect(nextRunAt({ kind: 'once', at: '2020-01-01T00:00:00Z' }, from).getTime()).toBe(
+      from.getTime(),
+    );
   });
 });
 
@@ -168,8 +174,20 @@ describe('无人值守安全模型', () => {
     const build = buildUnattendedPolicy({ mode: 'readonly' });
     const engine = new PolicyEngine([]);
     const conf = { mode: build.policyMode, rules: build.rules };
-    expect(engine.evaluate({ id: 'a', name: 'write_file', riskLevel: 'write', arguments: {} }, conf, build.evaluateOptions).type).toBe('deny');
-    expect(engine.evaluate({ id: 'b', name: 'read_file', riskLevel: 'read', arguments: {} }, conf, build.evaluateOptions).type).toBe('allow');
+    expect(
+      engine.evaluate(
+        { id: 'a', name: 'write_file', riskLevel: 'write', arguments: {} },
+        conf,
+        build.evaluateOptions,
+      ).type,
+    ).toBe('deny');
+    expect(
+      engine.evaluate(
+        { id: 'b', name: 'read_file', riskLevel: 'read', arguments: {} },
+        conf,
+        build.evaluateOptions,
+      ).type,
+    ).toBe('allow');
   });
 
   it('allowlist：白名单内 allow、白名单外 deny、高危命令不可绕过（I3）', () => {
@@ -179,8 +197,12 @@ describe('无人值守安全模型', () => {
     });
     const engine = new PolicyEngine([]); // builtin 已并入 rules
     const conf = { mode: build.policyMode, rules: build.rules };
-    const ev = (name: string, args: Record<string, unknown>, risk: string = 'exec') =>
-      engine.evaluate({ id: 'c', name, riskLevel: risk, arguments: args }, conf, build.evaluateOptions);
+    const ev = (name: string, args: Record<string, unknown>, risk = 'exec') =>
+      engine.evaluate(
+        { id: 'c', name, riskLevel: risk, arguments: args },
+        conf,
+        build.evaluateOptions,
+      );
     expect(ev('shell', { command: 'npm test' }).type).toBe('allow');
     expect(ev('shell', { command: 'git status' }).type).toBe('allow');
     expect(ev('shell', { command: 'echo hi' }).type).toBe('deny');
@@ -191,10 +213,19 @@ describe('无人值守安全模型', () => {
   });
 
   it('I4：full + sandbox<3 拒绝创建；full+direct 拒绝；allowlist 空名单拒绝', () => {
-    expect(validateTaskConfig({ policy: { mode: 'full' }, artifact: 'branch', sandboxLevel: 2 }).ok).toBe(false);
-    expect(validateTaskConfig({ policy: { mode: 'full' }, artifact: 'direct', sandboxLevel: 3 }).ok).toBe(false);
-    expect(validateTaskConfig({ policy: { mode: 'allowlist', allowlist: {} }, artifact: 'report-only' }).ok).toBe(false);
-    expect(validateTaskConfig({ policy: { mode: 'full' }, artifact: 'branch', sandboxLevel: 3 }).ok).toBe(true);
+    expect(
+      validateTaskConfig({ policy: { mode: 'full' }, artifact: 'branch', sandboxLevel: 2 }).ok,
+    ).toBe(false);
+    expect(
+      validateTaskConfig({ policy: { mode: 'full' }, artifact: 'direct', sandboxLevel: 3 }).ok,
+    ).toBe(false);
+    expect(
+      validateTaskConfig({ policy: { mode: 'allowlist', allowlist: {} }, artifact: 'report-only' })
+        .ok,
+    ).toBe(false);
+    expect(
+      validateTaskConfig({ policy: { mode: 'full' }, artifact: 'branch', sandboxLevel: 3 }).ok,
+    ).toBe(true);
   });
 });
 
@@ -245,7 +276,7 @@ describe('TaskLocks', () => {
     // 模拟持有者已死：改 holder pid
     const holder = path.join(tmp, 'locks', 'task_x.lock', 'holder.json');
     fs.writeFileSync(holder, JSON.stringify({ pid: 999999, acquiredAt: Date.now() - 10 }));
-    expect((await locks.acquire('task_x', 'second', 1_000))).toBe(true);
+    expect(await locks.acquire('task_x', 'second', 1_000)).toBe(true);
     locks.release('task_x');
   });
 });
@@ -254,7 +285,10 @@ describe('TaskLocks', () => {
 
 describe('通知', () => {
   it('maskSecret 脱敏密钥字段', () => {
-    const out = maskSecret({ apiKey: 'sk-123', nested: { token: 'abc', ok: 1 } }) as Record<string, unknown>;
+    const out = maskSecret({ apiKey: 'sk-123', nested: { token: 'abc', ok: 1 } }) as Record<
+      string,
+      unknown
+    >;
     expect(out.apiKey).toBe('***');
     expect((out.nested as Record<string, unknown>).token).toBe('***');
   });
@@ -263,7 +297,9 @@ describe('通知', () => {
     const received: unknown[] = [];
     const server = http.createServer((req, res) => {
       let body = '';
-      req.on('data', (c) => (body += c));
+      req.on('data', (c) => {
+        body += c;
+      });
       req.on('end', () => {
         received.push(JSON.parse(body));
         res.writeHead(200);
@@ -333,7 +369,12 @@ describe('tick 主循环', () => {
   it('once 任务跑完后自动 disable', async () => {
     const runsDir = path.join(tmp, 'runs');
     const store = new TaskStore(path.join(tmp, 'tasks.json'));
-    store.add(specFor({ id: 'task-once', schedule: { kind: 'once', at: new Date(Date.now() - 1000).toISOString() } }));
+    store.add(
+      specFor({
+        id: 'task-once',
+        schedule: { kind: 'once', at: new Date(Date.now() - 1000).toISOString() },
+      }),
+    );
     const scheduler = new TaskScheduler({
       store,
       runsDir,
@@ -361,7 +402,10 @@ describe('tick 主循环', () => {
       baseSpec({
         id: 'task-wt',
         workspace: repo,
-        config: { policy: { mode: 'allowlist', allowlist: { writePathGlobs: ['**'] } }, artifact: 'branch' },
+        config: {
+          policy: { mode: 'allowlist', allowlist: { writePathGlobs: ['**'] } },
+          artifact: 'branch',
+        },
         schedule: { kind: 'once', at: new Date(Date.now() - 1000).toISOString() },
       }),
     );
@@ -374,7 +418,9 @@ describe('tick 主循环', () => {
       worktreesDir: wtDir,
       providers: () =>
         makeProvider([
-          { toolCalls: [{ name: 'write_file', arguments: { path: 'new.txt', content: 'created' } }] },
+          {
+            toolCalls: [{ name: 'write_file', arguments: { path: 'new.txt', content: 'created' } }],
+          },
           { content: '完成' },
         ]),
       clock: () => new Date(),

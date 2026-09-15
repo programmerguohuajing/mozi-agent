@@ -16,7 +16,11 @@ export {
   type ProcessedImage,
   type VisionPipelineOptions,
 } from './pipeline.js';
-export { ScreenshotService, type ScreenshotResult, type ScreenshotServiceOptions } from './screenshot.js';
+export {
+  ScreenshotService,
+  type ScreenshotResult,
+  type ScreenshotServiceOptions,
+} from './screenshot.js';
 export {
   validateVerifyStep,
   type VerifyStep,

@@ -13,8 +13,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { ChatMessage, SystemMessage } from '@mozi/shared';
-import type { Session } from '../session/session-store.js';
 import type { PromptAssembler, PromptBuildResult } from '../prompts/assembler.js';
+import type { Session } from '../session/session-store.js';
 import { estimateMessageTokens } from './compactor.js';
 
 /** 无 PromptAssembler 时的兜底系统提示（旧行为，保持向后兼容）。 */
@@ -101,12 +101,8 @@ export class ContextManager {
     // 文件新鲜度提示（§5.6）：自上次读取后被修改的文件。
     const dirty = extra?.dirtyFiles ?? [];
     if (dirty.length) {
-      const list = dirty
-        .map((f) => `- ${f}`)
-        .join('\n');
-      parts.push(
-        `[注意] 以下文件自上次读取后已被修改，请重新 read_file 确认最新内容：\n${list}`,
-      );
+      const list = dirty.map((f) => `- ${f}`).join('\n');
+      parts.push(`[注意] 以下文件自上次读取后已被修改，请重新 read_file 确认最新内容：\n${list}`);
     }
 
     // ---- L4 任务层：生命周期钩子提示（M18 §18.4：stdout {"note"} 注入下轮上下文）----

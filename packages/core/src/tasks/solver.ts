@@ -2,7 +2,7 @@
  * 调度求解（M4.5 / M13 §13.4）：cron / interval / once 三种调度的 nextRun 统一求解，
  * 以及「关机错过 N 次触发」的补跑策略（skip / catch-up-once / catch-up-all）。
  */
-import { parseCron, nextRunAfter } from './cron.js';
+import { nextRunAfter, parseCron } from './cron.js';
 import type { Schedule, TaskSpec } from './types.js';
 import { DEFAULT_TASK_OPTIONS } from './types.js';
 
@@ -41,7 +41,11 @@ export function countMissedRuns(spec: TaskSpec, now: Date): number {
  * 推进任务状态：按补跑策略决定本轮是否补跑，并计算新的 nextRunAt。
  * @returns { missed, shouldRun, nextAt } —— shouldRun=true 表示本轮应执行一次
  */
-export function planTick(spec: TaskSpec, now: Date, missedPolicy = DEFAULT_TASK_OPTIONS.missedPolicy) {
+export function planTick(
+  spec: TaskSpec,
+  now: Date,
+  missedPolicy = DEFAULT_TASK_OPTIONS.missedPolicy,
+) {
   const s = spec.state;
   // 首次调度：无 nextRunAt → 求解首个触发时刻
   if (s.nextRunAt === undefined) {

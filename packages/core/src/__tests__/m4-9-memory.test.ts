@@ -1,23 +1,28 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   Bm25Index,
   MEMORY_CAPS,
+  type MemoryEntry,
   MemoryManager,
   MemoryStore,
+  type Session,
   VectorStub,
   containsSecret,
   cosine,
   editDistance,
   editSimilarity,
   redactSecret,
-  type MemoryEntry,
-  type Session,
 } from '@mozi/core';
 import { defaultConfig } from '@mozi/shared';
-import { createBuiltinRegistry, memoryForgetTool, memorySearchTool, memoryWriteTool } from '@mozi/tools';
+import {
+  createBuiltinRegistry,
+  memoryForgetTool,
+  memorySearchTool,
+  memoryWriteTool,
+} from '@mozi/tools';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * M16 记忆系统测试（§16.6）：
@@ -162,10 +167,40 @@ function factAt(i: number): string {
 }
 
 /** 组合式唯一事实：两个维度交叉，每项字符集互不相同，避免 bigram 共享导致误合并。 */
-const TOPIC_A = ['鉴权', '部署', '缓存', '路由', '队列', '日志', '脚本', '镜像', '证书', '网关',
-  '索引', '快照', '钩子', '探针', '灰度', '限流', '熔断', '降级', '配额', '审计'];
-const TOPIC_B = ['务必复核', '需要归档', '禁止外传', '定期演练', '按需开启', '优先内网', '谨防覆盖',
-  '避免阻塞', '统一口径', '留痕备查'];
+const TOPIC_A = [
+  '鉴权',
+  '部署',
+  '缓存',
+  '路由',
+  '队列',
+  '日志',
+  '脚本',
+  '镜像',
+  '证书',
+  '网关',
+  '索引',
+  '快照',
+  '钩子',
+  '探针',
+  '灰度',
+  '限流',
+  '熔断',
+  '降级',
+  '配额',
+  '审计',
+];
+const TOPIC_B = [
+  '务必复核',
+  '需要归档',
+  '禁止外传',
+  '定期演练',
+  '按需开启',
+  '优先内网',
+  '谨防覆盖',
+  '避免阻塞',
+  '统一口径',
+  '留痕备查',
+];
 
 /** 第 i 条独立事实：a 与 b 的组合，字符集错开，bigram 交集极小。 */
 function uniqueFact(i: number): string {
@@ -190,7 +225,11 @@ describe('M16 写入路径与去重/矛盾/LRU', () => {
   it('敏感内容在显式写入时被拒（§16.5）', () => {
     const s = makeStore();
     expect(() =>
-      s.writeExplicit({ layer: 'project', type: 'fact', content: 'token = sk-abcdefghijklmnopqrstuv' }),
+      s.writeExplicit({
+        layer: 'project',
+        type: 'fact',
+        content: 'token = sk-abcdefghijklmnopqrstuv',
+      }),
     ).toThrow(/疑似密钥/);
     // 磁盘不应留下该条
     expect(fs.existsSync(path.join(ws, '.mozi', 'memory', 'project.jsonl'))).toBe(false);
@@ -201,37 +240,58 @@ describe('M16 写入路径与去重/矛盾/LRU', () => {
     s.writeExplicit({ layer: 'project', type: 'fact', content: '构建用 pnpm' });
     const r = s.writeExplicit({ layer: 'project', type: 'fact', content: '构建用 pnpm' });
     expect(r.merged).toBe(true);
-    expect(s['export']({}).project).toHaveLength(1);
+    expect(s.export({}).project).toHaveLength(1);
   });
 
   it('去重合并：编辑距离近 → 合并，条目数不增', () => {
     const s = makeStore();
-    s.writeExplicit({ layer: 'project', type: 'fact', content: 'tests are run with pnpm test:unit' });
-    const r = s.writeExplicit({ layer: 'project', type: 'fact', content: 'tests are run with pnpm test:unit.' });
+    s.writeExplicit({
+      layer: 'project',
+      type: 'fact',
+      content: 'tests are run with pnpm test:unit',
+    });
+    const r = s.writeExplicit({
+      layer: 'project',
+      type: 'fact',
+      content: 'tests are run with pnpm test:unit.',
+    });
     expect(r.merged).toBe(true);
-    expect(s['export']({}).project).toHaveLength(1);
+    expect(s.export({}).project).toHaveLength(1);
   });
 
   it('矛盾覆盖：新内容覆盖旧内容，旧内容移入 history（可追溯）', () => {
     const s = makeStore();
     // 先写中文（走向量路径），再用改写型中文覆盖
-    const first = s.writeExplicit({ layer: 'project', type: 'decision', content: '鉴权方案采用 session 存储' });
-    const second = s.writeExplicit({ layer: 'project', type: 'decision', content: '鉴权方案采用 JWT 令牌' });
+    const first = s.writeExplicit({
+      layer: 'project',
+      type: 'decision',
+      content: '鉴权方案采用 session 存储',
+    });
+    const second = s.writeExplicit({
+      layer: 'project',
+      type: 'decision',
+      content: '鉴权方案采用 JWT 令牌',
+    });
     expect(second.merged).toBe(true);
     expect(second.replaced).toBe('鉴权方案采用 session 存储');
-    const entry = s['export']({}).project[0] as MemoryEntry;
+    const entry = s.export({}).project[0] as MemoryEntry;
     expect(entry.history?.[0]?.content).toBe('鉴权方案采用 session 存储');
     expect(entry.history?.[0]?.replacedBy).toBe('鉴权方案采用 JWT 令牌');
     expect(first.entry.id).toBe(second.entry.id);
   });
 
   it('容量上限：project 超 200 条时按 LRU + evidence 弱者优先淘汰', () => {
-    const s = makeStore({ clock: (() => { let n = 0; return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000); })() });
+    const s = makeStore({
+      clock: (() => {
+        let n = 0;
+        return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000);
+      })(),
+    });
     const total = MEMORY_CAPS.project + 5;
     for (let i = 0; i < total; i++) {
       s.writeExplicit({ layer: 'project', type: 'fact', content: uniqueFact(i) });
     }
-    const list = s['export']({}).project;
+    const list = s.export({}).project;
     expect(list).toHaveLength(MEMORY_CAPS.project);
     // 最早的 5 条（无 evidence、最旧）应被淘汰
     const contents = list.map((e) => e.content);
@@ -240,26 +300,48 @@ describe('M16 写入路径与去重/矛盾/LRU', () => {
   });
 
   it('证据弱者的条目在淘汰中保留（有 evidence 优先于无 evidence）', () => {
-    const s = makeStore({ clock: (() => { let n = 0; return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000); })() });
+    const s = makeStore({
+      clock: (() => {
+        let n = 0;
+        return () => new Date(Date.parse('2026-01-01T00:00:00Z') + n++ * 1000);
+      })(),
+    });
     // 先写一条带 evidence 的锚点，再写满容量
-    s.writeExplicit({ layer: 'user', type: 'preference', content: '锚点条目 alpha unique', evidence: 'session:abc' });
+    s.writeExplicit({
+      layer: 'user',
+      type: 'preference',
+      content: '锚点条目 alpha unique',
+      evidence: 'session:abc',
+    });
     for (let i = 0; i < MEMORY_CAPS.user + 3; i++) {
-      s.writeExplicit({ layer: 'user', type: 'preference', content: `用户偏好场景 ${i}：${factAt(i)}` });
+      s.writeExplicit({
+        layer: 'user',
+        type: 'preference',
+        content: `用户偏好场景 ${i}：${factAt(i)}`,
+      });
     }
-    const list = s['export']({}).user;
+    const list = s.export({}).user;
     expect(list.map((e) => e.content)).toContain('锚点条目 alpha unique');
   });
 
   it('路径② 半自动：候选入 pending 队列，确认后入库标 user-confirmed', () => {
     const s = makeStore();
-    const c1 = s.submitCandidate({ type: 'fact', content: '项目构建用 pnpm', suggestedLayer: 'project' });
-    const c2 = s.submitCandidate({ type: 'preference', content: '回复用中文', suggestedLayer: 'user' });
+    const c1 = s.submitCandidate({
+      type: 'fact',
+      content: '项目构建用 pnpm',
+      suggestedLayer: 'project',
+    });
+    const c2 = s.submitCandidate({
+      type: 'preference',
+      content: '回复用中文',
+      suggestedLayer: 'user',
+    });
     expect(s.listPending()).toHaveLength(2);
     const results = s.confirmPending([c1.id]);
     expect(results).toHaveLength(1);
-    expect(results[0]!.entry.source).toBe('user-confirmed');
+    expect(results[0]?.entry.source).toBe('user-confirmed');
     expect(s.listPending()).toHaveLength(1);
-    expect(s.listPending()[0]!.id).toBe(c2.id);
+    expect(s.listPending()[0]?.id).toBe(c2.id);
     // 忽略剩余
     s.discardPending([c2.id]);
     expect(s.listPending()).toHaveLength(0);
@@ -280,9 +362,9 @@ describe('M16 写入路径与去重/矛盾/LRU', () => {
     const s = makeStore({ autoWrite: true });
     s.submitCandidate({ type: 'fact', content: '自动记忆的事实条目', suggestedLayer: 'project' });
     expect(s.listPending()).toHaveLength(0);
-    const list = s['export']({}).project;
+    const list = s.export({}).project;
     expect(list).toHaveLength(1);
-    expect(list[0]!.source).toBe('auto');
+    expect(list[0]?.source).toBe('auto');
   });
 });
 
@@ -293,8 +375,8 @@ describe('M16 检索与注入', () => {
     s.writeExplicit({ layer: 'project', type: 'fact', content: '部署走 wrangler' });
     const hits = s.search('pnpm');
     expect(hits).toHaveLength(1);
-    expect(hits[0]!.entry.id).toBe('mem-1');
-    expect(hits[0]!.entry.hits).toBe(1);
+    expect(hits[0]?.entry.id).toBe('mem-1');
+    expect(hits[0]?.entry.hits).toBe(1);
   });
 
   it('向量检索（VectorStub）：相似查询排序正确，噪声被阈值过滤', async () => {
@@ -350,7 +432,7 @@ describe('M16 检索与注入', () => {
     const s = makeStore();
     const r = s.writeExplicit({ layer: 'project', type: 'fact', content: '待删除的条目 unique-x' });
     expect(s.forget(r.entry.id)).toBe(true);
-    expect(s['export']({}).project).toHaveLength(0);
+    expect(s.export({}).project).toHaveLength(0);
     expect(s.forget('nope')).toBe(false);
   });
 
@@ -358,10 +440,10 @@ describe('M16 检索与注入', () => {
     const s = makeStore();
     // 正常内容写完后人为注入一条含密钥的记录（模拟历史遗留）
     s.writeExplicit({ layer: 'project', type: 'fact', content: '正常事实' });
-    const raw = s['export']({});
-    expect(raw.project[0]!.content).toBe('正常事实');
-    const red = s['export']({ redacted: true });
-    expect(red.project[0]!.content).toBe('正常事实');
+    const raw = s.export({});
+    expect(raw.project[0]?.content).toBe('正常事实');
+    const red = s.export({ redacted: true });
+    expect(red.project[0]?.content).toBe('正常事实');
   });
 });
 
@@ -370,7 +452,12 @@ describe('M16 MemoryManager', () => {
     const s = makeStore();
     s.submitCandidate({ type: 'fact', content: '候选一', suggestedLayer: 'project' });
     let seen = 0;
-    const m = new MemoryManager({ store: s, onPendingDiscovered: (p) => (seen = p.length) });
+    const m = new MemoryManager({
+      store: s,
+      onPendingDiscovered: (p) => {
+        seen = p.length;
+      },
+    });
     const pending = m.onSessionStart();
     expect(pending).toHaveLength(1);
     expect(seen).toBe(1);
@@ -389,7 +476,7 @@ describe('M16 MemoryManager', () => {
     await s.writeSemantic('部署使用 wrangler');
     await m.onTurn(5, 'wrangler');
     expect(m.currentSemanticHits().length).toBe(1);
-    expect(m.currentSemanticHits()[0]!.content).toContain('wrangler');
+    expect(m.currentSemanticHits()[0]?.content).toContain('wrangler');
   });
 
   it('半自动提取触发条件：token>20k + 新事实信号 + 任务完成', async () => {
@@ -460,7 +547,9 @@ describe('M16 记忆工具（§16.4）', () => {
 
   it('未注入 memory 后端 → 三工具均返回明确错误', async () => {
     const ctx = ctxOf();
-    expect((await memoryWriteTool.execute({ layer: 'user', type: 'fact', content: 'x' }, ctx)).isError).toBe(true);
+    expect(
+      (await memoryWriteTool.execute({ layer: 'user', type: 'fact', content: 'x' }, ctx)).isError,
+    ).toBe(true);
     expect((await memorySearchTool.execute({ query: 'x' }, ctx)).isError).toBe(true);
     expect((await memoryForgetTool.execute({ id: 'x' }, ctx)).isError).toBe(true);
   });

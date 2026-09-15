@@ -1,3 +1,4 @@
+import type { PolicyMode } from '@mozi/shared';
 /**
  * 权限模式选择器 — 输入栏右侧徽标，点击向上弹出三档访问模式。
  *
@@ -9,7 +10,6 @@
  * 选择结果通过 onSelect 回传，由宿主写入 config:set（持久化 policyMode）。
  */
 import * as React from 'react';
-import type { PolicyMode } from '@mozi/shared';
 import { useApp } from '../i18n.js';
 
 export interface PermissionMenuProps {
@@ -32,9 +32,30 @@ interface Option {
 }
 
 const OPTIONS: Option[] = [
-  { mode: 'readonly', variant: 'readonly', icon: '🔒', labelKey: 'perm.request', badgeKey: 'perm.badge.readonly', descKey: 'perm.request.desc' },
-  { mode: 'auto', variant: 'limited', icon: '🛡', labelKey: 'perm.auto', badgeKey: 'perm.badge.auto', descKey: 'perm.auto.desc' },
-  { mode: 'full-auto', variant: 'full', icon: '⚡', labelKey: 'perm.full', badgeKey: 'perm.badge.full', descKey: 'perm.full.desc' },
+  {
+    mode: 'readonly',
+    variant: 'readonly',
+    icon: '🔒',
+    labelKey: 'perm.request',
+    badgeKey: 'perm.badge.readonly',
+    descKey: 'perm.request.desc',
+  },
+  {
+    mode: 'auto',
+    variant: 'limited',
+    icon: '🛡',
+    labelKey: 'perm.auto',
+    badgeKey: 'perm.badge.auto',
+    descKey: 'perm.auto.desc',
+  },
+  {
+    mode: 'full-auto',
+    variant: 'full',
+    icon: '⚡',
+    labelKey: 'perm.full',
+    badgeKey: 'perm.badge.full',
+    descKey: 'perm.full.desc',
+  },
 ];
 
 const FALLBACK: Option = OPTIONS[1] as Option;
@@ -77,8 +98,14 @@ export function PermissionMenu(props: PermissionMenuProps): React.ReactElement {
         {t(current.badgeKey)}
         <svg
           className={`perm-caret${open ? ' open' : ''}`}
-          width="8" height="8" viewBox="0 0 10 10" fill="none"
-          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+          width="8"
+          height="8"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           aria-hidden="true"
         >
           <path d="M2 6.5 5 3.5 8 6.5" />
@@ -102,12 +129,16 @@ export function PermissionMenu(props: PermissionMenuProps): React.ReactElement {
                   setOpen(false);
                 }}
               >
-                <span className="perm-menu-icon" aria-hidden="true">{o.icon}</span>
+                <span className="perm-menu-icon" aria-hidden="true">
+                  {o.icon}
+                </span>
                 <span className="perm-menu-text">
                   <span className="perm-menu-item-title">{t(o.labelKey)}</span>
                   <span className="perm-menu-item-desc">{t(o.descKey)}</span>
                 </span>
-                <span className="perm-menu-check" aria-hidden="true">{active ? '✓' : ''}</span>
+                <span className="perm-menu-check" aria-hidden="true">
+                  {active ? '✓' : ''}
+                </span>
               </button>
             );
           })}

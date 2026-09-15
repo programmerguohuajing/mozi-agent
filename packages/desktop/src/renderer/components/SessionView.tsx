@@ -19,7 +19,7 @@ export interface SessionViewProps {
   onOpenSubSession?: (subSessionId: string) => void;
 }
 
-function RenderRow({ item }: { item: RenderItem }): React.ReactElement | null {
+function RenderRow({ item }: { item: RenderItem; key?: React.Key }): React.ReactElement | null {
   switch (item.kind) {
     case 'user':
       return (
@@ -203,11 +203,41 @@ export function SessionView(props: SessionViewProps): React.ReactElement {
   const { view } = props;
   const todos = [...view.items].reverse().find((it) => it.kind === 'todo');
   const compacted = view.items.filter((it) => it.kind === 'compacted').length;
+  const messagesRef = React.useRef<HTMLDivElement | null>(null);
+  const shouldScrollRef = React.useRef(true);
+
+  const scrollToBottom = (): void => {
+    const el = messagesRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
+
+  const onScroll = (): void => {
+    const el = messagesRef.current;
+    if (!el) return;
+    const threshold = 50;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    shouldScrollRef.current = atBottom;
+  };
+
+  // 新消息到达或流式更新时：若用户本来在底部，则自动滚动到底部。
+  React.useEffect(() => {
+    if (shouldScrollRef.current) {
+      scrollToBottom();
+    }
+    return undefined;
+  }, [view.items]);
+
+  // 初始挂载也滚到底部。
+  React.useEffect(() => {
+    scrollToBottom();
+    return undefined;
+  }, []);
 
   return (
     <div className="chat-view">
       <div className="chat-main">
-        <div className="chat-messages">
+        <div className="chat-messages" ref={messagesRef} onScroll={onScroll}>
           {view.items.map((item, i) => (
             <RenderRow key={item.id === 'update' ? `u-${i}` : `${item.id}-${i}`} item={item} />
           ))}

@@ -443,22 +443,28 @@ export function InputBar(props: InputBarProps): React.ReactElement {
           </button>
         ) : null}
 
-        <button
-          className="btn-send"
-          onClick={() => {
-            if (props.input.trim()) send();
-          }}
-        >
-          {t('chat.send')}
-        </button>
-        <button
-          className="btn-abort"
-          disabled={props.aborting || !props.canAbort}
-          title={props.canAbort ? t('chat.abort') : t('chat.abort.idleHint')}
-          onClick={() => props.abort()}
-        >
-          {props.aborting ? t('chat.abort.pending') : t('chat.abort')}
-        </button>
+        {/* 发送 / 中止互斥展示：空闲（无运行中的任务）只显示发送，
+            任务进行中（running / pending_approval / 中止进行中）只显示中止。 */}
+        {props.canAbort || props.aborting ? null : (
+          <button
+            className="btn-send"
+            onClick={() => {
+              if (props.input.trim()) send();
+            }}
+          >
+            {t('chat.send')}
+          </button>
+        )}
+        {props.canAbort || props.aborting ? (
+          <button
+            className="btn-abort"
+            disabled={props.aborting || !props.canAbort}
+            title={props.canAbort ? t('chat.abort') : t('chat.abort.idleHint')}
+            onClick={() => props.abort()}
+          >
+            {props.aborting ? t('chat.abort.pending') : t('chat.abort')}
+          </button>
+        ) : null}
       </div>
 
       {props.abortError ? (

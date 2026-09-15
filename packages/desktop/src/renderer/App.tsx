@@ -698,6 +698,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
               <div className="chat-split">
                 <div className="chat-split-main">
                   <SessionView
+                    api={api}
                     view={activeView}
                     onResolveApproval={(callId, decision, opts) => {
                       void api.invoke('approval:resolve', {
@@ -723,6 +724,7 @@ function AppInner({ api }: { api: MoziApi }): React.ReactElement {
               </div>
             ) : (
               <SessionView
+                api={api}
                 view={activeView}
                 onResolveApproval={(callId, decision, opts) => {
                   void api.invoke('approval:resolve', {

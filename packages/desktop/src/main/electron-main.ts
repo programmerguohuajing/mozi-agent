@@ -333,6 +333,10 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
     const entries: McpServerEntry[] = [{ config: toMcpTransportConfig(spec) }];
     mcpBridge = new McpBridge(entries, { registry: mcpRegistry });
     await mcpBridge.connectAll();
+    // connectAll 刻意吞错（错误隔离）；失败原因从 connectErrors 取回，
+    // 避免把「连接被拒/超时」误报成「连接成功但未暴露任何工具」。
+    const connectError = mcpBridge.connectError(spec.id);
+    if (connectError) throw new Error(`连接失败: ${connectError}`);
     const tools = mcpBridge.tools();
     if (tools.length === 0) throw new Error(`server "${spec.id}" 连接成功但未暴露任何工具`);
     return { toolCount: tools.length };
@@ -418,6 +422,27 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
   });
 
   /**
+   * 本地图片读取（会话内截图卡片放大查看）。
+   * 安全：扩展名白名单 + 25MB 上限；只读、不写。
+   */
+  const readImage = async (p: string): Promise<{ base64: string; mime: string }> => {
+    const MIME: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.bmp': 'image/bmp',
+    };
+    const mime = MIME[path.extname(p).toLowerCase()];
+    if (!mime) throw new Error(`不支持的图片格式：${path.extname(p) || '(无扩展名)'}`);
+    const stat = fs.statSync(p);
+    if (stat.size > 25 * 1024 * 1024) throw new Error('图片超过 25MB，无法加载');
+    const buf = fs.readFileSync(p);
+    return { base64: buf.toString('base64'), mime };
+  };
+
+  /**
    * 原生目录选择框（新建任务：选本地文件夹作为 workspace，§10.5①）。
    * 用户取消 → 返回 null（渲染进程据此不创建会话）。
    */
@@ -445,6 +470,8 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
     ...(electron.desktopCapturer ? { captureScreen } : {}),
     ...(electron.dialog ? { pickWorkspace } : {}),
     ...(electron.webContents ? { browserRegistry } : {}),
+    // 会话内截图放大：node fs 读本地图片（扩展名/大小白名单见 readImage）。
+    readImage,
     // 定时任务宿主（schedule:* 通道）。
     tasks: tasksHost,
   });

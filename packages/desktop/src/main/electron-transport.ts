@@ -121,6 +121,7 @@ export const ALLOWED_INVOKE: InvokeChannel[] = [
   'browser:saveAnnotated',
   'browser:attach',
   'browser:detach',
+  'image:read',
   'workspace:pick',
   'workspace:listEntries',
   'skills:list',

@@ -423,6 +423,13 @@ export interface InvokeChannels {
     error?: string;
   };
   'browser:detach': (req: { sessionId: string }) => { ok: boolean };
+  /** 读取本地图片为 base64（会话内截图卡片放大查看；主进程做扩展名/大小白名单校验）。 */
+  'image:read': (req: { path: string }) => {
+    ok: boolean;
+    base64?: string;
+    mime?: string;
+    error?: string;
+  };
   'workspace:pick': () => WorkspacePickResponse;
   'workspace:listEntries': (req: WorkspaceListEntriesRequest) => WorkspaceListEntriesResponse;
   'skills:list': (req: { sessionId?: string }) => SkillSummary[];
@@ -490,6 +497,7 @@ export const INVOKE_CHANNELS: InvokeChannel[] = [
   'browser:saveAnnotated',
   'browser:attach',
   'browser:detach',
+  'image:read',
   'workspace:pick',
   'workspace:listEntries',
   'skills:list',

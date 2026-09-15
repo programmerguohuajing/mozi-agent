@@ -15,6 +15,7 @@ import * as React from 'react';
 import { buildTextWithMentions, detectMention, insertMention } from '../../shared/mentions.js';
 import type { MoziApi } from '../App.js';
 import { useApp } from '../i18n.js';
+import { Lightbox } from './Lightbox.js';
 import { PermissionMenu } from './PermissionMenu.js';
 import { PlusMenu } from './PlusMenu.js';
 
@@ -71,6 +72,8 @@ function resolveMentionQuery(query: string): MentionQuery {
 export function InputBar(props: InputBarProps): React.ReactElement {
   const { t } = useApp();
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  // 附件缩略图点击放大（灯箱）；null = 关闭。
+  const [preview, setPreview] = React.useState<string | null>(null);
   // 光标位置（onChange/onKeyUp/select 时同步；React 受控组件不自动跟踪）。
   const caretRef = React.useRef(0);
   // 当前激活的 mention（@ 的下标 + 查询串）。
@@ -260,7 +263,12 @@ export function InputBar(props: InputBarProps): React.ReactElement {
         <div className="input-attachments">
           {props.attachments.map((a) => (
             <div key={a.contentId} className="attachment-thumb">
-              <img src={`data:image/png;base64,${a.base64}`} alt="screenshot" />
+              <img
+                src={`data:image/png;base64,${a.base64}`}
+                alt="screenshot"
+                title={t('chat.image.view')}
+                onClick={() => setPreview(a.thumbnail || `data:image/png;base64,${a.base64}`)}
+              />
               <button
                 className="attachment-remove"
                 onClick={() => props.removeAttachment(a.contentId)}
@@ -270,6 +278,9 @@ export function InputBar(props: InputBarProps): React.ReactElement {
             </div>
           ))}
         </div>
+      ) : null}
+      {preview ? (
+        <Lightbox src={preview} alt={t('chat.screenshot.hint')} onClose={() => setPreview(null)} />
       ) : null}
 
       <div className="input-row input-row-wrap">

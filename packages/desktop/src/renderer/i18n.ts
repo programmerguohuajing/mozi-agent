@@ -61,6 +61,12 @@ const zh: Dict = {
   'chat.screenshot.hint': '截取浏览器页面，标注后作为附件发送',
   'chat.screenshot.failed': '截图失败',
   'chat.screenshot.dismiss': '关闭提示',
+  // 图片放大查看（会话内截图卡片 / 输入栏附件缩略图 → 灯箱）
+  'chat.image.view': '点击放大查看',
+  'chat.image.close': '关闭预览（Esc）',
+  'chat.image.loading': '加载图片中…',
+  'chat.image.loadFailed': '图片加载失败',
+  'chat.image.unavailable': '图片预览不可用（IPC 未就绪）',
   'chat.permission.full': '● 完全访问',
   // 浏览器面板（任务窗口右侧内嵌 webview；agent 同页面操作）
   'chat.browser': '浏览器',
@@ -358,6 +364,12 @@ const en: Dict = {
   'chat.screenshot.hint': 'Capture the browser page, annotate and send as attachment',
   'chat.screenshot.failed': 'Screenshot failed',
   'chat.screenshot.dismiss': 'Dismiss',
+  // Image lightbox (in-session screenshot card / input-bar attachment thumb)
+  'chat.image.view': 'Click to enlarge',
+  'chat.image.close': 'Close preview (Esc)',
+  'chat.image.loading': 'Loading image…',
+  'chat.image.loadFailed': 'Failed to load image',
+  'chat.image.unavailable': 'Image preview unavailable (IPC not ready)',
   'chat.permission.full': '● Full access',
   // Browser panel (in-session webview; agent operates the same page)
   'chat.browser': 'Browser',

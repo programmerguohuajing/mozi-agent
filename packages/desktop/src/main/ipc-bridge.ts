@@ -64,6 +64,8 @@ export interface IpcBridgeDeps {
    * 截取整屏并返回 PNG base64 + 真实像素尺寸。由主进程用 electron.desktopCapturer 注入。
    */
   captureScreen?: ScreenCapturer;
+  /** 本地图片读取（image:read 通道；主进程注入 node fs + 白名单校验）。 */
+  readImage?: ImageReader;
   /**
    * 原生目录选择器（新建任务时选本地文件夹作为 workspace）：
    * 返回选中的目录绝对路径；用户取消时返回 null。由主进程用 electron.dialog 注入。
@@ -86,6 +88,18 @@ export interface ScreenCaptureResult {
 
 /** 屏幕截图器（主进程注入；不可用时抛错，由 handler 转为 `{ error }`）。 */
 export type ScreenCapturer = () => Promise<ScreenCaptureResult>;
+
+/** 本地图片读取结果：`base64` 不带 data: 前缀；`mime` 按扩展名推断。 */
+export interface ReadImageResult {
+  base64: string;
+  mime: string;
+}
+
+/**
+ * 本地图片读取器（主进程注入 node fs；扩展名 / 大小白名单在注入侧校验）。
+ * 会话内截图卡片（display.kind='image'）经 `image:read` 加载缩略图 / 放大图。
+ */
+export type ImageReader = (path: string) => Promise<ReadImageResult>;
 
 export class IpcBridge {
   private readonly sessionWindow = new Map<string, string>();
@@ -135,6 +149,7 @@ export class IpcBridge {
       browser,
       browserRegistry,
       captureScreen,
+      readImage,
       pickWorkspace,
       tasks,
     } = this.deps;
@@ -640,6 +655,21 @@ export class IpcBridge {
     channel.handle('browser:detach', (req: { sessionId: string }) => {
       browserRegistry?.detach(req.sessionId);
       return { ok: true };
+    });
+
+    // ── 会话内截图放大：读本地图片为 base64 ─────────────────────
+    channel.handle('image:read', async (req: { path: string }) => {
+      if (!readImage) {
+        return { ok: false, error: '图片读取不可用（主进程未注入 node fs）' };
+      }
+      const p = typeof req?.path === 'string' ? req.path : '';
+      if (!p) return { ok: false, error: '缺少图片路径' };
+      try {
+        const r = await readImage(p);
+        return { ok: true, base64: r.base64, mime: r.mime };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
     });
 
     // ── 任务 workspace：原生目录选择框（§10.5① 新建任务）──────────

@@ -4,13 +4,18 @@
 import * as React from 'react';
 import type { RenderItem } from '../../shared/render-item.js';
 import type { SessionView as SessionViewState, SubAgentNode } from '../../shared/store.js';
+import type { MoziApi } from '../App.js';
+import { useApp } from '../i18n.js';
 import { ApprovalCard, type ApprovalCardProps } from './ApprovalCard.js';
+import { Lightbox } from './Lightbox.js';
 
 export interface SessionViewProps {
   view: SessionViewState;
   contextBudget?: number;
   estimatedTokens?: number;
   dirtyFiles?: string[];
+  /** IPC 通道（截图卡片经 image:read 加载本地图片放大查看）。 */
+  api?: MoziApi;
   onResolveApproval: (
     callId: string,
     decision: 'allow' | 'deny',
@@ -19,7 +24,72 @@ export interface SessionViewProps {
   onOpenSubSession?: (subSessionId: string) => void;
 }
 
-function RenderRow({ item }: { item: RenderItem; key?: React.Key }): React.ReactElement | null {
+/**
+ * 工具产出的图片卡片（display.kind='image'，如 screenshot 保存的截图）：
+ * 经 `image:read` 加载为缩略图，点击打开灯箱放大查看。
+ */
+function ToolImage({ api, path }: { api?: MoziApi; path: string }): React.ReactElement | null {
+  const { t } = useApp();
+  const [src, setSrc] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setSrc(null);
+    setError(null);
+    if (!api) {
+      setError(t('chat.image.unavailable'));
+      return undefined;
+    }
+    void api
+      .invoke('image:read', { path })
+      .then((r) => {
+        if (cancelled) return;
+        const res = r as { ok: boolean; base64?: string; mime?: string; error?: string };
+        if (res.ok && res.base64) {
+          setSrc(`data:${res.mime ?? 'image/png'};base64,${res.base64}`);
+        } else {
+          setError(res.error ?? t('chat.image.loadFailed'));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError(t('chat.image.loadFailed'));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, path]);
+
+  if (error) {
+    return <div className="tool-image-error">🖼 {error}</div>;
+  }
+  if (!src) {
+    return <div className="tool-image-loading">{t('chat.image.loading')}</div>;
+  }
+  return (
+    <>
+      <img
+        className="tool-image"
+        src={src}
+        alt={path}
+        title={t('chat.image.view')}
+        onClick={() => setOpen(true)}
+      />
+      {open ? <Lightbox src={src} alt={path} onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+function RenderRow({
+  item,
+  api,
+}: {
+  item: RenderItem;
+  api?: MoziApi;
+  key?: React.Key;
+}): React.ReactElement | null {
   switch (item.kind) {
     case 'user':
       return (
@@ -76,6 +146,9 @@ function RenderRow({ item }: { item: RenderItem; key?: React.Key }): React.React
             )}
           </div>
           {item.summary ? <div className="tool-summary">{item.summary}</div> : null}
+          {item.display?.kind === 'image' ? (
+            <ToolImage api={api} path={item.display.path} />
+          ) : null}
         </div>
       );
     case 'compacted':
@@ -239,7 +312,11 @@ export function SessionView(props: SessionViewProps): React.ReactElement {
       <div className="chat-main">
         <div className="chat-messages" ref={messagesRef} onScroll={onScroll}>
           {view.items.map((item, i) => (
-            <RenderRow key={item.id === 'update' ? `u-${i}` : `${item.id}-${i}`} item={item} />
+            <RenderRow
+              key={item.id === 'update' ? `u-${i}` : `${item.id}-${i}`}
+              item={item}
+              api={props.api}
+            />
           ))}
           {view.pendingApprovals.map((it) =>
             it.kind === 'approval' ? (

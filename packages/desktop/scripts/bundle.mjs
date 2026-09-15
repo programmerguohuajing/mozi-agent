@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 /**
  * 桌面端「运行期产物」打包脚本（esbuild）。
  *
@@ -12,11 +13,15 @@
  *
  * `electron` 保持 external（由运行期提供）；`@mozi/*` 别名到各自 dist 产物，
  * 因此不依赖 node_modules 的软链布局。
+ *
+ * 支持 --platform 参数按目标平台做条件编译：
+ *   esbuild conditions 中注入 `platform:<win32|darwin|linux>`，
+ *   源码中可用 `// #if platform:win32` 等条件导入做平台分支（可选）。
+ *   process.platform 在运行期由 Electron 提供，保持运行时分支能力。
  */
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -125,9 +130,30 @@ export function copyPromptAssets(outDir) {
   console.log(`[bundle] prompts -> ${path.relative(REPO_ROOT, destDir)}  (${count} 个 .md)`);
 }
 
-export async function bundle() {
+/**
+ * 按目标平台返回 esbuild conditions。
+ *
+ * 源码中可用条件导入做平台分支（可选），例如：
+ *   import { screenshot } from './screenshot#platform:win32'
+ * esbuild 会根据 conditions 选择对应平台实现，避免把其他平台的代码打进产物。
+ *
+ * 若源码中未使用条件导入，conditions 不影响正常构建。
+ */
+function platformConditions(targetPlatform) {
+  if (!targetPlatform) return undefined;
+  return [`platform:${targetPlatform}`];
+}
+
+/**
+ * 打包运行期产物。
+ * @param {object} [opts]
+ * @param {string} [opts.targetPlatform] — 目标平台：'win32' | 'darwin' | 'linux'
+ *        用于 esbuild conditions 条件编译，不影响 process.platform 运行时分支。
+ */
+export async function bundle(opts = {}) {
   const esbuild = require(resolveTool('esbuild'));
   const alias = workspaceAliases();
+  const conditions = platformConditions(opts.targetPlatform);
 
   const targets = [
     {
@@ -144,7 +170,13 @@ export async function bundle() {
 
   for (const t of targets) {
     fs.mkdirSync(path.dirname(t.outfile), { recursive: true });
-    await esbuild.build({ ...BASE_OPTIONS, alias, entryPoints: [t.entry], outfile: t.outfile });
+    await esbuild.build({
+      ...BASE_OPTIONS,
+      alias,
+      conditions,
+      entryPoints: [t.entry],
+      outfile: t.outfile,
+    });
 
     const code = fs.readFileSync(t.outfile, 'utf8');
     // 自检 1：electron 必须是运行期 require，而非被打包进来。
@@ -161,7 +193,9 @@ export async function bundle() {
       throw new Error(`[bundle] ${t.label}: 产物中仍存在 ESM 语法`);
     }
     const kb = (Buffer.byteLength(code) / 1024).toFixed(1);
-    console.log(`[bundle] ${t.label.padEnd(7)} -> ${path.relative(REPO_ROOT, t.outfile)}  (${kb} kB)`);
+    console.log(
+      `[bundle] ${t.label.padEnd(7)} -> ${path.relative(REPO_ROOT, t.outfile)}  (${kb} kB)`,
+    );
   }
 
   // 资源：提示词 .md 必须随产物分发（tsc / esbuild 都不会自动带上）。
@@ -175,8 +209,15 @@ export async function bundle() {
 
 // 允许 `node scripts/bundle.mjs` 直接执行。
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  bundle().catch((err) => {
-    console.error('[bundle] FAILED:', err && err.message ? err.message : err);
+  // 支持 --platform <win32|darwin|linux> 参数
+  const argv = process.argv.slice(2);
+  let targetPlatform = undefined;
+  const pIdx = argv.indexOf('--platform');
+  if (pIdx !== -1 && pIdx + 1 < argv.length) {
+    targetPlatform = argv[pIdx + 1];
+  }
+  bundle({ targetPlatform }).catch((err) => {
+    console.error('[bundle] FAILED:', err?.message ? err.message : err);
     process.exit(1);
   });
 }

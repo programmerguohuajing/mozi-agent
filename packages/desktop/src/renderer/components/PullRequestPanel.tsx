@@ -28,7 +28,10 @@ export function PullRequestPanel(props: PullRequestPanelProps): React.ReactEleme
   const [filter, setFilter] = React.useState<PRInfo['status'] | 'all'>('all');
 
   const STATUS_LABELS: Record<PRInfo['status'], string> = {
-    open: t('pr.status.open'), merged: t('pr.status.merged'), closed: t('pr.status.closed'), draft: t('pr.status.draft'),
+    open: t('pr.status.open'),
+    merged: t('pr.status.merged'),
+    closed: t('pr.status.closed'),
+    draft: t('pr.status.draft'),
   };
 
   const filtered = props.prs.filter((pr) => filter === 'all' || pr.status === filter);
@@ -46,15 +49,25 @@ export function PullRequestPanel(props: PullRequestPanelProps): React.ReactEleme
 
       <div className="page-toolbar">
         {(['all', 'open', 'merged', 'draft'] as const).map((s) => (
-          <button key={s} className={`skill-filter-btn ${filter === s ? 'active' : ''}`} onClick={() => setFilter(s)}>
-            {s === 'all' ? `${t('pr.filter.all')} (${counts.all})` : s === 'open' ? `${t('pr.filter.open')} (${counts.open})` : s === 'merged' ? `${t('pr.filter.merged')} (${counts.merged})` : `${t('pr.filter.draft')} (${counts.draft})`}
+          <button
+            key={s}
+            className={`skill-filter-btn ${filter === s ? 'active' : ''}`}
+            onClick={() => setFilter(s)}
+          >
+            {s === 'all'
+              ? `${t('pr.filter.all')} (${counts.all})`
+              : s === 'open'
+                ? `${t('pr.filter.open')} (${counts.open})`
+                : s === 'merged'
+                  ? `${t('pr.filter.merged')} (${counts.merged})`
+                  : `${t('pr.filter.draft')} (${counts.draft})`}
           </button>
         ))}
       </div>
 
       <div className="pr-list">
         {filtered.length === 0 ? (
-            <div className="empty-state">
+          <div className="empty-state">
             <div className="empty-state-icon">🔀</div>
             <div className="empty-state-text">{t('pr.empty')}</div>
           </div>
@@ -62,7 +75,7 @@ export function PullRequestPanel(props: PullRequestPanelProps): React.ReactEleme
           filtered.map((pr) => (
             <div key={pr.id} className="pr-card" onClick={() => props.onSelect?.(pr.id)}>
               <div className="pr-card-top">
-                <span className={`pr-status-dot ${pr.status}`}></span>
+                <span className={`pr-status-dot ${pr.status}`} />
                 <span className="pr-title">{pr.title}</span>
                 <span className="pr-number">#{pr.id}</span>
               </div>
@@ -70,10 +83,14 @@ export function PullRequestPanel(props: PullRequestPanelProps): React.ReactEleme
                 <span className="pr-branch">{pr.branch}</span>
                 <span className="file-change-add">+{pr.additions}</span>
                 <span className="file-change-del">-{pr.deletions}</span>
-                <span>{pr.changedFiles} {t('pr.files')}</span>
+                <span>
+                  {pr.changedFiles} {t('pr.files')}
+                </span>
                 <span>{pr.author}</span>
                 <span>{pr.updatedAt.slice(0, 10)}</span>
-                <span className={`pr-badge ${pr.status}`} style={{ marginLeft: 'auto' }}>{STATUS_LABELS[pr.status]}</span>
+                <span className={`pr-badge ${pr.status}`} style={{ marginLeft: 'auto' }}>
+                  {STATUS_LABELS[pr.status]}
+                </span>
               </div>
             </div>
           ))

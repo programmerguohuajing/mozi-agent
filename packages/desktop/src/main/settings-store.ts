@@ -9,8 +9,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import type { ApiFormat, ProviderSummary, ProviderTestResponse } from '@mozi/protocol';
 import type { PolicyMode, PolicyRule } from '@mozi/shared';
-import type { ProviderSummary, ProviderTestResponse } from '@mozi/protocol';
 
 /** Electron `safeStorage` 的最小契约（便于注入 mock 与纯 Node 运行）。 */
 export interface SafeStorageLike {
@@ -32,15 +32,31 @@ interface CredentialRecord {
   envVar?: string; // 改用环境变量的提示
 }
 
+/** 关闭应用窗口时的行为（基础设置 §10.7）。 */
+export type CloseBehavior = 'quit' | 'tray';
+
 interface SettingsShape {
   policyMode: PolicyMode;
   policyRules: PolicyRule[];
-  providers: Record<string, { model: string; baseUrl?: string; apiKeyEnv?: string }>;
+  providers: Record<
+    string,
+    {
+      model: string;
+      /** 该提供商接入的模型列表（多模型，本地名=上游名直传）。 */
+      models?: string[];
+      baseUrl?: string;
+      apiKeyEnv?: string;
+      apiFormat?: ApiFormat;
+      modelMap?: Record<string, string>;
+    }
+  >;
   credentials: Record<string, CredentialRecord>;
   sandboxLevel: 0 | 1 | 2 | 3;
   costLimits: { perSessionUsd?: number; perDayUsd?: number };
   mcpServers: Array<Record<string, unknown>>;
   backgroundRun: boolean;
+  /** 关闭主窗口时的行为：直接退出，或最小化到系统托盘常驻。 */
+  closeBehavior: CloseBehavior;
   [key: string]: unknown;
 }
 
@@ -53,6 +69,8 @@ const DEFAULTS: SettingsShape = {
   costLimits: {},
   mcpServers: [],
   backgroundRun: true,
+  // 与 backgroundRun 默认一致：关闭窗口后常驻后台（通过系统托盘可视化）。
+  closeBehavior: 'tray',
 };
 
 export interface SettingsStoreOptions {
@@ -113,6 +131,17 @@ export class SettingsStore {
     return this.data.backgroundRun;
   }
 
+  /** 关闭主窗口时的行为（§10.7 基础设置）。 */
+  closeBehavior(): CloseBehavior {
+    return this.data.closeBehavior;
+  }
+
+  /** 更新关闭行为：'quit' 直接退出；'tray' 最小化到托盘常驻。 */
+  setCloseBehavior(behavior: CloseBehavior): void {
+    this.data.closeBehavior = behavior;
+    this.persist();
+  }
+
   /** 合并式更新（config:set）。未知键直接透传存储（前向兼容）。 */
   applyPatch(patch: Record<string, unknown>): void {
     this.data = { ...this.data, ...patch } as SettingsShape;
@@ -158,7 +187,7 @@ export class SettingsStore {
       this.persist();
       return { ok: true };
     }
-    const encrypted = ss!.encryptString(secret).toString('base64');
+    const encrypted = ss?.encryptString(secret).toString('base64');
     this.data.credentials[providerId] = { encrypted };
     this.persist();
     return { ok: true };
@@ -186,13 +215,33 @@ export class SettingsStore {
       // safeStorage 不可用：无法解密，不返回密文。
     }
     if (rec?.plain) return rec.plain;
-    const envName = this.data.providers[providerId]?.apiKeyEnv ?? `${providerId.toUpperCase()}_API_KEY`;
-    return process.env[envName] ?? (providerId === 'default' ? process.env.MOZI_API_KEY : undefined);
+    const envName =
+      this.data.providers[providerId]?.apiKeyEnv ?? `${providerId.toUpperCase()}_API_KEY`;
+    return (
+      process.env[envName] ?? (providerId === 'default' ? process.env.MOZI_API_KEY : undefined)
+    );
   }
 
-  /** 设置 provider（模型 / baseUrl / 密钥环境变量名）。 */
-  setProvider(id: string, spec: { model: string; baseUrl?: string; apiKeyEnv?: string }): void {
+  /** 设置 provider（模型 / 模型列表 / baseUrl / 密钥环境变量名 / 上游格式 / 模型映射）。 */
+  setProvider(
+    id: string,
+    spec: {
+      model: string;
+      models?: string[];
+      baseUrl?: string;
+      apiKeyEnv?: string;
+      apiFormat?: ApiFormat;
+      modelMap?: Record<string, string>;
+    },
+  ): void {
     this.data.providers[id] = spec;
+    this.persist();
+  }
+
+  /** 删除 provider 配置及其密钥记录。 */
+  removeProvider(id: string): void {
+    delete this.data.providers[id];
+    delete this.data.credentials[id];
     this.persist();
   }
 
@@ -203,10 +252,29 @@ export class SettingsStore {
       const fromEnv = this.getApiKey(id);
       const has = Boolean(rec?.encrypted || rec?.plain || fromEnv);
       const preview = fromEnv ? maskSecret(fromEnv) : undefined;
+      const modelMap = spec.modelMap ?? {};
+      const hasMap = Object.keys(modelMap).length > 0;
+      const models = spec.models ?? [];
+      const hasModels = models.length > 0;
+      // 可选模型（任务窗口模型选择器数据源）：models 列表 > 映射本地名 > [model]。
+      const selectable = hasModels
+        ? models
+        : hasMap
+          ? Object.keys(modelMap)
+          : spec.model
+            ? [spec.model]
+            : [id];
+      // 自动路由：无 models、无映射、且 model 为空（网关自行选模型）。
+      const autoRoute = !hasModels && !hasMap && !spec.model;
       return {
         id,
         model: spec.model,
         baseUrl: spec.baseUrl,
+        apiFormat: spec.apiFormat ?? 'openai',
+        models: selectable,
+        // 映射原文（旧数据兼容；仅模型名，无敏感信息）。
+        ...(hasMap ? { modelMap } : {}),
+        ...(autoRoute ? { autoRoute: true } : {}),
         hasApiKey: has,
         maskedKey: preview,
       };
@@ -226,14 +294,14 @@ export class SettingsStore {
   /**
    * 测试连接（§10.5④）：对 provider 发 1 条 ping 提示词。
    * 真实网络调用由注入的 `ping` 完成（协议/引擎层），此处只做编排与计时。
+   * 本地无鉴权端点（FreeLLMAPI 等）无需 API Key 也可连通。
    */
   async testProvider(
     providerId: string,
     ping?: (id: string, apiKey: string | undefined) => Promise<void>,
   ): Promise<ProviderTestResponse> {
-    const key = this.getApiKey(providerId);
-    if (!key) return { ok: false, error: `provider ${providerId} 未配置 API Key` };
     if (!ping) return { ok: false, error: '未注入 ping 实现（需真实 provider）' };
+    const key = this.getApiKey(providerId);
     const started = Date.now();
     try {
       await ping(providerId, key);

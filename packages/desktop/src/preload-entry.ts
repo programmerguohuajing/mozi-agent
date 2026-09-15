@@ -10,7 +10,7 @@
  * **单文件 CommonJS**（见 scripts/bundle.mjs），运行期只依赖 `require('electron')`。
  */
 import { contextBridge, ipcRenderer } from 'electron';
-import { installPreload, type PreloadElectron } from './preload.js';
+import { type PreloadElectron, installPreload } from './preload.js';
 
 const electron = {
   contextBridge,

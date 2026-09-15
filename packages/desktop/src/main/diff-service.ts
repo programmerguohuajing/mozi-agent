@@ -20,7 +20,10 @@ export function splitLines(text: string): string[] {
 }
 
 /** 最小编辑脚本（LCS 动态规划）。返回按序操作：'=' 保留 / '-' 删除 / '+' 新增。 */
-export function diffScript(oldLines: string[], newLines: string[]): Array<['=' | '-' | '+', string]> {
+export function diffScript(
+  oldLines: string[],
+  newLines: string[],
+): Array<['=' | '-' | '+', string]> {
   const n = oldLines.length;
   const m = newLines.length;
   // dp[i][j] = oldLines[i..] 与 newLines[j..] 的 LCS 长度
@@ -60,10 +63,7 @@ export function diffScript(oldLines: string[], newLines: string[]): Array<['=' |
  * 把编辑脚本聚合为 hunk：连续的 `-`/`+` 段合为一个变更块；
  * 相邻变更块之间若只隔少量上下文行，则并入同一块（gap ≤ context 行）。
  */
-export function buildHunks(
-  ops: Array<['=' | '-' | '+', string]>,
-  context = 0,
-): DiffHunkView[] {
+export function buildHunks(ops: Array<['=' | '-' | '+', string]>, context = 0): DiffHunkView[] {
   const hunks: DiffHunkView[] = [];
   let oldLine = 1;
   let newLine = 1;
@@ -71,7 +71,7 @@ export function buildHunks(
   let seq = 0;
 
   while (i < ops.length) {
-    if (ops[i]![0] === '=') {
+    if (ops[i]?.[0] === '=') {
       oldLine++;
       newLine++;
       i++;
@@ -90,14 +90,15 @@ export function buildHunks(
         // 允许跨过至多 context 行上下文继续合并
         let ctx = 0;
         let k = i;
-        while (k < ops.length && ops[k]![0] === '=') {
+        while (k < ops.length && ops[k]?.[0] === '=') {
           ctx++;
           k++;
         }
         if (k < ops.length && ctx <= gapBudget) {
           for (let g = i; g < k; g++) {
-            oldLines.push(ops[g]![1]);
-            newLines.push(ops[g]![1]);
+            const ctxLine = ops[g]?.[1] ?? '';
+            oldLines.push(ctxLine);
+            newLines.push(ctxLine);
             oldLine++;
             newLine++;
           }
@@ -133,7 +134,12 @@ export function buildHunks(
 }
 
 /** 构建 Monaco side-by-side 模型（§10.5③）。 */
-export function buildSideBySide(file: string, before: string, after: string, context = 0): DiffSideBySide {
+export function buildSideBySide(
+  file: string,
+  before: string,
+  after: string,
+  context = 0,
+): DiffSideBySide {
   const oldLines = splitLines(before);
   const newLines = splitLines(after);
   const ops = diffScript(oldLines, newLines);
@@ -227,7 +233,10 @@ export class DiffReviewService {
       const refreshed = buildSideBySide(req.file, next, entry.model.after.join('\n'), 0);
       // 重新编号：保持与首次一致的 hunkId 便于 UI 跟踪。
       refreshed.hunks = remaining.map((h, i) => ({ ...h, id: h.id ?? `h${i + 1}` }));
-      this.pending.set(`${req.sessionId}::${req.file}`, { sessionId: req.sessionId, model: refreshed });
+      this.pending.set(`${req.sessionId}::${req.file}`, {
+        sessionId: req.sessionId,
+        model: refreshed,
+      });
     }
     return { ok: true, applied: ids.length };
   }

@@ -1,10 +1,10 @@
+import type { AgentEvent } from '@mozi/shared';
 /**
  * 子智能体面板 — Mozi Studio 生产级 UI。
  */
 import * as React from 'react';
-import type { AgentEvent } from '@mozi/shared';
+import { type RenderItem, eventToRenderItems } from '../../shared/render-item.js';
 import type { SubAgentNode } from '../../shared/store.js';
-import { eventToRenderItems, type RenderItem } from '../../shared/render-item.js';
 
 export interface SubAgentPanelProps {
   parentSessionId: string;
@@ -17,10 +17,19 @@ function ProgressRing({ step, max }: { step?: number; max?: number }): React.Rea
   const r = 8;
   const c = 2 * Math.PI * r;
   return (
-    <svg width={20} height={20} viewBox="0 0 20 20">
+    <svg width={20} height={20} viewBox="0 0 20 20" role="img">
+      <title>子代理进度</title>
       <circle cx={10} cy={10} r={r} fill="none" strokeWidth={2} stroke="var(--border)" />
-      <circle cx={10} cy={10} r={r} fill="none" strokeWidth={2} stroke="var(--info)"
-        strokeDasharray={`${c * ratio} ${c}`} transform="rotate(-90 10 10)" />
+      <circle
+        cx={10}
+        cy={10}
+        r={r}
+        fill="none"
+        strokeWidth={2}
+        stroke="var(--info)"
+        strokeDasharray={`${c * ratio} ${c}`}
+        transform="rotate(-90 10 10)"
+      />
     </svg>
   );
 }
@@ -49,17 +58,37 @@ export function SubAgentPanel(props: SubAgentPanelProps): React.ReactElement {
               className={`tree-node ${openSub === n.subSessionId ? 'active' : ''}`}
               onClick={() => void open(n.subSessionId)}
             >
-              <ProgressRing {...(n.step != null ? { step: n.step } : {})} {...(n.maxSteps != null ? { max: n.maxSteps } : {})} />
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <ProgressRing
+                {...(n.step != null ? { step: n.step } : {})}
+                {...(n.maxSteps != null ? { max: n.maxSteps } : {})}
+              />
+              <span
+                style={{
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {n.subSessionId.split('/').pop()}
               </span>
               <span className="node-type">{n.agentType}</span>
               <span className={`node-state ${n.state}`}>
-                {n.state === 'completed' ? 'done' : n.state === 'failed' ? 'fail' : n.step != null ? `${n.step}/${n.maxSteps ?? ''}` : n.state}
+                {n.state === 'completed'
+                  ? 'done'
+                  : n.state === 'failed'
+                    ? 'fail'
+                    : n.step != null
+                      ? `${n.step}/${n.maxSteps ?? ''}`
+                      : n.state}
               </span>
             </div>
           ))}
-          {props.nodes.length === 0 ? <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '8px 0' }}>（无子智能体）</div> : null}
+          {props.nodes.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '8px 0' }}>
+              （无子智能体）
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="subagent-detail">

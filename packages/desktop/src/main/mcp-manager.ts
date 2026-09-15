@@ -134,7 +134,116 @@ export class McpManager {
     (entry.spec as unknown as Record<string, unknown>).allowedTools = tools;
   }
 
+  /**
+   * 直接编辑 mcp.json（§10.5⑦）：整体替换配置。
+   * 校验失败的条目不落盘（返回逐条错误）；成功后对消失的 server 断开连接，
+   * 并对全部条目重连验证（编辑后的配置必须真实可用，状态如实反映）。
+   */
+  async replaceAll(
+    specs: McpAddRequest[],
+  ): Promise<{ ok: boolean; errors?: Array<{ index: number; error: string }> }> {
+    const errors: Array<{ index: number; error: string }> = [];
+    const seen = new Set<string>();
+    specs.forEach((spec, i) => {
+      const err = validateSpec(spec, seen);
+      if (err) errors.push({ index: i, error: err });
+    });
+    if (errors.length > 0) return { ok: false, errors };
+
+    // 断开全部旧连接（消失的删除；保留的也会重连）。
+    for (const [id, entry] of [...this.servers.entries()]) {
+      try {
+        await this.deps.disconnect(id);
+      } catch {
+        /* 已断开 */
+      }
+      if (!specs.some((s) => s.id === id)) this.servers.delete(id);
+      else entry.info.status = 'connecting';
+    }
+    // 重建全部条目（sampling / trusted 保留，连接状态重置）。
+    for (const spec of specs) {
+      const prev = this.servers.get(spec.id);
+      this.servers.set(spec.id, {
+        spec,
+        info: {
+          id: spec.id,
+          transport: spec.transport,
+          status: 'connecting',
+          toolCount: 0,
+          sampling: prev?.info.sampling ?? 'ask',
+          trusted: prev?.info.trusted ?? false,
+        },
+      });
+    }
+    this.persist();
+    // 逐个重连（失败标记 offline，不阻塞其他 server）。
+    for (const spec of specs) {
+      const info = this.servers.get(spec.id)?.info;
+      if (!info) continue;
+      try {
+        const { toolCount } = await this.deps.connect(spec);
+        info.status = 'connected';
+        info.toolCount = toolCount;
+      } catch {
+        info.status = 'offline';
+      }
+    }
+    return { ok: true };
+  }
+
+  /** 完整配置（mcp.json 编辑器数据源）。 */
+  config(): McpAddRequest[] {
+    return [...this.servers.values()].map((s) => s.spec);
+  }
+
+  /** 单条更新（编辑某个 server 的配置）。 */
+  async upsert(req: McpAddRequest): Promise<{ ok: boolean; error?: string }> {
+    const seen = new Set(this.servers.keys());
+    seen.delete(req.id);
+    const err = validateSpec(req, seen);
+    if (err) return { ok: false, error: err };
+    const existed = this.servers.has(req.id);
+    if (existed) {
+      try {
+        await this.deps.disconnect(req.id);
+      } catch {
+        /* 已断开 */
+      }
+    }
+    const info: McpServerInfo = {
+      id: req.id,
+      transport: req.transport,
+      status: 'connecting',
+      toolCount: 0,
+      sampling: 'ask',
+      trusted: false,
+    };
+    this.servers.set(req.id, { spec: req, info });
+    this.persist();
+    try {
+      const { toolCount } = await this.deps.connect(req);
+      info.status = 'connected';
+      info.toolCount = toolCount;
+      return { ok: true };
+    } catch (e) {
+      info.status = 'offline';
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   private persist(): void {
     this.deps.persist([...this.servers.values()].map((s) => s.spec));
   }
+}
+
+/** 规格校验：与 add() 规则一致 + id 去重。返回错误文案或 null。 */
+function validateSpec(spec: McpAddRequest, seen: Set<string>): string | null {
+  if (!spec.id?.trim()) return 'id 不能为空';
+  if (seen.has(spec.id)) return `id 重复: ${spec.id}`;
+  seen.add(spec.id);
+  if (spec.transport === 'stdio' && !spec.command?.trim()) return 'stdio 传输需要 command';
+  if ((spec.transport === 'http' || spec.transport === 'sse') && !spec.url?.trim()) {
+    return `${spec.transport} 传输需要 url`;
+  }
+  return null;
 }

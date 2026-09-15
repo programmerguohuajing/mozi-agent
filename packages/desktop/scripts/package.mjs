@@ -1,18 +1,20 @@
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
 /**
- * 构建可安装的桌面端安装包（Windows NSIS / macOS DMG）。
+ * 构建可安装的桌面端安装包（Windows NSIS / macOS DMG / Linux AppImage）。
  *
  * 流程：
  *   1. 预检      —— 确认 @mozi/* 已构建（esbuild 需要它们的 dist）。
  *   2. 渲染进程  —— vite build -> packages/desktop/dist/renderer。
- *   3. 运行期产物 —— esbuild 打包主进程 / preload（见 bundle.mjs）。
- *   4. 暂存目录  —— 把 dist + build/icon.* + 精简 package.json 组装到
- *                   .build/package-stage（不含 node_modules / workspace 依赖）。
+ *   3. 运行期产物 —— esbuild 打包主进程 / preload（见 bundle.mjs），按目标平台条件编译。
+ *   4. 暂存目录  —— 只复制目标平台的资源（图标等），组装到 .build/package-stage。
  *   5. 打安装包  —— electron-builder 产出安装程序到 packages/desktop/release。
  *
- * 为什么要「暂存目录」而不是直接在 packages/desktop 上打包：
- *   - 工作区依赖是 `workspace:*` 协议，electron-builder 解析生产依赖树时会报错；
- *   - 运行期产物已经自包含（主进程/preload 全打包），安装包内不需要任何 node_modules；
- *   - 隔离后 packages/desktop 的源码/类型/新依赖都不会意外进入安装包。
+ * 平台资源隔离：
+ *   - Windows: 只复制 icon.ico（+ icon.png 作通用回退）
+ *   - macOS:   只复制 icon.icns（若有，否则 icon.png）
+ *   - Linux:   只复制 icon.png
+ *   - 暂存 package.json 中 files 数组按平台动态裁剪，确保 asar 内不含其他平台资源
  *
  * 用法：
  *   node scripts/package.mjs              # 产出 Windows NSIS 安装包（x64）
@@ -23,23 +25,56 @@
  *   node scripts/package.mjs --mac --arch x64    # 仅 Intel
  *   node scripts/package.mjs --mac --arch arm64  # 仅 Apple Silicon
  *   node scripts/package.mjs --mac --dir         # 只产出 mac-unpacked
+ *
+ *   node scripts/package.mjs --linux             # 产出 Linux AppImage（x64）
+ *   node scripts/package.mjs --linux --dir       # 只产出 linux-unpacked
  */
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
-import { bundle, resolveTool, resolvePackageDir } from './bundle.mjs';
+import { fileURLToPath } from 'node:url';
+import { bundle, resolvePackageDir, resolveTool } from './bundle.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_DIR = path.resolve(HERE, '..');
 const REPO_ROOT = path.resolve(DESKTOP_DIR, '..', '..');
-// 允许用 MOZI_RELEASE_DIR 指定产物目录（便于在受限环境里输出到全新目录，
-// 避免 electron-builder 清空既有目录时的批量删除限制）。
+// 产物目录：固定使用 packages/desktop/release，每次构建前自动清理。
+// MOZI_RELEASE_DIR 仍可用于特殊场景覆盖。
+const DEFAULT_RELEASE_DIR = path.join(DESKTOP_DIR, 'release');
 const RELEASE_DIR = process.env.MOZI_RELEASE_DIR
   ? path.resolve(process.env.MOZI_RELEASE_DIR)
-  : path.join(DESKTOP_DIR, 'release');
+  : DEFAULT_RELEASE_DIR;
+
+/**
+ * 构建前清理产物目录，避免版本文件夹堆积。
+ * 如果旧目录被占用无法删除，则重命名到 _trash 后继续构建。
+ */
+function cleanReleaseDir() {
+  if (!fs.existsSync(RELEASE_DIR)) return;
+  try {
+    fs.rmSync(RELEASE_DIR, { recursive: true, force: true });
+    return;
+  } catch {
+    // 旧目录被占用（如 app.asar 被运行中的进程锁住），尝试重命名后让构建继续
+  }
+  const trashName = `${RELEASE_DIR}._trash_${Date.now()}`;
+  try {
+    fs.renameSync(RELEASE_DIR, trashName);
+    log(`旧产物目录被占用，已重命名到 ${path.basename(trashName)}（可手动删除）`);
+    // 尝试异步删除（可能仍失败，但不阻塞构建）
+    setTimeout(() => {
+      try {
+        fs.rmSync(trashName, { recursive: true, force: true });
+      } catch {
+        /* 留给用户手动删 */
+      }
+    }, 5000);
+  } catch {
+    // 重命名也失败，只能提示用户
+    log('⚠ 无法清理旧产物目录（文件被占用），请关闭运行中的 Mozi 后重试');
+    throw new Error(`无法清理 ${RELEASE_DIR}：文件被占用，请先关闭运行中的 Mozi`);
+  }
+}
 
 /**
  * 取一个干净的暂存目录。优先复用固定路径（便于排查）；
@@ -59,8 +94,13 @@ const argv = process.argv.slice(2);
 const DIR_ONLY = argv.includes('--dir');
 const SKIP_RENDERER = argv.includes('--skip-renderer');
 const BUILD_MAC = argv.includes('--mac');
+const BUILD_LINUX = argv.includes('--linux');
 
-// 解析 --arch 参数（仅 Mac 模式生效）
+// 确定目标平台与 electron-builder 平台标识
+const TARGET_PLATFORM = BUILD_MAC ? 'darwin' : BUILD_LINUX ? 'linux' : 'win32';
+const TARGET_LABEL = BUILD_MAC ? 'macOS' : BUILD_LINUX ? 'Linux' : 'Windows';
+
+// 解析 --arch 参数
 let MAC_ARCH = null; // null = 双架构
 const archIdx = argv.indexOf('--arch');
 if (archIdx !== -1 && archIdx + 1 < argv.length) {
@@ -82,12 +122,10 @@ function preflight() {
   );
   if (missing.length > 0) {
     throw new Error(
-      `缺少已构建的工作区包: ${missing.join(', ')}\n` +
-        `请先构建（逐包 tsc，勿用 tsc -b tsconfig.base.json）：\n` +
-        required.map((n) => `  tsc -p packages/${n}/tsconfig.json`).join('\n'),
+      `缺少已构建的工作区包: ${missing.join(', ')}\n请先构建（逐包 tsc，勿用 tsc -b tsconfig.base.json）：\n${required.map((n) => `  tsc -p packages/${n}/tsconfig.json`).join('\n')}`,
     );
   }
-  log('preflight OK — 工作区 dist 就绪');
+  log(`preflight OK — 目标平台: ${TARGET_LABEL}，工作区 dist 就绪`);
 }
 
 /** 2. 渲染进程构建（vite）。 */
@@ -105,36 +143,77 @@ function buildRenderer() {
   });
 }
 
-/** 3+4. 组装暂存目录。 */
+/**
+ * 3+4. 组装暂存目录 —— 按目标平台只复制本平台所需资源。
+ *
+ * 平台资源隔离矩阵：
+ *   win32:  icon.ico + icon.png   （ico 用于 exe/dll 图标，png 用于 asar 内通用资源）
+ *   darwin: icon.icns（若有）+ icon.png（若无 icns 则 png 充当 mac 图标）
+ *   linux:  icon.png
+ */
 function stage() {
+  // ── 通用产物（所有平台都需要）──
   const copies = [
     ['dist/main/index.cjs', 'dist/main/index.cjs'],
     ['dist/preload.cjs', 'dist/preload.cjs'],
     ['dist/renderer', 'dist/renderer'],
     ['dist/prompts', 'dist/prompts'],
-    ['build/icon.png', 'build/icon.png'],
-    ['build/icon.ico', 'build/icon.ico'],
   ];
 
-  // Mac 构建还需要 icon.icns（如果有的话）
-  const icnsPath = path.join(DESKTOP_DIR, 'build', 'icon.icns');
-  if (fs.existsSync(icnsPath)) {
-    copies.push(['build/icon.icns', 'build/icon.icns']);
+  // ── 平台特定图标资源 ──
+  const iconIco = path.join(DESKTOP_DIR, 'build', 'icon.ico');
+  const iconIcns = path.join(DESKTOP_DIR, 'build', 'icon.icns');
+  const iconPng = path.join(DESKTOP_DIR, 'build', 'icon.png');
+
+  if (TARGET_PLATFORM === 'win32') {
+    // Windows: 需要 ico（exe 图标）+ png（asar 内通用）
+    copies.push(['build/icon.ico', 'build/icon.ico']);
+    copies.push(['build/icon.png', 'build/icon.png']);
+  } else if (TARGET_PLATFORM === 'darwin') {
+    // macOS: 优先 icns，回退 png；不复制 ico
+    if (fs.existsSync(iconIcns)) {
+      copies.push(['build/icon.icns', 'build/icon.icns']);
+    }
+    copies.push(['build/icon.png', 'build/icon.png']);
+  } else {
+    // Linux: 只需 png
+    copies.push(['build/icon.png', 'build/icon.png']);
   }
 
   const stageDir = freshStageDir();
   for (const [from, to] of copies) {
     const src = path.join(DESKTOP_DIR, from);
-    if (!fs.existsSync(src)) throw new Error(`暂存失败：缺少 ${from}（请先运行 bundle / build:renderer）`);
+    if (!fs.existsSync(src))
+      throw new Error(`暂存失败：缺少 ${from}（请先运行 bundle / build:renderer）`);
     const dest = path.join(stageDir, to);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.cpSync(src, dest, { recursive: true });
   }
 
+  // ── 按平台裁剪 files 数组（控制 asar 内容）──
+  const baseFiles = [
+    'dist/main/index.cjs',
+    'dist/preload.cjs',
+    'dist/renderer/**/*',
+    'dist/prompts/**/*',
+    'package.json',
+  ];
+
+  const platformFiles = {
+    win32: [...baseFiles, 'build/icon.ico', 'build/icon.png'],
+    darwin: [
+      ...baseFiles,
+      fs.existsSync(iconIcns) ? 'build/icon.icns' : 'build/icon.png',
+      'build/icon.png',
+    ],
+    linux: [...baseFiles, 'build/icon.png'],
+  };
+
   const desktopPkg = JSON.parse(fs.readFileSync(path.join(DESKTOP_DIR, 'package.json'), 'utf8'));
   const rootPkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
   // 安装包版本取桌面包版本；若为占位的 0.0.0 则退回仓库根版本。
-  const version = desktopPkg.version && desktopPkg.version !== '0.0.0' ? desktopPkg.version : rootPkg.version;
+  const version =
+    desktopPkg.version && desktopPkg.version !== '0.0.0' ? desktopPkg.version : rootPkg.version;
 
   const stagedManifest = {
     name: 'mozi',
@@ -152,30 +231,39 @@ function stage() {
     'utf8',
   );
 
-  log(`暂存完成 -> ${path.relative(REPO_ROOT, stageDir)} (v${version})`);
-  return { stageDir, version, buildConfig: desktopPkg.build ?? {} };
+  log(`暂存完成 -> ${path.relative(REPO_ROOT, stageDir)} (v${version}, ${TARGET_LABEL})`);
+  return {
+    stageDir,
+    version,
+    buildConfig: desktopPkg.build ?? {},
+    platformFiles: platformFiles[TARGET_PLATFORM],
+  };
 }
 
 /**
- * 5. electron-builder。
+ * 5. electron-builder —— 按目标平台选择构建器。
  *
  * Windows: 产出 NSIS 安装包（x64）。
  * macOS:   产出 DMG 安装包（x64 + arm64 或指定单一架构）。
  *          macOS 构建需要在 macOS 环境运行（或 CI runner），
  *          electron-builder 会自动下载对应架构的 Electron 二进制。
+ * Linux:   产出 AppImage（x64）。
  */
 async function runBuilder(staged) {
   const eb = require(resolveTool('electron-builder'));
-  const { stageDir, buildConfig } = staged;
+  const { stageDir, buildConfig, platformFiles } = staged;
 
   if (BUILD_MAC) {
-    return runMacBuilder(eb, stageDir, buildConfig);
+    return runMacBuilder(eb, stageDir, buildConfig, platformFiles);
   }
-  return runWinBuilder(eb, stageDir, buildConfig);
+  if (BUILD_LINUX) {
+    return runLinuxBuilder(eb, stageDir, buildConfig, platformFiles);
+  }
+  return runWinBuilder(eb, stageDir, buildConfig, platformFiles);
 }
 
 /** Windows NSIS 打包。 */
-async function runWinBuilder(eb, stageDir, buildConfig) {
+async function runWinBuilder(eb, stageDir, buildConfig, platformFiles) {
   const electronDist = path.join(DESKTOP_DIR, 'node_modules', 'electron', 'dist');
   if (!fs.existsSync(path.join(electronDist, 'electron.exe'))) {
     throw new Error(`未找到本地 Electron 运行时：${electronDist}`);
@@ -193,6 +281,8 @@ async function runWinBuilder(eb, stageDir, buildConfig) {
     publish: 'never',
     config: {
       ...buildConfig,
+      // 按平台裁剪 asar 内容：只含 Windows 资源
+      files: platformFiles,
       // 复用本地已下载的 Electron，避免联网重新下载。
       electronDist,
       npmRebuild: false,
@@ -206,7 +296,7 @@ async function runWinBuilder(eb, stageDir, buildConfig) {
 }
 
 /** macOS DMG 打包（Intel x64 + Apple Silicon arm64）。 */
-async function runMacBuilder(eb, stageDir, buildConfig) {
+async function runMacBuilder(eb, stageDir, buildConfig, platformFiles) {
   // macOS 构建需要在 macOS 上运行
   if (process.platform !== 'darwin') {
     log('⚠ 当前非 macOS 环境，electron-builder 将尝试交叉构建。');
@@ -220,15 +310,15 @@ async function runMacBuilder(eb, stageDir, buildConfig) {
 
   const macConfig = {
     ...buildConfig,
+    // 按平台裁剪 asar 内容：只含 macOS 资源
+    files: platformFiles,
     mac: {
       ...(buildConfig.mac ?? {}),
       icon: fs.existsSync(path.join(stageDir, 'build', 'icon.icns'))
         ? 'build/icon.icns'
         : 'build/icon.png',
-      target: DIR_ONLY
-        ? [{ target: 'dir', arch: archs }]
-        : [{ target: 'dmg', arch: archs }],
-      // artifactName 由 package.json build.mac.artifactName 提供（${productName}-${version}-${arch}.${ext}）
+      target: DIR_ONLY ? [{ target: 'dir', arch: archs }] : [{ target: 'dmg', arch: archs }],
+      // artifactName 由 package.json build.mac.artifactName 提供
       category: 'public.app-category.developer-tools',
       hardenedRuntime: true,
       gatekeeperAssess: false,
@@ -256,27 +346,72 @@ async function runMacBuilder(eb, stageDir, buildConfig) {
   });
 }
 
+/** Linux AppImage 打包（x64）。 */
+async function runLinuxBuilder(eb, stageDir, buildConfig, platformFiles) {
+  if (process.platform === 'win32') {
+    log('⚠ 当前为 Windows 环境，Linux 构建可能需要 Docker 或 CI runner。');
+    log('  建议在 Linux 机器上运行：node scripts/package.mjs --linux');
+  }
+
+  log('构建 Linux AppImage（x64）…');
+
+  const linuxConfig = {
+    ...buildConfig,
+    // 按平台裁剪 asar 内容：只含 Linux 资源
+    files: platformFiles,
+    linux: {
+      ...(buildConfig.linux ?? {}),
+      icon: 'build/icon.png',
+      target: DIR_ONLY
+        ? [{ target: 'dir', arch: ['x64'] }]
+        : [{ target: 'AppImage', arch: ['x64'] }],
+      artifactName: '${productName}-${version}-${arch}.${ext}',
+      category: 'Development',
+    },
+    npmRebuild: false,
+    nodeGypRebuild: false,
+    directories: {
+      output: RELEASE_DIR,
+      buildResources: path.join(stageDir, 'build'),
+    },
+  };
+
+  const targets = DIR_ONLY
+    ? eb.Platform.LINUX.createTarget('dir', eb.Arch.x64)
+    : eb.Platform.LINUX.createTarget(['AppImage'], eb.Arch.x64);
+
+  await eb.build({
+    projectDir: stageDir,
+    targets,
+    publish: 'never',
+    config: linuxConfig,
+  });
+}
+
 function report() {
   log(`产物目录: ${path.relative(REPO_ROOT, RELEASE_DIR)}`);
   if (!fs.existsSync(RELEASE_DIR)) return;
   for (const entry of fs.readdirSync(RELEASE_DIR)) {
     const full = path.join(RELEASE_DIR, entry);
-    if (fs.statSync(full).isFile() && /\.(exe|dmg)$/i.test(entry)) {
+    if (fs.statSync(full).isFile() && /\.(exe|dmg|AppImage)$/i.test(entry)) {
       log(`  ${entry}  (${(fs.statSync(full).size / 1024 / 1024).toFixed(1)} MB)`);
     }
   }
 }
 
 async function main() {
+  cleanReleaseDir();
   preflight();
   buildRenderer();
-  await bundle();
+  // 按目标平台条件编译（esbuild conditions）
+  log(`esbuild 条件编译 (platform:${TARGET_PLATFORM})…`);
+  await bundle({ targetPlatform: TARGET_PLATFORM });
   const staged = stage();
   await runBuilder(staged);
   report();
 }
 
 main().catch((err) => {
-  console.error('[package] FAILED:', err && err.stack ? err.stack : err);
+  console.error('[package] FAILED:', err?.stack ? err.stack : err);
   process.exit(1);
 });

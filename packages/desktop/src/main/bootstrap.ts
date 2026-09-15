@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 /**
  * Electron 自启动引导（补全 M10：让 `pnpm electron` / `electron .` 真正拉起窗口）。
  *
@@ -6,20 +8,38 @@
  * 这里通过最小接口延迟绑定 electron，不依赖 electron 的类型副作用（electron 作为
  * optionalDependency 安装，类型可能离线缺失，故用 `as unknown as ElectronModule` 桥接）。
  */
-import { app, BrowserWindow, desktopCapturer, ipcMain, safeStorage, screen } from 'electron';
-import fs from 'node:fs';
-import path from 'node:path';
-import { boot, type ElectronModule } from './electron-main.js';
+import {
+  BrowserWindow,
+  Menu,
+  Tray,
+  app,
+  desktopCapturer,
+  dialog,
+  ipcMain,
+  nativeImage,
+  safeStorage,
+  screen,
+  webContents,
+} from 'electron';
+import { type ElectronModule, boot } from './electron-main.js';
 
 /** 把运行期 electron 适配为 ElectronModule 最小接口。 */
 const electron = {
   app,
   BrowserWindow,
+  Menu,
+  // 系统托盘（§10.7）：漏注入会导致 closeBehavior='tray' 时托盘永远不创建。
+  Tray,
+  nativeImage,
   ipcMain,
   ...(safeStorage ? { safeStorage } : {}),
   // 输入栏"截图"按钮依赖屏幕捕获；缺失时桥接层会给出明确错误而非静默失败。
   ...(desktopCapturer ? { desktopCapturer } : {}),
   ...(screen ? { screen } : {}),
+  // 新建任务时选择本地文件夹作为 workspace（原生目录选择框）。
+  ...(dialog ? { dialog } : {}),
+  // 任务浏览器面板：按 id 查找 <webview> 的 guest webContents（BrowserRegistry 接管）。
+  ...(webContents ? { webContents } : {}),
 } as unknown as ElectronModule;
 
 // 资源路径一律以「应用根目录」为锚点解析：`electron .`（dev）与打包后

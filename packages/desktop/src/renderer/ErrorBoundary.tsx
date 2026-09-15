@@ -18,13 +18,23 @@ export class ErrorBoundary extends React.Component<
 
   render(): React.ReactNode {
     if (this.state.error) {
-      return React.createElement('pre', {
-        style: {
-          padding: '20px', color: '#f85149', background: '#0d1117',
-          fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap',
-          overflow: 'auto', height: '100vh', margin: 0,
+      return React.createElement(
+        'pre',
+        {
+          style: {
+            padding: '20px',
+            color: '#f85149',
+            background: '#0d1117',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto',
+            height: '100vh',
+            margin: 0,
+          },
         },
-      }, this.state.error);
+        this.state.error,
+      );
     }
     return this.props.children;
   }

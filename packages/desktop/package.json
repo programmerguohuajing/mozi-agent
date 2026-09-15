@@ -24,7 +24,8 @@
     "package:dir": "node scripts/package.mjs --dir",
     "package:mac": "node scripts/package.mjs --mac",
     "package:mac:intel": "node scripts/package.mjs --mac --arch x64",
-    "package:mac:silicon": "node scripts/package.mjs --mac --arch arm64"
+    "package:mac:silicon": "node scripts/package.mjs --mac --arch arm64",
+    "package:linux": "node scripts/package.mjs --linux"
   },
   "dependencies": {
     "@mozi/shared": "workspace:*",
@@ -58,7 +59,6 @@
       "dist/preload.cjs",
       "dist/renderer/**/*",
       "dist/prompts/**/*",
-      "build/icon.png",
       "package.json"
     ],
     "win": {
@@ -97,7 +97,14 @@
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": ["AppImage"]
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "category": "Development"
     }
   }
 }

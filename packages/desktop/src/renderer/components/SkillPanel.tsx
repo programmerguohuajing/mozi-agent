@@ -38,7 +38,9 @@ export interface SkillPanelProps {
 }
 
 const CATEGORY_LABELS: Record<SkillInfo['category'], string> = {
-  builtin: 'builtin', custom: 'custom', imported: 'imported',
+  builtin: 'builtin',
+  custom: 'custom',
+  imported: 'imported',
 };
 
 const CATEGORY_ICONS: Record<SkillInfo['category'], string> = {
@@ -48,7 +50,8 @@ const CATEGORY_ICONS: Record<SkillInfo['category'], string> = {
 };
 
 export function SkillPanel(props: SkillPanelProps): React.ReactElement {
-  const { t } = useApp();  const [filter, setFilter] = React.useState<SkillInfo['category'] | 'all'>('all');
+  const { t } = useApp();
+  const [filter, setFilter] = React.useState<SkillInfo['category'] | 'all'>('all');
   const [showImport, setShowImport] = React.useState(false);
   const [importJson, setImportJson] = React.useState('');
   const [importError, setImportError] = React.useState<string | null>(null);
@@ -56,16 +59,24 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
 
   const filtered = props.skills.filter((s) => {
     if (filter !== 'all' && s.category !== filter) return false;
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) &&
-        !s.description.toLowerCase().includes(search.toLowerCase()) &&
-        !s.triggers.some((tr) => tr.toLowerCase().includes(search.toLowerCase()))) return false;
+    if (
+      search &&
+      !s.name.toLowerCase().includes(search.toLowerCase()) &&
+      !s.description.toLowerCase().includes(search.toLowerCase()) &&
+      !s.triggers.some((tr) => tr.toLowerCase().includes(search.toLowerCase()))
+    )
+      return false;
     return true;
   });
 
   const byCategory = filtered.reduce<Record<string, SkillInfo[]>>((acc, s) => {
     const key = s.category;
     const list = acc[key];
-    if (list) { list.push(s); } else { acc[key] = [s]; }
+    if (list) {
+      list.push(s);
+    } else {
+      acc[key] = [s];
+    }
     return acc;
   }, {});
 
@@ -115,7 +126,9 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
           <div className="skill-import-divider">{t('skills.import.jsonPlaceholder')}</div>
           <textarea
             className="skill-import-textarea"
-            placeholder={'{\n  "name": "my-skill",\n  "description": "技能描述",\n  "triggers": ["关键词1"],\n  ...\n}'}
+            placeholder={
+              '{\n  "name": "my-skill",\n  "description": "技能描述",\n  "triggers": ["关键词1"],\n  ...\n}'
+            }
             value={importJson}
             onChange={(e) => setImportJson(e.target.value)}
           />
@@ -158,7 +171,12 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
           <span className="skill-stat-label">已启用</span>
         </div>
         <div className="skill-stat">
-          <span className="skill-stat-value">{props.skills.filter((s) => s.category === 'custom' || s.category === 'imported').length}</span>
+          <span className="skill-stat-value">
+            {
+              props.skills.filter((s) => s.category === 'custom' || s.category === 'imported')
+                .length
+            }
+          </span>
           <span className="skill-stat-label">自定义</span>
         </div>
       </div>
@@ -168,7 +186,9 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
         {filtered.length === 0 ? (
           <div className="skill-empty">
             <div className="empty-state-icon">🧩</div>
-            <div className="empty-state-text">{search || filter !== 'all' ? t('skills.empty.noMatch') : t('skills.empty.title')}</div>
+            <div className="empty-state-text">
+              {search || filter !== 'all' ? t('skills.empty.noMatch') : t('skills.empty.title')}
+            </div>
             <div className="empty-state-hint">{t('skills.empty.hint')}</div>
           </div>
         ) : (
@@ -181,12 +201,18 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
               </div>
               <div className="skill-cards">
                 {skills.map((skill) => (
-                  <div key={skill.id} className={`skill-card ${skill.enabled ? 'enabled' : 'disabled'}`}>
+                  <div
+                    key={skill.id}
+                    className={`skill-card ${skill.enabled ? 'enabled' : 'disabled'}`}
+                  >
                     <div className="skill-card-top">
                       <div className="skill-card-icon">{skill.icon ?? '🧩'}</div>
                       <div className="skill-card-info">
-                        <div className="skill-card-name">{skill.name}
-                          {skill.version ? <span className="skill-card-version">v{skill.version}</span> : null}
+                        <div className="skill-card-name">
+                          {skill.name}
+                          {skill.version ? (
+                            <span className="skill-card-version">v{skill.version}</span>
+                          ) : null}
                         </div>
                         <div className="skill-card-desc">{skill.description}</div>
                       </div>
@@ -196,18 +222,24 @@ export function SkillPanel(props: SkillPanelProps): React.ReactElement {
                           checked={skill.enabled}
                           onChange={() => props.onToggle(skill.id)}
                         />
-                        <span className="skill-toggle-slider"></span>
+                        <span className="skill-toggle-slider" />
                       </label>
                     </div>
                     <div className="skill-card-bottom">
                       <div className="skill-triggers">
                         {skill.triggers.map((t) => (
-                          <span key={t} className="skill-trigger-tag">{t}</span>
+                          <span key={t} className="skill-trigger-tag">
+                            {t}
+                          </span>
                         ))}
                       </div>
                       <div className="skill-card-actions">
-                        {skill.source ? <span className="skill-source" title={skill.source}>{skill.source}</span> : null}
-                        {(skill.category === 'custom' || skill.category === 'imported') ? (
+                        {skill.source ? (
+                          <span className="skill-source" title={skill.source}>
+                            {skill.source}
+                          </span>
+                        ) : null}
+                        {skill.category === 'custom' || skill.category === 'imported' ? (
                           <button
                             className="skill-delete-btn"
                             title="删除技能"

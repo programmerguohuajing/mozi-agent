@@ -36,7 +36,9 @@ export function buildMoziApi(el: PreloadElectron): {
   on: (channel: string, listener: (payload: unknown) => void) => () => void;
   versions: { app: string; electron: string; node: string; chrome: string };
 } {
-  const invoke = createPreloadInvoker((channel, payload) => el.ipcRenderer.invoke(channel, payload));
+  const invoke = createPreloadInvoker((channel, payload) =>
+    el.ipcRenderer.invoke(channel, payload),
+  );
 
   const rawOn = (channel: string, listener: (payload: unknown) => void): (() => void) => {
     const wrapped = (_event: unknown, payload: unknown): void => listener(payload);
@@ -50,9 +52,9 @@ export function buildMoziApi(el: PreloadElectron): {
     on,
     versions: {
       app: '0.0.0',
-      electron: el.process.versions['electron'] ?? '',
-      node: el.process.versions['node'] ?? '',
-      chrome: el.process.versions['chrome'] ?? '',
+      electron: el.process.versions.electron ?? '',
+      node: el.process.versions.node ?? '',
+      chrome: el.process.versions.chrome ?? '',
     },
   };
 }

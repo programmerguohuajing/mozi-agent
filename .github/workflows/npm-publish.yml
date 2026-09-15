@@ -1,0 +1,69 @@
+name: Publish CLI
+
+# 发布 release 版本时将 CLI（mozi 包）发布到 npm。
+#   - GitHub Release 发布（tag 形如 v1.2.3）→ 自动从 tag 提取版本号
+#   - workflow_dispatch 手动触发 → 需填入版本号
+#
+# 产物为 esbuild 自包含单文件（dist/index.js）+ 提示词资源（dist/prompts/），
+# 安装后零运行时依赖（@mozi/* 与 commander 均已内联）。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'CLI 版本号（如 0.1.0，不含 v 前缀）'
+        required: true
+
+concurrency: publish-cli-${{ github.ref }}
+
+jobs:
+  publish:
+    name: Bundle & publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Bundle CLI (esbuild → self-contained ESM)
+        run: node apps/cli/scripts/bundle.mjs
+
+      - name: Set version & strip workspace dependencies
+        run: |
+          echo "Publishing mozi@$VERSION"
+          node -e "
+            const fs = require('fs');
+            const p = require('./apps/cli/package.json');
+            p.version = process.env.VERSION.replace(/^v/, '');
+            p.dependencies = {};
+            fs.writeFileSync('apps/cli/package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+        env:
+          VERSION: ${{ github.event.release.tag_name || github.event.inputs.version }}
+
+      - name: Publish to npm
+        run: npm publish --access public
+        working-directory: apps/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,4 +1,3 @@
-﻿#!/usr/bin/env node
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,17 +8,19 @@ import {
   autoApproveGateway,
   createEngine,
 } from '@mozi/core';
+import { nextRunAt } from '@mozi/core';
 import { OpenAICompatibleProvider, ProviderRegistry, ScriptedProvider } from '@mozi/providers';
 import type { AgentEvent, ApprovalReason } from '@mozi/shared';
 import type { PolicyMode } from '@mozi/shared';
+import { listSnapshots, undoLast } from '@mozi/tools';
 /**
  * mozi CLI 入口（M1 最小集）：commander + 朴素 readline REPL + `mozi exec --json` 非交互模式。
  * Ink 富交互 UI 为 M2+；本文件只做事件流消费与审批应答，不含业务逻辑。
  */
 import { Command } from 'commander';
-import { listSnapshots, undoLast } from '@mozi/tools';
-import { nextRunAt } from '@mozi/core';
+import { registerRemoteCommands, serve } from './remote.js';
 import {
+  registerTaskCommands,
   taskAdd,
   taskDoctor,
   taskGc,
@@ -28,9 +29,7 @@ import {
   taskRun,
   taskSetEnabled,
   taskTick,
-  registerTaskCommands,
 } from './task.js';
-import { registerRemoteCommands, serve } from './remote.js';
 
 const HOME = os.homedir();
 const SESSION_DIR = process.env.MOZI_SESSION_DIR ?? path.join(HOME, '.mozi', 'sessions');
@@ -119,13 +118,18 @@ function renderEvent(ev: AgentEvent): void {
       );
       break;
     case 'subagent.started':
-      console.log(`\n◐ ${ev.subSessionId.split('/').pop()} [${ev.agentType}] ${short(ev.prompt, 80)}`);
+      console.log(
+        `\n◐ ${ev.subSessionId.split('/').pop()} [${ev.agentType}] ${short(ev.prompt, 80)}`,
+      );
       break;
     case 'subagent.queued':
       console.log(`  ● 子智能体排队中（第 ${ev.queuePosition} 位）`);
       break;
     case 'subagent.progress':
-      if (ev.currentTool) console.log(`    · ${ev.maxSteps ? `step ${ev.step}/${ev.maxSteps} ` : ''}${ev.currentTool}`);
+      if (ev.currentTool)
+        console.log(
+          `    · ${ev.maxSteps ? `step ${ev.step}/${ev.maxSteps} ` : ''}${ev.currentTool}`,
+        );
       break;
     case 'subagent.approval.required':
       console.log(`\n⚠ [子智能体 ${ev.agentType}] 请求执行: ${ev.call.name}`);
@@ -212,7 +216,9 @@ async function runRepl(): Promise<void> {
       console.log(`\n⚠ ${prefix} 需要批准: ${call.name}（命令风险分析）`);
       for (const seg of r.segments) {
         const mark = seg.color === 'red' ? '✗' : seg.color === 'yellow' ? '⚠' : '·';
-        console.log(`  ${mark} [${seg.risk}] ${seg.text}${seg.matchedRule ? ` (${seg.matchedRule})` : ''}`);
+        console.log(
+          `  ${mark} [${seg.risk}] ${seg.text}${seg.matchedRule ? ` (${seg.matchedRule})` : ''}`,
+        );
       }
     } else if (r.kind === 'policy') {
       console.log(`\n⚠ ${prefix} 需要批准: ${call.name} — ${r.detail} [${r.ruleId}]`);
@@ -245,7 +251,9 @@ async function runRepl(): Promise<void> {
       (p) => fs.rmSync(path.resolve(p), { force: true }),
     );
     if (restored?.length) {
-      console.log(`已撤销 ${restored.length} 个文件的修改：\n${restored.map((p) => `  ${p}`).join('\n')}`);
+      console.log(
+        `已撤销 ${restored.length} 个文件的修改：\n${restored.map((p) => `  ${p}`).join('\n')}`,
+      );
     } else {
       console.log('无可撤销的修改。');
     }
@@ -282,7 +290,11 @@ program
   .argument('[prompt...]', '任务描述；省略则进入交互 REPL')
   .option('--json', '以 NDJSON 输出事件流（非交互）')
   .option('--session <id>', '会话 ID（用于 resume）')
-  .option('--policy-mode <mode>', '审批模式: readonly | auto | full-auto（task 子命令的 --policy 用于无人值守策略）', 'auto')
+  .option(
+    '--policy-mode <mode>',
+    '审批模式: readonly | auto | full-auto（task 子命令的 --policy 用于无人值守策略）',
+    'auto',
+  )
   .option('--yes', '非交互模式下自动批准所有需要审批的工具调用')
   .action(
     async (

@@ -5,18 +5,18 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ProviderRegistry, ScriptedProvider } from '@mozi/providers';
 import {
+  type MissedPolicy,
+  type Schedule,
   TaskLocks,
   TaskScheduler,
+  type TaskSpec,
   TaskStore,
   newTaskId,
   nextRunAt,
   validateTaskConfig,
-  type MissedPolicy,
-  type Schedule,
-  type TaskSpec,
 } from '@mozi/core';
+import { ProviderRegistry, ScriptedProvider } from '@mozi/providers';
 import { OpenAICompatibleProvider } from '@mozi/providers';
 
 export const HOME = os.homedir();
@@ -118,7 +118,8 @@ export function taskAdd(args: TaskAddArgs): TaskSpec {
   };
 
   const check = validateTaskConfig(spec.config);
-  if (!check.ok) throw new Error(`任务配置校验失败：\n${check.errors.map((e) => `  - ${e}`).join('\n')}`);
+  if (!check.ok)
+    throw new Error(`任务配置校验失败：\n${check.errors.map((e) => `  - ${e}`).join('\n')}`);
   const store = new TaskStore(TASKS_FILE);
   store.add(spec);
   return spec;
@@ -150,7 +151,9 @@ export async function taskRun(id: string, now = false): Promise<void> {
   if (result.locked) {
     console.error('tick 锁被占用（另一调度进程正在运行），跳过本次 tick。');
   }
-  console.log(`tick：触发 ${result.triggered}，跳过 overlap ${result.skippedOverlap}，补跑 ${result.missed}，停用 ${result.disabled}`);
+  console.log(
+    `tick：触发 ${result.triggered}，跳过 overlap ${result.skippedOverlap}，补跑 ${result.missed}，停用 ${result.disabled}`,
+  );
 }
 
 export async function taskTick(quiet = false): Promise<number> {
@@ -161,7 +164,9 @@ export async function taskTick(quiet = false): Promise<number> {
     console.log('tick 锁被占用，跳过（另一触发源正在运行）。');
     return 0;
   }
-  console.log(`tick 完成：触发 ${result.triggered} 个任务，补跑 ${result.missed} 次，跳过 overlap ${result.skippedOverlap.length}`);
+  console.log(
+    `tick 完成：触发 ${result.triggered} 个任务，补跑 ${result.missed} 次，跳过 overlap ${result.skippedOverlap.length}`,
+  );
   return result.triggered.length;
 }
 
@@ -172,14 +177,22 @@ export async function taskDoctor(): Promise<number> {
   const lines: string[] = ['[mozi task doctor]'];
   lines.push(`- tasks.json：${TASKS_FILE}（${tasks.length} 个任务）`);
   for (const t of tasks) {
-    const next = t.state.nextRunAt ? new Date(t.state.nextRunAt) : nextRunAt(t.schedule, new Date());
-    lines.push(`  · ${t.id} ${t.enabled ? 'enabled' : 'DISABLED'} 下次=${next.toISOString()} 连续失败=${t.state.consecutiveFailures} 上次=${t.state.lastStatus ?? '-'}`);
+    const next = t.state.nextRunAt
+      ? new Date(t.state.nextRunAt)
+      : nextRunAt(t.schedule, new Date());
+    lines.push(
+      `  · ${t.id} ${t.enabled ? 'enabled' : 'DISABLED'} 下次=${next.toISOString()} 连续失败=${t.state.consecutiveFailures} 上次=${t.state.lastStatus ?? '-'}`,
+    );
   }
   for (const name of ['tick']) {
     const info = locks.info(name);
-    lines.push(`锁 ${name}：${info.held ? `被 pid=${info.holder?.pid} 持有` : info.stale ? '僵尸锁（可抢占）' : '空闲'}`);
+    lines.push(
+      `锁 ${name}：${info.held ? `被 pid=${info.holder?.pid} 持有` : info.stale ? '僵尸锁（可抢占）' : '空闲'}`,
+    );
   }
-  lines.push(`运行记录：${fs.existsSync(RUNS_DIR) ? fs.readdirSync(RUNS_DIR).length + ' 个任务目录' : '无'}`);
+  lines.push(
+    `运行记录：${fs.existsSync(RUNS_DIR) ? `${fs.readdirSync(RUNS_DIR).length} 个任务目录` : '无'}`,
+  );
   console.log(lines.join('\n'));
   return 0;
 }
@@ -272,39 +285,53 @@ export function registerTaskCommands(program: import('commander').Command): void
       }
     });
 
-  task.command('list').description('列出全部任务').action(() => {
-    const tasks = taskList();
-    if (!tasks.length) {
-      console.log('（无任务）');
-      return;
-    }
-    for (const t of tasks) {
-      const next = t.state.nextRunAt ? new Date(t.state.nextRunAt) : nextRunAt(t.schedule, new Date());
-      console.log(
-        `${t.id}  ${t.enabled ? '✓' : '✗'}  ${t.name.padEnd(16)} 下次=${next.toISOString().slice(0, 16)}  上次=${t.state.lastStatus ?? '-'}  连续失败=${t.state.consecutiveFailures}`,
-      );
-    }
-  });
+  task
+    .command('list')
+    .description('列出全部任务')
+    .action(() => {
+      const tasks = taskList();
+      if (!tasks.length) {
+        console.log('（无任务）');
+        return;
+      }
+      for (const t of tasks) {
+        const next = t.state.nextRunAt
+          ? new Date(t.state.nextRunAt)
+          : nextRunAt(t.schedule, new Date());
+        console.log(
+          `${t.id}  ${t.enabled ? '✓' : '✗'}  ${t.name.padEnd(16)} 下次=${next.toISOString().slice(0, 16)}  上次=${t.state.lastStatus ?? '-'}  连续失败=${t.state.consecutiveFailures}`,
+        );
+      }
+    });
 
-  task.command('rm <id>').description('删除任务').action((id: string) => {
-    if (taskRemove(id)) console.log(`已删除 ${id}`);
-    else {
-      console.error(`任务不存在：${id}`);
-      process.exitCode = 1;
-    }
-  });
+  task
+    .command('rm <id>')
+    .description('删除任务')
+    .action((id: string) => {
+      if (taskRemove(id)) console.log(`已删除 ${id}`);
+      else {
+        console.error(`任务不存在：${id}`);
+        process.exitCode = 1;
+      }
+    });
 
-  task.command('enable <id>').description('启用任务').action((id: string) => {
-    const t = taskSetEnabled(id, true);
-    if (t) console.log(`已启用 ${id}`);
-    else process.exitCode = 1;
-  });
+  task
+    .command('enable <id>')
+    .description('启用任务')
+    .action((id: string) => {
+      const t = taskSetEnabled(id, true);
+      if (t) console.log(`已启用 ${id}`);
+      else process.exitCode = 1;
+    });
 
-  task.command('disable <id>').description('暂停任务（保留配置）').action((id: string) => {
-    const t = taskSetEnabled(id, false);
-    if (t) console.log(`已暂停 ${id}`);
-    else process.exitCode = 1;
-  });
+  task
+    .command('disable <id>')
+    .description('暂停任务（保留配置）')
+    .action((id: string) => {
+      const t = taskSetEnabled(id, false);
+      if (t) console.log(`已暂停 ${id}`);
+      else process.exitCode = 1;
+    });
 
   task
     .command('run <id>')
@@ -328,9 +355,15 @@ export function registerTaskCommands(program: import('commander').Command): void
       if (opts.quiet) process.exitCode = n ? 0 : 0;
     });
 
-  task.command('doctor').description('调度自检（OS 注册/锁健康/任务清单）').action(async () => {
-    await taskDoctor();
-  });
+  task
+    .command('doctor')
+    .description('调度自检（OS 注册/锁健康/任务清单）')
+    .action(async () => {
+      await taskDoctor();
+    });
 
-  task.command('gc').description('清理孤儿 worktree 与临时产物').action(() => taskGc());
+  task
+    .command('gc')
+    .description('清理孤儿 worktree 与临时产物')
+    .action(() => taskGc());
 }

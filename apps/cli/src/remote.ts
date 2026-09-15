@@ -5,13 +5,17 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DeviceRegistry, PairingService, type DeviceRecord } from '@mozi/protocol';
+import { type DeviceRecord, DeviceRegistry, PairingService } from '@mozi/protocol';
 
-const DEVICES_FILE = process.env.MOZI_DEVICES_FILE ?? path.join(os.homedir(), '.mozi', 'devices.json');
+const DEVICES_FILE =
+  process.env.MOZI_DEVICES_FILE ?? path.join(os.homedir(), '.mozi', 'devices.json');
 const NODE_ID = 'mozi-node';
 
 /** 文件式注册表 IO（原子写）。 */
-export function fileRegistryIO(file: string): { load(): DeviceRecord[]; save(r: DeviceRecord[]): void } {
+export function fileRegistryIO(file: string): {
+  load(): DeviceRecord[];
+  save(r: DeviceRecord[]): void;
+} {
   return {
     load(): DeviceRecord[] {
       try {
@@ -75,37 +79,49 @@ export async function serve(opts: { port?: number; lan?: boolean; relay?: string
 export function registerRemoteCommands(program: import('commander').Command): void {
   const remote = program.command('device').description('远程设备与配对（M4.75）');
 
-  remote.command('pair').description('生成配对码（5 分钟有效，单次使用）').action(() => {
-    const { code, ttlMs } = pairDevice();
-    console.log(`配对码：${code}（${Math.round(ttlMs / 60_000)} 分钟有效，单次使用）`);
-  });
+  remote
+    .command('pair')
+    .description('生成配对码（5 分钟有效，单次使用）')
+    .action(() => {
+      const { code, ttlMs } = pairDevice();
+      console.log(`配对码：${code}（${Math.round(ttlMs / 60_000)} 分钟有效，单次使用）`);
+    });
 
-  remote.command('list').description('设备列表').action(() => {
-    const devices = deviceList();
-    if (!devices.length) {
-      console.log('（无设备）');
-      return;
-    }
-    for (const d of devices) {
-      console.log(
-        `${d.deviceId}  ${d.name.padEnd(16)} ${d.platform.padEnd(8)} approve=${d.permissions.approveRequests} 最近在线=${d.lastSeenAt ?? '-'}${d.revokedAt ? '（已吊销）' : ''}`,
-      );
-    }
-  });
+  remote
+    .command('list')
+    .description('设备列表')
+    .action(() => {
+      const devices = deviceList();
+      if (!devices.length) {
+        console.log('（无设备）');
+        return;
+      }
+      for (const d of devices) {
+        console.log(
+          `${d.deviceId}  ${d.name.padEnd(16)} ${d.platform.padEnd(8)} approve=${d.permissions.approveRequests} 最近在线=${d.lastSeenAt ?? '-'}${d.revokedAt ? '（已吊销）' : ''}`,
+        );
+      }
+    });
 
-  remote.command('revoke <id>').description('吊销设备（立即失效）').action((id: string) => {
-    if (deviceRevoke(id)) console.log(`已吊销 ${id}`);
-    else {
-      console.error(`设备不存在：${id}`);
-      process.exitCode = 1;
-    }
-  });
+  remote
+    .command('revoke <id>')
+    .description('吊销设备（立即失效）')
+    .action((id: string) => {
+      if (deviceRevoke(id)) console.log(`已吊销 ${id}`);
+      else {
+        console.error(`设备不存在：${id}`);
+        process.exitCode = 1;
+      }
+    });
 
-  remote.command('rename <id> <name>').description('重命名设备').action((id: string, name: string) => {
-    if (deviceRename(id, name)) console.log(`已重命名 ${id} → ${name}`);
-    else {
-      console.error(`设备不存在：${id}`);
-      process.exitCode = 1;
-    }
-  });
+  remote
+    .command('rename <id> <name>')
+    .description('重命名设备')
+    .action((id: string, name: string) => {
+      if (deviceRename(id, name)) console.log(`已重命名 ${id} → ${name}`);
+      else {
+        console.error(`设备不存在：${id}`);
+        process.exitCode = 1;
+      }
+    });
 }

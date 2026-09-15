@@ -5,14 +5,21 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "mozi": "./dist/index.js"
+    "mozi": "./dist/index.cjs"
+  },
+  "files": ["dist/index.cjs", "dist/prompts"],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts"
+    "bundle": "node scripts/bundle.mjs",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@mozi/core": "workspace:*",
+    "@mozi/protocol": "workspace:*",
     "@mozi/shared": "workspace:*",
     "@mozi/providers": "workspace:*",
     "@mozi/tools": "workspace:*",

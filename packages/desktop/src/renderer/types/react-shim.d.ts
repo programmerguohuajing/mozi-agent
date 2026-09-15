@@ -80,10 +80,14 @@ declare module 'react' {
   export type MouseEvent<T> = React.MouseEvent<T>;
 
   export function useState<T>(initial: T | (() => T)): [T, (v: T | ((prev: T) => T)) => void];
-  export function useEffect(effect: () => void | (() => void), deps?: unknown[]): void;
+  export function useEffect(effect: () => undefined | (() => void), deps?: unknown[]): void;
   export function useMemo<T>(factory: () => T, deps: unknown[]): T;
   export function useRef<T>(initial: T | null): React.RefObject<T>;
-  export function createElement(type: unknown, props?: unknown, ...children: unknown[]): ReactElement;
+  export function createElement(
+    type: unknown,
+    props?: unknown,
+    ...children: unknown[]
+  ): ReactElement;
 
   export interface FC<P = Record<string, unknown>> {
     (props: P): ReactElement | null;
@@ -101,7 +105,10 @@ declare module 'react/jsx-runtime' {
 
 declare module 'react-dom/client' {
   import type { ReactElement } from 'react';
-  export function createRoot(container: Element): { render(el: ReactElement): void; unmount(): void };
+  export function createRoot(container: Element): {
+    render(el: ReactElement): void;
+    unmount(): void;
+  };
 }
 
 declare namespace JSX {
@@ -143,11 +150,34 @@ declare namespace JSX {
     select: React.SelectHTMLAttributes<HTMLSelectElement>;
     option: React.HTMLAttributes<HTMLOptionElement> & { value?: string | number };
     form: React.HTMLAttributes<HTMLFormElement>;
-    svg: React.HTMLAttributes<SVGSVGElement> & { viewBox?: string; width?: number | string; height?: number | string };
+    svg: React.HTMLAttributes<SVGSVGElement> & {
+      viewBox?: string;
+      width?: number | string;
+      height?: number | string;
+    };
     g: React.HTMLAttributes<SVGGElement>;
-    circle: React.HTMLAttributes<SVGCircleElement> & { cx?: number; cy?: number; r?: number; fill?: string; strokeWidth?: number; strokeDasharray?: string; transform?: string };
-    rect: React.HTMLAttributes<SVGRectElement> & { x?: number; y?: number; width?: number | string; height?: number | string; rx?: number };
-    text: React.HTMLAttributes<SVGTextElement> & { x?: number; y?: number; textAnchor?: string; className?: string };
+    circle: React.HTMLAttributes<SVGCircleElement> & {
+      cx?: number;
+      cy?: number;
+      r?: number;
+      fill?: string;
+      strokeWidth?: number;
+      strokeDasharray?: string;
+      transform?: string;
+    };
+    rect: React.HTMLAttributes<SVGRectElement> & {
+      x?: number;
+      y?: number;
+      width?: number | string;
+      height?: number | string;
+      rx?: number;
+    };
+    text: React.HTMLAttributes<SVGTextElement> & {
+      x?: number;
+      y?: number;
+      textAnchor?: string;
+      className?: string;
+    };
     details: React.HTMLAttributes<HTMLDetailsElement> & { open?: boolean };
     summary: React.HTMLAttributes<HTMLElement>;
     img: React.HTMLAttributes<HTMLImageElement> & { src?: string; alt?: string };

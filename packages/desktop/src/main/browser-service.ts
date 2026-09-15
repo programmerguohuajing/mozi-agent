@@ -35,7 +35,15 @@ export interface BrowserWebContentsLike {
 }
 
 /** BrowserView 工厂（由 electron-main 注入真实实现）。 */
-export type BrowserViewFactory = (opts: { webPreferences: { nodeIntegration: boolean; contextIsolation: boolean } }) => BrowserViewLike;
+export type BrowserViewFactory = (opts: {
+  webPreferences: { nodeIntegration: boolean; contextIsolation: boolean };
+}) => BrowserViewLike;
+
+/** attach 模式下的 webContents 包装：setBounds/setAutoResize 无意义，置为空操作。 */
+const NOOP_VIEW_OPS = {
+  setBounds: (): void => {},
+  setAutoResize: (): void => {},
+};
 
 export interface BrowserServiceOptions {
   /** BrowserView 工厂（electron.BrowserView）。 */
@@ -58,10 +66,18 @@ interface TabInfo {
 /**
  * BrowserService：管理内置浏览器生命周期，实现 BrowserAccess 接口。
  *
- * 无 electron 时可作为 stub 编译（createView 未注入则操作返回明确错误）。
+ * 两种工作模式：
+ *   1. 自建模式：注入 createView 工厂，自建 BrowserView（headless，无 UI 面板）；
+ *   2. attach 模式：复用渲染进程 `<webview>` 标签的 guest webContents ——
+ *      用户在任务窗口打开的浏览器面板（BrowserPanel），agent 经本服务操作
+ *      同一页面，所见即所得。
+ *
+ * 无 electron 时可作为 stub 编译（createView 未注入且未 attach 则操作返回明确错误）。
  */
 export class BrowserService implements BrowserAccess {
   private view: BrowserViewLike | null = null;
+  /** attach 模式标记：view 来自渲染端 webview，生命周期由渲染端管理。 */
+  private attached = false;
   private readonly tabs: Map<string, TabInfo> = new Map();
   private activeTabId: string | null = null;
   private readonly loadTimeoutMs: number;
@@ -76,22 +92,47 @@ export class BrowserService implements BrowserAccess {
     this.evalTimeoutMs = opts.evalTimeoutMs ?? 5_000;
   }
 
-  private ensureView(): BrowserViewLike {
-    if (!this.createView) throw new Error('BrowserView factory not injected (electron not available)');
-    if (!this.view) {
-      this.view = this.createView({
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-        },
-      });
-      this.view.setBounds(this.parentBounds);
-      this.view.setAutoResize({ width: true, height: true });
+  /** attach 模式：接管渲染端 `<webview>` 的 guest webContents。 */
+  attach(wc: BrowserWebContentsLike): void {
+    this.view = { webContents: wc, ...NOOP_VIEW_OPS };
+    this.attached = true;
+  }
+
+  /** 解除 attach（不销毁 webview —— 生命周期归渲染端 BrowserPanel 所有）。 */
+  detach(): void {
+    if (this.attached) {
+      this.view = null;
+      this.attached = false;
     }
+  }
+
+  /** 当前是否已接管一个可用页面（attach 或自建）。 */
+  get isAttached(): boolean {
+    return this.view !== null;
+  }
+
+  private ensureView(): BrowserViewLike {
+    if (this.view) return this.view;
+    if (!this.createView) {
+      throw new Error(
+        '浏览器窗口未打开：请先在任务输入栏点击「🌐 浏览器」打开浏览器面板，agent 才能操作网页',
+      );
+    }
+    this.view = this.createView({
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    this.view.setBounds(this.parentBounds);
+    this.view.setAutoResize({ width: true, height: true });
     return this.view;
   }
 
-  async navigate(url: string, opts?: { waitMs?: number }): Promise<{ title: string; url: string; status: number }> {
+  async navigate(
+    url: string,
+    opts?: { waitMs?: number },
+  ): Promise<{ title: string; url: string; status: number }> {
     const view = this.ensureView();
     const wc = view.webContents;
 
@@ -101,7 +142,10 @@ export class BrowserService implements BrowserAccess {
     await Promise.race([
       loadPromise,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Page load timeout (${timeoutMs}ms): ${url}`)), timeoutMs),
+        setTimeout(
+          () => reject(new Error(`Page load timeout (${timeoutMs}ms): ${url}`)),
+          timeoutMs,
+        ),
       ),
     ]);
 
@@ -129,7 +173,7 @@ export class BrowserService implements BrowserAccess {
     const view = this.ensureView();
     const wc = view.webContents;
     // 在页面上下文提取纯文本
-    const text = await this.evalWithTimeout(wc, `document.body.innerText`);
+    const text = await this.evalWithTimeout(wc, 'document.body.innerText');
     const result = typeof text === 'string' ? text : String(text ?? '');
     return { text: result, truncated: false };
   }
@@ -137,7 +181,7 @@ export class BrowserService implements BrowserAccess {
   async getHtml(): Promise<{ html: string; truncated: boolean }> {
     const view = this.ensureView();
     const wc = view.webContents;
-    const html = await this.evalWithTimeout(wc, `document.documentElement.outerHTML`);
+    const html = await this.evalWithTimeout(wc, 'document.documentElement.outerHTML');
     const result = typeof html === 'string' ? html : String(html ?? '');
     return { html: result, truncated: false };
   }
@@ -146,12 +190,15 @@ export class BrowserService implements BrowserAccess {
     const view = this.ensureView();
     const wc = view.webContents;
     try {
-      const result = await this.evalWithTimeout(wc, `(() => {
+      const result = await this.evalWithTimeout(
+        wc,
+        `(() => {
         const el = document.querySelector(${JSON.stringify(selector)});
         if (!el) return { ok: false, error: 'element not found' };
         (el as HTMLElement).click();
         return { ok: true };
-      })()`);
+      })()`,
+      );
       const r = result as { ok: boolean; error?: string };
       return r;
     } catch (e) {
@@ -163,14 +210,17 @@ export class BrowserService implements BrowserAccess {
     const view = this.ensureView();
     const wc = view.webContents;
     try {
-      const result = await this.evalWithTimeout(wc, `(() => {
+      const result = await this.evalWithTimeout(
+        wc,
+        `(() => {
         const el = document.querySelector(${JSON.stringify(selector)}) as HTMLInputElement | HTMLTextAreaElement | null;
         if (!el) return { ok: false, error: 'element not found' };
         el.value = ${JSON.stringify(value)};
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
         return { ok: true };
-      })()`);
+      })()`,
+      );
       const r = result as { ok: boolean; error?: string };
       return r;
     } catch (e) {
@@ -190,6 +240,11 @@ export class BrowserService implements BrowserAccess {
   }
 
   async close(): Promise<void> {
+    // attach 模式：只解除接管，不销毁渲染端的 webview。
+    if (this.attached) {
+      this.detach();
+      return;
+    }
     if (this.view?.webContents.close) {
       this.view.webContents.close();
     }
@@ -206,7 +261,10 @@ export class BrowserService implements BrowserAccess {
     return Promise.race([
       wc.executeJavaScript(script),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Script timeout (${this.evalTimeoutMs}ms)`)), this.evalTimeoutMs),
+        setTimeout(
+          () => reject(new Error(`Script timeout (${this.evalTimeoutMs}ms)`)),
+          this.evalTimeoutMs,
+        ),
       ),
     ]);
   }

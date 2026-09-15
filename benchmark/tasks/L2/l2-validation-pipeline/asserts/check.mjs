@@ -7,7 +7,9 @@ const dir = process.argv[2];
 
 // 管线本体
 const { validate } = await import(pathToFileURL(join(dir, 'validate/index.js')));
-const { required, string, email, min } = await import(pathToFileURL(join(dir, 'validate/rules.js')));
+const { required, string, email, min } = await import(
+  pathToFileURL(join(dir, 'validate/rules.js'))
+);
 
 const okResult = validate({ name: 'alice' }, { name: [required()] });
 assert.equal(okResult.valid, true);

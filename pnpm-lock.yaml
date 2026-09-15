@@ -32,6 +32,9 @@ importers:
       '@mozi/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mozi/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@mozi/providers':
         specifier: workspace:*
         version: link:../../packages/providers
@@ -228,10 +231,6 @@ importers:
       '@mozi/shared':
         specifier: workspace:*
         version: link:../shared
-    devDependencies:
-      '@mozi/relay-server':
-        specifier: workspace:*
-        version: link:../relay-server
 
   packages/providers:
     dependencies:

@@ -32,9 +32,18 @@ try {
   console.error = orig.error;
 }
 assert.ok(!captured.some((l) => l.includes('d0')), '级别低于设定不输出');
-assert.ok(captured.some((l) => l === '[INFO][x] i0'), 'info 输出格式正确');
-assert.ok(captured.some((l) => l === '[ERROR][x] e0'), 'error 输出格式正确');
-assert.ok(captured.some((l) => l.includes('d1')), '调低级别后 debug 恢复输出');
+assert.ok(
+  captured.some((l) => l === '[INFO][x] i0'),
+  'info 输出格式正确',
+);
+assert.ok(
+  captured.some((l) => l === '[ERROR][x] e0'),
+  'error 输出格式正确',
+);
+assert.ok(
+  captured.some((l) => l.includes('d1')),
+  '调低级别后 debug 恢复输出',
+);
 
 // service 行为不变
 const a = await import(pathToFileURL(join(dir, 'service-a.js')));

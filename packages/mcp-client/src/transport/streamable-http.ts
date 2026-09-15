@@ -16,7 +16,7 @@ const SESSION_HEADER = 'mcp-session-id';
 /** 解析一段 SSE 文本为事件对象数组（data: 多行合并）。 */
 function parseSse(chunk: string): Array<{ event?: string; data: string }> {
   const events: Array<{ event?: string; data: string }> = [];
-  let buf = chunk;
+  const buf = chunk;
   let evt: { event?: string; data: string } | null = null;
   for (const rawLine of buf.split('\n')) {
     const line = rawLine.replace(/\r$/, '');
@@ -229,7 +229,10 @@ export class HttpSseLegacyTransport implements McpTransport {
     // 打开 SSE 推送流（GET /sse）。
     this.sseAbort = new AbortController();
     try {
-      const res = await fetch(`${this.baseUrl}/sse`, { method: 'GET', signal: this.sseAbort.signal });
+      const res = await fetch(`${this.baseUrl}/sse`, {
+        method: 'GET',
+        signal: this.sseAbort.signal,
+      });
       if (!res.ok || !res.body) return;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

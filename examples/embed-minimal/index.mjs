@@ -2,8 +2,8 @@
 // 运行：pnpm build && pnpm --filter @mozi/example-embed-minimal start
 // （默认用 ScriptedProvider 零成本演示；设 OPENAI_API_KEY 可切真实模型，见文末注释。）
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createEngine } from '@mozi/core';
 import { ProviderRegistry, ScriptedProvider } from '@mozi/providers';
 
@@ -42,10 +42,13 @@ for await (const event of engine.run({
   if (event.type === 'message.completed' && event.message.content)
     console.log(`[assistant] ${event.message.content}`);
   else if (event.type === 'tool.completed')
-    console.log(`[tool:${event.result.isError ? 'fail' : 'ok'}] ${event.result.content.slice(0, 60)}`);
+    console.log(
+      `[tool:${event.result.isError ? 'fail' : 'ok'}] ${event.result.content.slice(0, 60)}`,
+    );
   else if (event.type === 'turn.completed')
     console.log(`[done] steps=${event.steps} tokens=${event.usage.totalTokens}`);
-  else if (event.type === 'error') console.error(`[error] ${event.error.code}: ${event.error.message}`);
+  else if (event.type === 'error')
+    console.error(`[error] ${event.error.code}: ${event.error.message}`);
 }
 
 // 产出物都在 workspaceRoot 下：文件变更 + .sessions/*.jsonl（事件流全量记录）。

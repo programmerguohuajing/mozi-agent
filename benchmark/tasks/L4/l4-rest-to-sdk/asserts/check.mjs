@@ -39,17 +39,25 @@ assert.deepEqual(
 );
 assert.deepEqual(calls[1].url, 'https://api.example.com/v1/users', 'listUsers URL');
 assert.equal(calls[1].method, 'GET');
-assert.deepEqual(calls[2], {
-  url: 'https://api.example.com/v1/orders',
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123' },
-  body: JSON.stringify({ sku: 'A1', qty: 2 }),
-}, 'createOrder：POST + JSON 序列化体');
-assert.deepEqual(calls[3], {
-  url: 'https://api.example.com/v1/orders/9',
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123' },
-  body: JSON.stringify({ qty: 3 }),
-}, 'updateOrder：PUT');
+assert.deepEqual(
+  calls[2],
+  {
+    url: 'https://api.example.com/v1/orders',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123' },
+    body: JSON.stringify({ sku: 'A1', qty: 2 }),
+  },
+  'createOrder：POST + JSON 序列化体',
+);
+assert.deepEqual(
+  calls[3],
+  {
+    url: 'https://api.example.com/v1/orders/9',
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok_123' },
+    body: JSON.stringify({ qty: 3 }),
+  },
+  'updateOrder：PUT',
+);
 
 console.log('l4-rest-to-sdk: OK');

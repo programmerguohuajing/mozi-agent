@@ -40,7 +40,10 @@ const wordCountTool = {
 
 const workspaceRoot = join(tmpdir(), `mozi-custom-tool-${Date.now()}`);
 mkdirSync(workspaceRoot, { recursive: true });
-writeFileSync(join(workspaceRoot, 'notes.md'), 'mozi tools are extensible.\nany capability, one object.');
+writeFileSync(
+  join(workspaceRoot, 'notes.md'),
+  'mozi tools are extensible.\nany capability, one object.',
+);
 
 // ---------- 3) 手工组装引擎（factory 的透明版）：注册表可完全自定义 ----------
 

@@ -7,5 +7,12 @@
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mozi/mobile", "@mozi/desktop", "@mozi/benchmark", "@mozi/example-embed-minimal", "@mozi/example-custom-tool", "@mozi/website"]
+  "ignore": [
+    "@mozi/mobile",
+    "@mozi/desktop",
+    "@mozi/benchmark",
+    "@mozi/example-embed-minimal",
+    "@mozi/example-custom-tool",
+    "@mozi/website"
+  ]
 }

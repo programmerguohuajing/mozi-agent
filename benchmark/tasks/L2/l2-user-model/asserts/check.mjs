@@ -24,7 +24,11 @@ const u2 = r.create({ name: 'b', email: 'b@b.co' });
 assert.equal(u1.id, 1, '自增 id');
 assert.equal(u2.id, 2);
 assert.equal(r.list().length, 2);
-assert.deepEqual(r.findById(1), { id: 1, name: 'a', email: 'a@a.co', role: 'member' }, 'findById 返回安全视图');
+assert.deepEqual(
+  r.findById(1),
+  { id: 1, name: 'a', email: 'a@a.co', role: 'member' },
+  'findById 返回安全视图',
+);
 assert.equal(r.findById(99), null);
 r.clear();
 assert.equal(r.list().length, 0, 'clear 后为空');

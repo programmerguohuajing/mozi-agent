@@ -1,9 +1,9 @@
 // 断言：node check.mjs <workspace>
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync as rf } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFileSync as rf } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const dir = process.argv[2];

@@ -1,3 +1,5 @@
+import type { DevicePermissions, RemotePush, SessionState, SessionSummary } from '@mozi/protocol';
+import type { AgentEvent, ApprovalReason, TokenUsage } from '@mozi/shared';
 /**
  * useMoziClient：移动端远程客户端单例 store + React 绑定（M4.75 / M14 §14.8）。
  *
@@ -9,10 +11,8 @@
  *  - 推送事件落缓存：engine:event → 事件流/审批票据；session:status → 会话状态与 busy 位。
  */
 import React from 'react';
-import type { AgentEvent, ApprovalReason, TokenUsage } from '@mozi/shared';
-import type { DevicePermissions, RemotePush, SessionState, SessionSummary } from '@mozi/protocol';
-import { MobileRemoteClient, WssTransport } from '../transport';
 import type { ClientConnState, DevicePageItem, TaskPageItem } from '../client';
+import { MobileRemoteClient, WssTransport } from '../transport';
 
 /** 审批票据（收件箱条目；risk 与 @mozi/protocol ApprovalRisk 对齐）。 */
 export interface ApprovalTicket {
@@ -179,7 +179,7 @@ class MoziClientStore {
 
   private set(patch: Partial<MoziClientSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...patch };
-    this.listeners.forEach((fn) => fn());
+    for (const fn of this.listeners) fn();
   }
 
   // ── 连接管理 ──────────────────────────────────────────────────────
@@ -191,9 +191,10 @@ class MoziClientStore {
     const transport = new WssTransport(url);
     const client = new MobileRemoteClient(transport, {
       deviceName,
-      platform: typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
-        ? 'android'
-        : 'web',
+      platform:
+        typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
+          ? 'android'
+          : 'web',
       pubKey: 'pending-e2e-key', // E2E 密钥协商（crypto-box）后续里程碑接入
     });
     client.onPush((frame) => this.handlePush(frame));
@@ -211,7 +212,12 @@ class MoziClientStore {
     this.client = client;
     this.transport = transport;
     this.url = opts.url;
-    saveSaved({ url: opts.url, deviceId: cred.deviceId, token: cred.token, deviceName: opts.deviceName });
+    saveSaved({
+      url: opts.url,
+      deviceId: cred.deviceId,
+      token: cred.token,
+      deviceName: opts.deviceName,
+    });
     this.set({
       connState: 'connected',
       connected: true,
@@ -285,9 +291,10 @@ class MoziClientStore {
   /** 订阅会话事件流（断线重连带 lastEventId 续传，§14.3）。 */
   async attachSession(sessionId: string): Promise<void> {
     if (!this.client) return;
-    const last = this.snapshot.events.length > 0
-      ? this.snapshot.events[this.snapshot.events.length - 1]!.seq
-      : undefined;
+    const last =
+      this.snapshot.events.length > 0
+        ? this.snapshot.events[this.snapshot.events.length - 1]?.seq
+        : undefined;
     await this.client.attach(sessionId, last);
     this.set({ activeSessionId: sessionId, events: [] });
   }
@@ -299,10 +306,14 @@ class MoziClientStore {
   /** 下发任务（run:start 为幂等通道，requestId 防弱网重放）。 */
   async sendMessage(text: string): Promise<void> {
     if (!this.client || !this.snapshot.activeSessionId) return;
-    await this.client.invoke('run:start', {
-      sessionId: this.snapshot.activeSessionId,
-      text,
-    }, `run-${Date.now()}`);
+    await this.client.invoke(
+      'run:start',
+      {
+        sessionId: this.snapshot.activeSessionId,
+        text,
+      },
+      `run-${Date.now()}`,
+    );
     this.set({ busy: true });
   }
 
@@ -410,7 +421,11 @@ class MoziClientStore {
       if (events.length > EVENTS_MAX) events.splice(0, events.length - EVENTS_MAX);
       let busy = this.snapshot.busy;
       if (event.type === 'turn.started' || event.type === 'tool.started') busy = true;
-      if (event.type === 'task.completed' || event.type === 'session.terminated' || event.type === 'error') {
+      if (
+        event.type === 'task.completed' ||
+        event.type === 'session.terminated' ||
+        event.type === 'error'
+      ) {
         busy = false;
       }
       this.set({ events, busy });
@@ -428,7 +443,9 @@ class MoziClientStore {
         ts: Date.now(),
         ...(event.type === 'subagent.approval.required' ? { agentType: event.agentType } : {}),
       };
-      this.set({ approvals: [ticket, ...this.snapshot.approvals.filter((t) => t.callId !== ticket.callId)] });
+      this.set({
+        approvals: [ticket, ...this.snapshot.approvals.filter((t) => t.callId !== ticket.callId)],
+      });
     } else if (event.type === 'tool.approval.resolved') {
       this.set({
         approvals: this.snapshot.approvals.map((t) =>
@@ -442,7 +459,9 @@ class MoziClientStore {
     const p = payload as { sessionId?: string; state?: SessionState; usage?: TokenUsage };
     if (!p || typeof p.sessionId !== 'string' || typeof p.state !== 'string') return;
     this.set({
-      sessions: this.snapshot.sessions.map((s) => (s.id === p.sessionId ? { ...s, state: p.state!, usage: p.usage ?? s.usage } : s)),
+      sessions: this.snapshot.sessions.map((s) =>
+        s.id === p.sessionId ? { ...s, state: p.state!, usage: p.usage ?? s.usage } : s,
+      ),
       busy: p.state === 'running' || p.state === 'pending_approval',
     });
   }

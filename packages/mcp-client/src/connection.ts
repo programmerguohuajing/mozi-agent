@@ -6,12 +6,12 @@ import type { AgentEvent } from '@mozi/shared';
 import { JsonRpcClient } from './jsonrpc.js';
 import type { McpTransport } from './transport/types.js';
 import {
-  PROTOCOL_VERSION,
   type InitializeResult,
   type McpPromptDef,
   type McpResourceDef,
   type McpServerOptions,
   type McpToolDef,
+  PROTOCOL_VERSION,
   type PromptGetResult,
   type ResourceContent,
   type SamplingContext,
@@ -20,14 +20,12 @@ import {
   type ToolCallResult,
 } from './types.js';
 
-export interface ElicitHandler {
-  (info: {
-    serverId: string;
-    requestId: string;
-    message: string;
-    schema: Record<string, unknown>;
-  }): Promise<{ decision: 'submit' | 'cancel'; values?: Record<string, unknown> }>;
-}
+export type ElicitHandler = (info: {
+  serverId: string;
+  requestId: string;
+  message: string;
+  schema: Record<string, unknown>;
+}) => Promise<{ decision: 'submit' | 'cancel'; values?: Record<string, unknown> }>;
 
 export type RootsProvider = () => Array<{ uri: string; name: string }>;
 
@@ -61,7 +59,12 @@ export class McpServerConnection {
   private deps: ConnectionDeps;
   private rpcResolved = false;
 
-  constructor(serverId: string, transport: McpTransport, opts: McpServerOptions, deps: ConnectionDeps) {
+  constructor(
+    serverId: string,
+    transport: McpTransport,
+    opts: McpServerOptions,
+    deps: ConnectionDeps,
+  ) {
     this.serverId = serverId;
     this.transport = transport;
     this.opts = opts;
@@ -180,7 +183,12 @@ export class McpServerConnection {
       const uri = (params as { uri?: string }).uri;
       if (uri) this.deps.onResourceUpdated?.(uri);
     } else if (method === 'notifications/progress') {
-      const p = params as { progressToken: unknown; progress: number; total?: number; message?: string };
+      const p = params as {
+        progressToken: unknown;
+        progress: number;
+        total?: number;
+        message?: string;
+      };
       this.deps.onProgress?.(p.progressToken, p.progress, p.total, p.message);
     } else if (method === 'notifications/message') {
       const p = params as { level: string; logger?: string; data: unknown };
@@ -235,16 +243,21 @@ export class McpServerConnection {
   }
 
   async listResources(): Promise<McpResourceDef[]> {
-    const res = (await this.requireRpc().request<{ resources: McpResourceDef[] }>('resources/list')) as {
+    const res = (await this.requireRpc().request<{ resources: McpResourceDef[] }>(
+      'resources/list',
+    )) as {
       resources: McpResourceDef[];
     };
     return res.resources ?? [];
   }
 
   async readResource(uri: string): Promise<ResourceContent[]> {
-    const res = (await this.requireRpc().request<{ contents: ResourceContent[] }>('resources/read', {
-      uri,
-    })) as { contents: ResourceContent[] };
+    const res = (await this.requireRpc().request<{ contents: ResourceContent[] }>(
+      'resources/read',
+      {
+        uri,
+      },
+    )) as { contents: ResourceContent[] };
     return res.contents ?? [];
   }
 

@@ -1,9 +1,9 @@
+import type { RemotePush, SessionSummary } from '@mozi/protocol';
 /**
  * 移动端客户端模型（M4.75 / M14 §14.8）：页面视图模型 + RemoteClient 抽象。
  * 无 Expo/RN 依赖环境下以类型规范落地（tsc --noEmit 可过）；真实 UI 在 pnpm i 后接入。
  */
 import type { AgentEvent } from '@mozi/shared';
-import type { RemotePush, SessionSummary } from '@mozi/protocol';
 
 /** 客户端连接状态（§14.2：心跳 / 重连 / 吊销）。 */
 export type ClientConnState = 'disconnected' | 'connecting' | 'connected' | 'revoked';
@@ -12,7 +12,12 @@ export type ClientConnState = 'disconnected' | 'connecting' | 'connected' | 'rev
 export interface RemoteClient {
   state(): ClientConnState;
   /** 配对 → 认证 → 订阅。 */
-  connect(opts: { pairingCode: string; deviceName: string; platform: string; pubKey: string }): Promise<void>;
+  connect(opts: {
+    pairingCode: string;
+    deviceName: string;
+    platform: string;
+    pubKey: string;
+  }): Promise<void>;
   auth(deviceId: string, token: string): Promise<void>;
   invoke<T = unknown>(channel: string, params: unknown, requestId?: string): Promise<T>;
   onPush(cb: (frame: RemotePush) => void): () => void;

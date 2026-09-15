@@ -96,7 +96,12 @@ export class RelayRouter {
 
   private maybeLog(envelope: Envelope): void {
     if (!this.logEnabled) return;
-    this.logEntries.push({ ts: this.clock().toISOString(), from: envelope.from, to: envelope.to, len: envelope.len });
+    this.logEntries.push({
+      ts: this.clock().toISOString(),
+      from: envelope.from,
+      to: envelope.to,
+      len: envelope.len,
+    });
   }
 }
 
@@ -109,7 +114,10 @@ export const EMPTY_PUSH_GATEWAY: PushGatewayLike = {
 
 /** ntfy 推送网关（自托管 UnifiedPush；零内容唤醒，凭据可选）。 */
 export class NtfyPushGateway implements PushGatewayLike {
-  constructor(private readonly topic: string, private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(
+    private readonly topic: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
 
   async notify(type: string, sessionId: string): Promise<void> {
     const body = JSON.stringify({ type, sessionId });

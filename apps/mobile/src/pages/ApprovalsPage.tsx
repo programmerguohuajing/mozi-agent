@@ -5,12 +5,15 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../theme';
 import { useMoziClient } from '../hooks/useMoziClient';
 import type { ApprovalTicket } from '../hooks/useMoziClient';
+import { colors, spacing } from '../theme';
 import { Badge, Btn, Card, CardTitle, Empty, SectionLabel } from './ui';
 
-const RISK_BADGE: Record<ApprovalTicket['risk'], { label: string; tone: 'green' | 'gold' | 'blue' | 'red' }> = {
+const RISK_BADGE: Record<
+  ApprovalTicket['risk'],
+  { label: string; tone: 'green' | 'gold' | 'blue' | 'red' }
+> = {
   safe: { label: 'safe', tone: 'green' },
   'side-effect': { label: 'side-effect', tone: 'gold' },
   network: { label: 'network', tone: 'blue' },
@@ -56,7 +59,11 @@ export function ApprovalsPage(): React.ReactElement {
               <Badge label={`风险 ${rb.label}`} tone={rb.tone} />
               <Text style={apprStyles.sess}>{t.sessionId.slice(0, 18)}</Text>
             </View>
-            {t.summary ? <Text style={apprStyles.summary} numberOfLines={3}>{t.summary}</Text> : null}
+            {t.summary ? (
+              <Text style={apprStyles.summary} numberOfLines={3}>
+                {t.summary}
+              </Text>
+            ) : null}
             {high ? (
               <View style={apprStyles.highNote}>
                 <Text style={apprStyles.highNoteText}>
@@ -66,11 +73,29 @@ export function ApprovalsPage(): React.ReactElement {
             ) : null}
             <View style={apprStyles.btnRow}>
               {high ? (
-                <Btn label="转交桌面" kind="ghost" small disabled={acting === t.callId} onPress={() => setDeferred([...deferred, t.callId])} />
+                <Btn
+                  label="转交桌面"
+                  kind="ghost"
+                  small
+                  disabled={acting === t.callId}
+                  onPress={() => setDeferred([...deferred, t.callId])}
+                />
               ) : (
                 <>
-                  <Btn label="批准" kind="success" small disabled={acting === t.callId} onPress={() => void act(t, 'allow')} />
-                  <Btn label="拒绝" kind="danger" small disabled={acting === t.callId} onPress={() => void act(t, 'deny')} />
+                  <Btn
+                    label="批准"
+                    kind="success"
+                    small
+                    disabled={acting === t.callId}
+                    onPress={() => void act(t, 'allow')}
+                  />
+                  <Btn
+                    label="拒绝"
+                    kind="danger"
+                    small
+                    disabled={acting === t.callId}
+                    onPress={() => void act(t, 'deny')}
+                  />
                 </>
               )}
             </View>
@@ -84,8 +109,18 @@ export function ApprovalsPage(): React.ReactElement {
           {resolved.map((t) => (
             <Card key={t.callId}>
               <View style={apprStyles.head}>
-                <Text style={[apprStyles.resolvedName, t.decision === 'deny' ? apprStyles.denied : null]}>{t.callName}</Text>
-                <Badge label={t.decision === 'allow' ? '已批准' : '已拒绝'} tone={t.decision === 'allow' ? 'green' : 'red'} />
+                <Text
+                  style={[
+                    apprStyles.resolvedName,
+                    t.decision === 'deny' ? apprStyles.denied : null,
+                  ]}
+                >
+                  {t.callName}
+                </Text>
+                <Badge
+                  label={t.decision === 'allow' ? '已批准' : '已拒绝'}
+                  tone={t.decision === 'allow' ? 'green' : 'red'}
+                />
               </View>
             </Card>
           ))}
@@ -98,8 +133,19 @@ export function ApprovalsPage(): React.ReactElement {
 }
 
 const apprStyles = StyleSheet.create({
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4, marginBottom: spacing.sm },
+  head: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+    marginBottom: spacing.sm,
+  },
   sess: { color: colors.textFaint, fontSize: 11 },
   summary: {
     color: colors.textDim,

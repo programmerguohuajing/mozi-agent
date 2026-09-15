@@ -4,8 +4,8 @@
  */
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, spacing } from '../theme';
 import { useMoziClient } from '../hooks/useMoziClient';
+import { colors, spacing } from '../theme';
 import { Badge, Btn, Card, CardTitle, Row, SectionLabel } from './ui';
 
 const DEFAULT_URL = 'ws://localhost:8787';
@@ -28,7 +28,11 @@ export function PairPage(): React.ReactElement {
     setBusy(true);
     setErr(null);
     try {
-      await store.connect({ url: url.trim() || DEFAULT_URL, pairingCode: code, deviceName: name.trim() || 'Mozi 移动端' });
+      await store.connect({
+        url: url.trim() || DEFAULT_URL,
+        pairingCode: code,
+        deviceName: name.trim() || 'Mozi 移动端',
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -66,7 +70,11 @@ export function PairPage(): React.ReactElement {
         <SectionLabel>本机权限（§14.5 设备权限模型）</SectionLabel>
         <Card>
           <Row label="查看会话" value={permissions?.viewSessions ? '允许' : '拒绝'} />
-          <Row label="浏览工作区文件" value={permissions?.viewWorkspaceFiles ? '允许' : '拒绝'} dim={!permissions?.viewWorkspaceFiles} />
+          <Row
+            label="浏览工作区文件"
+            value={permissions?.viewWorkspaceFiles ? '允许' : '拒绝'}
+            dim={!permissions?.viewWorkspaceFiles}
+          />
           <Row label="下发任务" value={permissions?.sendMessage ? '允许' : '拒绝'} />
           <Row
             label="审批权"
@@ -79,8 +87,16 @@ export function PairPage(): React.ReactElement {
             }
           />
           <Row label="触发定时任务" value={permissions?.triggerTasks ? '允许' : '拒绝'} />
-          <Row label="管理其他设备" value={permissions?.manageDevices ? '允许' : '拒绝'} dim={!permissions?.manageDevices} />
-          <Row label="切换策略/沙箱" value={permissions?.changePolicy ? '允许' : '拒绝'} dim={!permissions?.changePolicy} />
+          <Row
+            label="管理其他设备"
+            value={permissions?.manageDevices ? '允许' : '拒绝'}
+            dim={!permissions?.manageDevices}
+          />
+          <Row
+            label="切换策略/沙箱"
+            value={permissions?.changePolicy ? '允许' : '拒绝'}
+            dim={!permissions?.changePolicy}
+          />
         </Card>
 
         <Btn label="断开连接并遗忘本设备" kind="danger" onPress={() => store.logout()} />
@@ -128,7 +144,12 @@ export function PairPage(): React.ReactElement {
           placeholderTextColor={colors.textFaint}
         />
         <View style={pairStyles.btnRow}>
-          <Btn label={busy ? '连接中…' : '配对连接'} kind="primary" onPress={() => void doPair()} disabled={busy || code.length !== 6} />
+          <Btn
+            label={busy ? '连接中…' : '配对连接'}
+            kind="primary"
+            onPress={() => void doPair()}
+            disabled={busy || code.length !== 6}
+          />
         </View>
         {hasSaved ? (
           <View style={pairStyles.btnRow}>
@@ -139,7 +160,8 @@ export function PairPage(): React.ReactElement {
       </Card>
 
       <Text style={pairStyles.hint}>
-        配对流程（§14.4）：桌面端生成 6 位码 → 手机提交 → 节点返回 deviceId/token → auth 认证 → 订阅事件流。全程 token 只存本机，吊销即时生效。
+        配对流程（§14.4）：桌面端生成 6 位码 → 手机提交 → 节点返回 deviceId/token → auth 认证 →
+        订阅事件流。全程 token 只存本机，吊销即时生效。
       </Text>
     </View>
   );

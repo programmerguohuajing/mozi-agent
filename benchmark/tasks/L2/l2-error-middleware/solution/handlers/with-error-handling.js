@@ -8,7 +8,10 @@ export function withErrorHandling(handler) {
       if (e instanceof HttpError) {
         return { status: e.status, body: { error: { code: e.code, message: e.message } } };
       }
-      return { status: 500, body: { error: { code: 'INTERNAL', message: String(e?.message ?? e) } } };
+      return {
+        status: 500,
+        body: { error: { code: 'INTERNAL', message: String(e?.message ?? e) } },
+      };
     }
   };
 }

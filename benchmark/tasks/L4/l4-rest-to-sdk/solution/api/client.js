@@ -7,7 +7,7 @@ const users = new ResourceClient({ baseUrl: BASE_URL, token: TOKEN, resource: 'u
 const orders = new ResourceClient({ baseUrl: BASE_URL, token: TOKEN, resource: 'orders' });
 
 export function getUser(id) {
-  return users.get('/' + id);
+  return users.get(`/${id}`);
 }
 
 export function listUsers() {
@@ -19,5 +19,5 @@ export function createOrder(payload) {
 }
 
 export function updateOrder(id, payload) {
-  return orders.put('/' + id, payload);
+  return orders.put(`/${id}`, payload);
 }

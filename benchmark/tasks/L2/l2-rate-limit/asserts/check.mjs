@@ -1,8 +1,8 @@
 // 断言：node check.mjs <workspace>
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { pathToFileURL } from 'node:url';
 
 const { RateLimiter } = await import(pathToFileURL(join(process.argv[2], 'rate-limit.js')));
 

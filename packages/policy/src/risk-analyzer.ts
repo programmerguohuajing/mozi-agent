@@ -19,47 +19,170 @@ const RISK_ORDER: Record<CommandRisk, number> = {
 /** 只读白名单：这些命令（不带写参数）视为 safe。 */
 const SAFE_COMMANDS = new Set([
   // 文件查看
-  'ls', 'cat', 'head', 'tail', 'wc', 'file', 'stat', 'find', 'tree', 'du', 'df',
+  'ls',
+  'cat',
+  'head',
+  'tail',
+  'wc',
+  'file',
+  'stat',
+  'find',
+  'tree',
+  'du',
+  'df',
   // 文本搜索/处理（只读用法）
-  'grep', 'rg', 'awk', 'sed', 'cut', 'sort', 'uniq', 'diff', 'comm', 'jq',
+  'grep',
+  'rg',
+  'awk',
+  'sed',
+  'cut',
+  'sort',
+  'uniq',
+  'diff',
+  'comm',
+  'jq',
   // 开发工具查询类
-  'git', 'node', 'npm', 'npx', 'pnpm', 'yarn', 'tsc', 'eslint', 'prettier', 'vitest', 'jest', 'python', 'python3', 'cargo', 'go',
-  'echo', 'printf', 'pwd', 'which', 'whereis', 'whoami', 'date', 'env', 'printenv', 'uname', 'hostname',
-  'type', 'help', 'man', 'true', 'false', 'test', 'expr', 'bc',
+  'git',
+  'node',
+  'npm',
+  'npx',
+  'pnpm',
+  'yarn',
+  'tsc',
+  'eslint',
+  'prettier',
+  'vitest',
+  'jest',
+  'python',
+  'python3',
+  'cargo',
+  'go',
+  'echo',
+  'printf',
+  'pwd',
+  'which',
+  'whereis',
+  'whoami',
+  'date',
+  'env',
+  'printenv',
+  'uname',
+  'hostname',
+  'type',
+  'help',
+  'man',
+  'true',
+  'false',
+  'test',
+  'expr',
+  'bc',
 ]);
 
 /** 写操作命令。 */
 const SIDE_EFFECT_COMMANDS = new Set([
-  'rm', 'rmdir', 'mv', 'cp', 'tee', 'chmod', 'chown', 'chgrp', 'ln', 'touch',
-  'mkdir', 'truncate', 'install', 'rsync', 'strip', 'patch',
+  'rm',
+  'rmdir',
+  'mv',
+  'cp',
+  'tee',
+  'chmod',
+  'chown',
+  'chgrp',
+  'ln',
+  'touch',
+  'mkdir',
+  'truncate',
+  'install',
+  'rsync',
+  'strip',
+  'patch',
 ]);
 
 /** 网络访问命令。 */
 const NETWORK_COMMANDS = new Set([
-  'curl', 'wget', 'nc', 'netcat', 'ssh', 'scp', 'sftp', 'ftp', 'telnet', 'ping', 'nslookup', 'dig',
-  'git', 'npm', 'npx', 'pnpm', 'yarn',
+  'curl',
+  'wget',
+  'nc',
+  'netcat',
+  'ssh',
+  'scp',
+  'sftp',
+  'ftp',
+  'telnet',
+  'ping',
+  'nslookup',
+  'dig',
+  'git',
+  'npm',
+  'npx',
+  'pnpm',
+  'yarn',
 ]);
 
 /** 高危命令/模式：解释器执行、磁盘操作、权限提升等。 */
 const HIGH_COMMANDS = new Set([
-  'sh', 'bash', 'zsh', 'fish', 'eval', 'exec', 'source', '.',
-  'dd', 'mkfs', 'mkfs.ext4', 'fdisk', 'parted', 'sudo', 'su', 'doas',
-  'base64', 'openssl', 'nc', 'kill', 'killall', 'pkill',
+  'sh',
+  'bash',
+  'zsh',
+  'fish',
+  'eval',
+  'exec',
+  'source',
+  '.',
+  'dd',
+  'mkfs',
+  'mkfs.ext4',
+  'fdisk',
+  'parted',
+  'sudo',
+  'su',
+  'doas',
+  'base64',
+  'openssl',
+  'nc',
+  'kill',
+  'killall',
+  'pkill',
 ]);
 
 /** 命令 → 风险上下文的例外：git/npm 等两用命令按子命令细分。 */
 const GIT_SUB: Record<string, CommandRisk> = {
-  status: 'safe', log: 'safe', diff: 'safe', show: 'safe', branch: 'safe',
-  add: 'side-effect', commit: 'side-effect', checkout: 'side-effect', restore: 'side-effect',
-  stash: 'side-effect', merge: 'side-effect', rebase: 'side-effect', cherry: 'side-effect',
-  reset: 'side-effect', clean: 'side-effect', revert: 'side-effect', tag: 'side-effect',
-  push: 'side-effect', pull: 'side-effect', fetch: 'network', clone: 'network',
+  status: 'safe',
+  log: 'safe',
+  diff: 'safe',
+  show: 'safe',
+  branch: 'safe',
+  add: 'side-effect',
+  commit: 'side-effect',
+  checkout: 'side-effect',
+  restore: 'side-effect',
+  stash: 'side-effect',
+  merge: 'side-effect',
+  rebase: 'side-effect',
+  cherry: 'side-effect',
+  reset: 'side-effect',
+  clean: 'side-effect',
+  revert: 'side-effect',
+  tag: 'side-effect',
+  push: 'side-effect',
+  pull: 'side-effect',
+  fetch: 'network',
+  clone: 'network',
 };
 
 const NPM_SUB: Record<string, CommandRisk> = {
-  test: 'safe', run: 'safe', ci: 'safe', exec: 'safe',
-  install: 'network', i: 'network', add: 'network', update: 'network', publish: 'side-effect',
-  remove: 'side-effect', uninstall: 'side-effect', uninstallAll: 'side-effect',
+  test: 'safe',
+  run: 'safe',
+  ci: 'safe',
+  exec: 'safe',
+  install: 'network',
+  i: 'network',
+  add: 'network',
+  update: 'network',
+  publish: 'side-effect',
+  remove: 'side-effect',
+  uninstall: 'side-effect',
+  uninstallAll: 'side-effect',
 };
 
 /** 从 argv[0] 提取主命令名（去路径前缀，Windows 反斜杠同样处理）。 */
@@ -123,7 +246,11 @@ function stripEnvAssignments(argv: string[]): string[] {
 }
 
 /** 单段评级。 */
-export function rateSegment(argvRaw: string[]): { argv: string[]; risk: CommandRisk; matchedRule?: string } {
+export function rateSegment(argvRaw: string[]): {
+  argv: string[];
+  risk: CommandRisk;
+  matchedRule?: string;
+} {
   const argv = stripEnvAssignments(argvRaw);
   const cmd0 = argv[0];
   if (!cmd0) return { argv: [], risk: 'safe' };
@@ -172,7 +299,10 @@ export function rateSegment(argvRaw: string[]): { argv: string[]; risk: CommandR
  * 命令 → 结构化风险明细。
  * 输出各段（保留管道/逻辑分隔语义）+ 综合风险（max）。
  */
-export function analyzeCommand(command: string): { segments: CommandSegment[]; overall: CommandRisk } {
+export function analyzeCommand(command: string): {
+  segments: CommandSegment[];
+  overall: CommandRisk;
+} {
   const segments: CommandSegment[] = [];
 
   // 一级拆分：; && || （顺序执行/逻辑链）；二级拆分：| 管道（保留原文本，段内合并评级）
@@ -237,10 +367,7 @@ function colorOf(risk: CommandRisk): CommandSegment['color'] {
 }
 
 /** 按顶层分隔符拆分（不进入引号内部）。返回段与其前导分隔符。 */
-function splitTopLevel(
-  command: string,
-  seps: string[],
-): Array<{ text: string; sep: string }> {
+function splitTopLevel(command: string, seps: string[]): Array<{ text: string; sep: string }> {
   const parts: Array<{ text: string; sep: string }> = [];
   let cur = '';
   let quote: '"' | "'" | null = null;

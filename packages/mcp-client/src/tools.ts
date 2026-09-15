@@ -4,8 +4,8 @@
  * image/audio 落盘引用，resource 转文本摘要。AbortSignal 联动取消。
  */
 import { mkdir, writeFile } from 'node:fs/promises';
-import type { AgentTool, ToolContext, JSONSchema } from '@mozi/tools';
 import type { RiskLevel, ToolResult } from '@mozi/shared';
+import type { AgentTool, JSONSchema, ToolContext } from '@mozi/tools';
 import type { ContentBlock, McpToolDef } from './types.js';
 
 const MAX_DESC = 1000;
@@ -18,13 +18,22 @@ export class McpToolAdapter implements AgentTool {
   readonly riskLevel: RiskLevel = 'meta';
 
   constructor(
-    private conn: { serverId: string; callTool: (n: string, a: Record<string, unknown>, o: { signal?: AbortSignal; timeoutMs?: number; progressToken?: string }) => Promise<import('./types.js').ToolCallResult> },
+    private conn: {
+      serverId: string;
+      callTool: (
+        n: string,
+        a: Record<string, unknown>,
+        o: { signal?: AbortSignal; timeoutMs?: number; progressToken?: string },
+      ) => Promise<import('./types.js').ToolCallResult>;
+    },
     private serverTool: McpToolDef,
   ) {
     this.name = `${conn.serverId}__${serverTool.name}`;
     const base = serverTool.description ?? serverTool.title ?? '';
     this.description =
-      base.length > MAX_DESC ? `${base.slice(0, MAX_DESC)}…[truncated]` : base || `MCP tool ${serverTool.name} from ${conn.serverId}`;
+      base.length > MAX_DESC
+        ? `${base.slice(0, MAX_DESC)}…[truncated]`
+        : base || `MCP tool ${serverTool.name} from ${conn.serverId}`;
     this.parameters = serverTool.inputSchema;
   }
 
@@ -44,7 +53,12 @@ export class McpToolAdapter implements AgentTool {
         isError,
         display: {
           kind: 'json',
-          data: { server: this.conn.serverId, tool: this.serverTool.name, args: input, truncated: false },
+          data: {
+            server: this.conn.serverId,
+            tool: this.serverTool.name,
+            args: input,
+            truncated: false,
+          },
         },
       };
     } catch (err) {
@@ -92,7 +106,12 @@ function mimeExt(mime?: string): string {
   return 'bin';
 }
 
-async function saveMedia(ctx: ToolContext, data: string, ext: string, idx: number): Promise<string> {
+async function saveMedia(
+  ctx: ToolContext,
+  data: string,
+  ext: string,
+  idx: number,
+): Promise<string> {
   const dir = `${ctx.workspace.root}/.mozi/media`;
   try {
     await mkdir(dir, { recursive: true });

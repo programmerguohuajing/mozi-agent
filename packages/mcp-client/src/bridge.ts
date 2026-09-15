@@ -1,19 +1,25 @@
+import type { ToolResult } from '@mozi/shared';
 /**
  * MCP 桥接层（M8 §8.5–8.7）：把多个 server 连接聚合进 mozi 的工具/命令/资源体系。
  * - 工具：McpToolAdapter 注册进 ToolRegistry（前缀隔离防重名）
  * - 资源：内置 mcp_read_resource 工具 + 可选订阅注入
  * - Prompts：映射为 /mcp:<server>:<prompt> 命令描述（由 CLI/桌面注册）
  */
-import type { AgentTool, ToolContext, JSONSchema } from '@mozi/tools';
-import type { ToolResult } from '@mozi/shared';
+import type { AgentTool, JSONSchema, ToolContext } from '@mozi/tools';
 import type { ToolRegistry } from '@mozi/tools';
-import { McpServerConnection, type ConnectionDeps } from './connection.js';
+import { type ConnectionDeps, McpServerConnection } from './connection.js';
+import {
+  MemoryTokenStore,
+  type OAuthCallbacks,
+  OAuthFlow,
+  type TokenStore,
+  discoverAuthServer,
+} from './oauth.js';
 import { McpToolAdapter } from './tools.js';
-import type { McpServerOptions, McpToolDef, PromptGetResult } from './types.js';
-import type { McpServerConfig } from './transport/types.js';
-import { type TokenStore, MemoryTokenStore, OAuthFlow, discoverAuthServer, type OAuthCallbacks } from './oauth.js';
 import { StdioTransport } from './transport/stdio.js';
 import { StreamableHttpTransport } from './transport/streamable-http.js';
+import type { McpServerConfig } from './transport/types.js';
+import type { McpServerOptions, McpToolDef, PromptGetResult } from './types.js';
 
 export interface McpServerEntry {
   config: McpServerConfig;
@@ -97,9 +103,7 @@ export class McpBridge {
     const cfg = entry.config;
     if (cfg.kind === 'stdio') {
       const env = cfg.env
-        ? Object.fromEntries(
-            Object.entries(cfg.env).map(([k, v]) => [k, resolveEnvVar(v)]),
-          )
+        ? Object.fromEntries(Object.entries(cfg.env).map(([k, v]) => [k, resolveEnvVar(v)]))
         : undefined;
       return new StdioTransport({ ...cfg, env });
     }
@@ -111,7 +115,8 @@ export class McpBridge {
         const authServer = await discoverAuthServer(cfg.url);
         if (!authServer) return undefined;
         flow ??= new OAuthFlow(cfg.id, authServer, 'http://127.0.0.1:0/callback', store, {
-          openBrowser: (url) => this.deps.oauthCallbacks?.openBrowser(url) ?? Promise.reject(new Error('no browser')),
+          openBrowser: (url) =>
+            this.deps.oauthCallbacks?.openBrowser(url) ?? Promise.reject(new Error('no browser')),
           promptCode: this.deps.oauthCallbacks?.promptCode,
         });
         return flow.authorize(cfg.url);

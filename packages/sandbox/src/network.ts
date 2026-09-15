@@ -44,8 +44,6 @@ export function isNetworkAllowed(hostname: string, allowlist: string[]): boolean
 /** 把用户 --allow-net 追加到默认表（去重 + 归一化小写，保证后续匹配一致）。 */
 export function mergeAllowNet(extra?: string[]): string[] {
   if (!extra || extra.length === 0) return defaultAllowNet();
-  const normalized = extra
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+  const normalized = extra.map((e) => e.trim().toLowerCase()).filter((e) => e.length > 0);
   return [...new Set([...defaultAllowNet(), ...normalized])];
 }

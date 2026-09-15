@@ -3,7 +3,7 @@
  * 协议边界：按 MCP stdio 规范，每行一个 JSON-RPC 消息（换行分隔）。
  * stderr 重定向到日志回调，不进协议流。
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import type {
   Disposable,
   JsonRpcMessage,
@@ -86,7 +86,7 @@ export class StdioTransport implements McpTransport {
   private onData(chunk: string): void {
     this.buf += chunk;
     let idx: number;
-    while ((idx = this.buf.indexOf('\n')) >= 0) {
+    for (idx = this.buf.indexOf('\n'); idx >= 0; idx = this.buf.indexOf('\n')) {
       const line = this.buf.slice(0, idx).trim();
       this.buf = this.buf.slice(idx + 1);
       if (!line) continue;

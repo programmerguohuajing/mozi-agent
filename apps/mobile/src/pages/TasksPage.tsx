@@ -4,9 +4,9 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../theme';
-import { fmtTime, useMoziClient } from '../hooks/useMoziClient';
 import type { TaskPageItem } from '../client';
+import { fmtTime, useMoziClient } from '../hooks/useMoziClient';
+import { colors, spacing } from '../theme';
 import { Badge, Btn, Card, Empty } from './ui';
 
 export function TasksPage(): React.ReactElement {
@@ -56,11 +56,19 @@ export function TasksPage(): React.ReactElement {
             <Badge label={t.enabled ? '已启用' : '已停用'} tone={t.enabled ? 'green' : 'gray'} />
           </View>
           <View style={taskStyles.meta}>
-            <Text style={taskStyles.metaText}>下次运行：{t.nextRunAt ? fmtTime(t.nextRunAt) : '—'}</Text>
+            <Text style={taskStyles.metaText}>
+              下次运行：{t.nextRunAt ? fmtTime(t.nextRunAt) : '—'}
+            </Text>
             <Text style={taskStyles.metaText}>上次状态：{t.lastStatus ?? '—'}</Text>
           </View>
           <View style={taskStyles.btnRow}>
-            <Btn label="▶ 立即运行" kind="primary" small disabled={acting === t.taskId || !canTrigger} onPress={() => void run(t)} />
+            <Btn
+              label="▶ 立即运行"
+              kind="primary"
+              small
+              disabled={acting === t.taskId || !canTrigger}
+              onPress={() => void run(t)}
+            />
             <Btn
               label={t.enabled ? '停用' : '启用'}
               small
@@ -70,18 +78,30 @@ export function TasksPage(): React.ReactElement {
           </View>
         </Card>
       ))}
-      {!canTrigger ? <Text style={taskStyles.denied}>本设备无 triggerTasks 权限（§14.5）</Text> : null}
+      {!canTrigger ? (
+        <Text style={taskStyles.denied}>本设备无 triggerTasks 权限（§14.5）</Text>
+      ) : null}
       {error ? <Text style={taskStyles.error}>{error}</Text> : null}
     </View>
   );
 }
 
 const taskStyles = StyleSheet.create({
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  head: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   titleWrap: { flex: 1 },
   name: { color: colors.text, fontSize: 15, fontWeight: '700' },
   sub: { color: colors.textFaint, fontSize: 11, marginTop: 2 },
-  meta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, marginBottom: spacing.md },
+  meta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
   metaText: { color: colors.textDim, fontSize: 12 },
   btnRow: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'flex-end' },
   denied: { color: colors.danger, fontSize: 12, marginTop: spacing.sm },

@@ -1,3 +1,5 @@
+import { registerRootComponent } from 'expo';
+import { StatusBar } from 'expo-status-bar';
 /**
  * Mozi 移动端 App 主入口（M4.75 / M14 §14.8）。
  *
@@ -5,16 +7,14 @@
  * 底部 Tab 栏 + 顶部连接状态条；深色金色主题与桌面端一致。
  */
 import React from 'react';
-import { registerRootComponent } from 'expo';
-import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from './theme';
+import { useMoziClient } from './hooks/useMoziClient';
+import { ApprovalsPage } from './pages/ApprovalsPage';
+import { DevicePage } from './pages/DevicePage';
 import { PairPage } from './pages/PairPage';
 import { SessionsPage } from './pages/SessionsPage';
-import { ApprovalsPage } from './pages/ApprovalsPage';
 import { TasksPage } from './pages/TasksPage';
-import { DevicePage } from './pages/DevicePage';
-import { useMoziClient } from './hooks/useMoziClient';
+import { colors } from './theme';
 
 type TabKey = 'pair' | 'sessions' | 'approvals' | 'tasks' | 'device';
 
@@ -40,13 +40,23 @@ export default function App(): React.ReactElement {
             <Text style={styles.logoText}>M</Text>
           </View>
           <Text style={styles.title}>
-            {{ pair: '配对', sessions: '会话', approvals: '审批收件箱', tasks: '定时任务', device: '设备管理' }[tab]}
+            {
+              {
+                pair: '配对',
+                sessions: '会话',
+                approvals: '审批收件箱',
+                tasks: '定时任务',
+                device: '设备管理',
+              }[tab]
+            }
           </Text>
         </View>
         {client.state.connected ? (
           <View style={styles.connBadge}>
             <View style={[styles.connDot, client.state.busy && styles.connDotPulse]} />
-            <Text style={styles.connText}>已连接{client.deviceId ? ` · ${client.deviceId.slice(0, 12)}` : ''}</Text>
+            <Text style={styles.connText}>
+              已连接{client.deviceId ? ` · ${client.deviceId.slice(0, 12)}` : ''}
+            </Text>
           </View>
         ) : null}
       </View>

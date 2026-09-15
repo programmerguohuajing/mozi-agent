@@ -70,7 +70,10 @@ export interface ResourceContent {
 
 export interface PromptMessage {
   role: 'user' | 'assistant';
-  content: { type: 'text'; text: string } | { type: 'resource'; resource: { uri: string; text?: string } } | { type: 'image'; data: string; mimeType: string };
+  content:
+    | { type: 'text'; text: string }
+    | { type: 'resource'; resource: { uri: string; text?: string } }
+    | { type: 'image'; data: string; mimeType: string };
 }
 
 export interface PromptGetResult {

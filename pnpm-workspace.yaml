@@ -11,6 +11,7 @@ allowBuilds:
   "@biomejs/biome": true
   esbuild: true
   electron: true
+  electron-winstaller: set this to true or false
 
 # 关闭「运行脚本前的依赖状态校验」：它会隐式执行 pnpm install，
 # 一旦有构建脚本被忽略即 exit 1，会连带 pnpm build / test / lint 一起失败。

@@ -55,9 +55,11 @@ export function detectSandboxSupport(): SandboxSupport {
     l2Supported = hasCommand('sandbox-exec');
     if (!l2Supported) l2Note = 'macOS 未找到 sandbox-exec，L2 降级为 L1';
   } else if (platform === 'linux') {
-    l2Note = 'Linux 的 Landlock/seccomp 需原生 helper，纯 JS 不支持，L2 降级为 L1；如需强隔离请使用 L3 容器';
+    l2Note =
+      'Linux 的 Landlock/seccomp 需原生 helper，纯 JS 不支持，L2 降级为 L1；如需强隔离请使用 L3 容器';
   } else if (platform === 'win32') {
-    l2Note = 'Windows 无 Seatbelt 等价物（Job Object 需 Win32 API），L2 降级为 L1；建议使用 L3 Docker 获得强隔离';
+    l2Note =
+      'Windows 无 Seatbelt 等价物（Job Object 需 Win32 API），L2 降级为 L1；建议使用 L3 Docker 获得强隔离';
   } else {
     l2Note = '未知平台，L2 降级为 L1';
   }

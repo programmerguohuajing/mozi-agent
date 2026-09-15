@@ -3,7 +3,7 @@
  * 浏览器打开与本地回调步骤通过可注入回调解耦（CLI 与桌面各自实现），
  * 本模块负责 PKCE 生成、元数据发现、token 换发/刷新与持久化接口。
  */
-import { randomBytes, createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 export interface TokenSet {
   accessToken: string;
@@ -146,7 +146,11 @@ export class OAuthFlow {
       body,
     });
     if (!res.ok) throw new Error('refresh failed');
-    const json = (await res.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
+    const json = (await res.json()) as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
     const cached = (await this.store.load(this.serverId)) ?? { accessToken: json.access_token };
     const set: TokenSet = {
       ...cached,

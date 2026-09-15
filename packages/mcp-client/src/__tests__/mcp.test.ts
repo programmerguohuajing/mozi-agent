@@ -3,9 +3,14 @@
  * 握手 / 工具注册 / 工具调用 / sampling 反向请求 / elicitation 反向请求 / 状态机。
  */
 import { describe, expect, it } from 'vitest';
-import type { JsonRpcMessage, McpTransport, Disposable, TransportKind } from '../transport/types.js';
-import { McpServerConnection, type ConnectionDeps } from '../connection.js';
+import { type ConnectionDeps, McpServerConnection } from '../connection.js';
 import { McpToolAdapter } from '../tools.js';
+import type {
+  Disposable,
+  JsonRpcMessage,
+  McpTransport,
+  TransportKind,
+} from '../transport/types.js';
 import type { McpToolDef, ToolCallResult } from '../types.js';
 
 /** 回环 transport：send 的 JSON-RPC 请求经 server 回调处理，响应再 push 回来。 */
@@ -40,7 +45,11 @@ class LoopbackTransport implements McpTransport {
 /** 构造一个测试 server：处理 initialize / tools/list / tools/call / sampling / elicit。 */
 function makeServer() {
   const tools: McpToolDef[] = [
-    { name: 'echo', description: 'echo tool', inputSchema: { type: 'object', properties: { text: { type: 'string' } } } },
+    {
+      name: 'echo',
+      description: 'echo tool',
+      inputSchema: { type: 'object', properties: { text: { type: 'string' } } },
+    },
   ];
   return (msg: JsonRpcMessage) => {
     if ('id' in msg && (msg as { method?: string }).method) {
@@ -59,13 +68,19 @@ function makeServer() {
         loopback.push({ jsonrpc: '2.0', id: m.id, result: { tools } });
       } else if (m.method === 'tools/call') {
         const p = m.params as { name: string; arguments: { text?: string } };
-        const res: ToolCallResult = { content: [{ type: 'text', text: `echo:${p.arguments.text ?? ''}` }] };
+        const res: ToolCallResult = {
+          content: [{ type: 'text', text: `echo:${p.arguments.text ?? ''}` }],
+        };
         loopback.push({ jsonrpc: '2.0', id: m.id, result: res });
       } else if (m.method === 'sampling/createMessage') {
         loopback.push({
           jsonrpc: '2.0',
           id: m.id,
-          result: { role: 'assistant', content: [{ type: 'text', text: 'sampled' }], stopReason: 'endTurn' },
+          result: {
+            role: 'assistant',
+            content: [{ type: 'text', text: 'sampled' }],
+            stopReason: 'endTurn',
+          },
         });
       } else if (m.method === 'elicitation/create') {
         loopback.push({ jsonrpc: '2.0', id: m.id, result: { content: { answer: '42' } } });
@@ -97,7 +112,11 @@ describe('McpServerConnection', () => {
     const adapter = new McpToolAdapter(conn, defs[0]!);
     expect(adapter.name).toBe('srv__echo');
     expect(adapter.riskLevel).toBe('meta');
-    const ctx = { workspace: { root: '/tmp' }, signal: new AbortController().signal, sessionId: 's' } as never;
+    const ctx = {
+      workspace: { root: '/tmp' },
+      signal: new AbortController().signal,
+      sessionId: 's',
+    } as never;
     const res = await adapter.execute({ text: 'hi' }, ctx);
     expect(res.isError).toBe(false);
     expect(res.content).toContain('echo:hi');
@@ -116,7 +135,7 @@ describe('McpServerConnection', () => {
     };
     const conn = new McpServerConnection('srv', loopback, { sampling: 'ask' }, deps);
     await conn.connect();
-    const out = await conn['handleSampling']({
+    const out = await conn.handleSampling({
       messages: [{ role: 'user', content: [{ type: 'text', text: 'go' }] }],
       maxTokens: 100,
     });

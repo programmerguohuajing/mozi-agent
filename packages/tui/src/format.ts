@@ -10,20 +10,30 @@ export interface FormatOptions {
   /** ANSI 颜色（默认 false，纯文本）。 */
   colors?: boolean;
   /** 颜色实现（注入后 colors=true 生效）。 */
-  colorize?: (text: string, color: 'gray' | 'green' | 'red' | 'yellow' | 'cyan' | 'magenta') => string;
+  colorize?: (
+    text: string,
+    color: 'gray' | 'green' | 'red' | 'yellow' | 'cyan' | 'magenta',
+  ) => string;
   /** 截断长度（message/tool 结果），默认 80。 */
   lineWidth?: number;
 }
 
 /** token 统计行格式化：可独立调用，也可经 formatEvent 触发。 */
 export function formatUsage(
-  usage: { inputTokens: number; outputTokens: number; totalTokens?: number; costUsd?: number; model: string },
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens?: number;
+    costUsd?: number;
+    model: string;
+  },
   opts?: { steps?: number; durationMs?: number },
 ): string {
   const parts: string[] = [];
   parts.push(`in=${usage.inputTokens}`);
   parts.push(`out=${usage.outputTokens}`);
-  if (usage.totalTokens !== undefined && usage.totalTokens > 0) parts.push(`total=${usage.totalTokens}`);
+  if (usage.totalTokens !== undefined && usage.totalTokens > 0)
+    parts.push(`total=${usage.totalTokens}`);
   if (usage.costUsd !== undefined && usage.costUsd > 0) parts.push(`$${usage.costUsd.toFixed(4)}`);
   if (opts?.steps !== undefined) parts.push(`${opts.steps} step(s)`);
   if (opts?.durationMs !== undefined) parts.push(`${Math.round(opts.durationMs / 1000)}s`);
@@ -57,22 +67,19 @@ export function formatEvent(ev: AgentEvent, opts: FormatOptions = {}): string | 
 
   switch (ev.type) {
     case 'turn.completed':
-      return c(
-        `[turn done · ${formatUsage(ev.usage, { steps: ev.steps })}]`,
-        'cyan',
-      );
+      return c(`[turn done · ${formatUsage(ev.usage, { steps: ev.steps })}]`, 'cyan');
 
     case 'context.compacted':
       return c(formatCompacted(ev.removedTurns, ev.savedTokens), 'magenta');
 
     case 'subagent.completed':
-      return c(
-        formatSubagentCompleted(ev.usage, ev.steps, ev.durationMs),
-        'green',
-      );
+      return c(formatSubagentCompleted(ev.usage, ev.steps, ev.durationMs), 'green');
 
     case 'subagent.started':
-      return c(`◐ ${ev.subSessionId.split('/').pop()} [${ev.agentType}] ${short(ev.prompt)}`, 'magenta');
+      return c(
+        `◐ ${ev.subSessionId.split('/').pop()} [${ev.agentType}] ${short(ev.prompt)}`,
+        'magenta',
+      );
 
     case 'subagent.failed':
       return c(`  ✗ 子智能体失败：${ev.error.code} ${ev.error.message}`, 'red');
@@ -103,8 +110,11 @@ export function formatEvent(ev: AgentEvent, opts: FormatOptions = {}): string | 
       return c(`✅ task.completed (${ev.reason})`, 'green');
 
     case 'cost.warning':
-      return c(`
-⚠ ${ev.message}`, 'red');
+      return c(
+        `
+⚠ ${ev.message}`,
+        'red',
+      );
 
     case 'error':
       return c(`✗ ${ev.error.code}: ${ev.error.message}`, 'red');
@@ -123,6 +133,7 @@ export function formatEvent(ev: AgentEvent, opts: FormatOptions = {}): string | 
     case 'mcp.sampling.resolved':
     case 'mcp.elicit.requested':
     case 'mcp.elicit.resolved':
+    case 'context.usage':
     case 'internal.debug':
       return null; // 静默事件（调用方按需扩展）
 

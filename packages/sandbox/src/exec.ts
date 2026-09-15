@@ -7,7 +7,7 @@
  *
  * 所有执行器统一返回 SandboxResult，调用方（工具层）无需关心内部差异。
  */
-import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
+import { type ChildProcess, type SpawnOptions, spawn } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { isWindows } from './platform.js';
 

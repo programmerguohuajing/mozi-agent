@@ -110,8 +110,7 @@ export class PolicyEngine {
 
     // shell 且无规则命中 → 命令风险分析（M6 §6.2）：结构化拆解 + 综合评级
     if (call.name === 'shell') {
-      const command =
-        (call.arguments as { command?: unknown } | undefined)?.command ?? '';
+      const command = (call.arguments as { command?: unknown } | undefined)?.command ?? '';
       if (typeof command === 'string' && command.trim()) {
         const { segments, overall } = analyzeCommand(command);
         const verdict = riskToApproval(overall);

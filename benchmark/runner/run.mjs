@@ -16,7 +16,16 @@
  *   MOZI_BENCH_BASE_URL / MOZI_BENCH_API_KEY / MOZI_BENCH_MODEL
  */
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,9 +60,9 @@ function discover() {
       tasks.push({ id, level, dir: taskDir });
     }
   }
-  return tasks.filter((t) => (LEVEL_FILTER ? t.level === LEVEL_FILTER : true)).filter((t) =>
-    TASK_FILTER ? t.id === TASK_FILTER : true,
-  );
+  return tasks
+    .filter((t) => (LEVEL_FILTER ? t.level === LEVEL_FILTER : true))
+    .filter((t) => (TASK_FILTER ? t.id === TASK_FILTER : true));
 }
 
 // ---------- 工具 ----------
@@ -120,7 +129,8 @@ async function runEngine(task, workspaceDir) {
         stats.steps = ev.steps;
         stats.usage = ev.usage;
       } else if (ev.type === 'task.completed') stats.finishReason = ev.reason;
-      else if (ev.type === 'error') stats.finishReason = stats.finishReason ?? `error:${ev.error?.code}`;
+      else if (ev.type === 'error')
+        stats.finishReason = stats.finishReason ?? `error:${ev.error?.code}`;
     }
   } finally {
     clearTimeout(timer);
@@ -200,7 +210,8 @@ function summarize(records) {
     byLevel[lv] = { total: rs.length, passed: rs.filter((r) => r.status === 'pass').length };
   }
   const passed = records.filter((r) => r.status === 'pass');
-  const avg = (nums) => (nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 0);
+  const avg = (nums) =>
+    nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 0;
   return {
     mode: MODE,
     model: MODE === 'live' ? process.env.MOZI_BENCH_MODEL || 'deepseek-chat' : null,
@@ -220,23 +231,35 @@ function summarize(records) {
 
 function writeMarkdown(summary, records, file) {
   const lines = [];
-  lines.push(`# Mozi Benchmark 跑分报告`);
+  lines.push('# Mozi Benchmark 跑分报告');
   lines.push('');
-  lines.push(`- 模式：\`${summary.mode}\`${summary.model ? `（模型：\`${summary.model}\`）` : '（参考解自洽验证）'}`);
+  lines.push(
+    `- 模式：\`${summary.mode}\`${summary.model ? `（模型：\`${summary.model}\`）` : '（参考解自洽验证）'}`,
+  );
   lines.push(`- 日期：${summary.date}`);
-  lines.push(`- 成功率：**${summary.passed}/${summary.total}（${(summary.successRate * 100).toFixed(1)}%）**`);
+  lines.push(
+    `- 成功率：**${summary.passed}/${summary.total}（${(summary.successRate * 100).toFixed(1)}%）**`,
+  );
   if (summary.mode === 'live') {
-    lines.push(`- 平均步数：${summary.avgSteps}｜token：in ${summary.totalInputTokens} / out ${summary.totalOutputTokens}｜成本 $${summary.totalCostUsd}｜审批 ${summary.totalApprovals} 次`);
+    lines.push(
+      `- 平均步数：${summary.avgSteps}｜token：in ${summary.totalInputTokens} / out ${summary.totalOutputTokens}｜成本 $${summary.totalCostUsd}｜审批 ${summary.totalApprovals} 次`,
+    );
   }
   lines.push('');
-  lines.push('| 任务 | 级别 | 状态 | 耗时(ms)' + (summary.mode === 'live' ? ' | 步数 | 工具调用 | token(in/out) | 审批' : '') + ' |');
-  lines.push('|------|------|------|----------' + (summary.mode === 'live' ? '|------|----------|----------------|------' : '') + '|');
+  lines.push(
+    `| 任务 | 级别 | 状态 | 耗时(ms)${summary.mode === 'live' ? ' | 步数 | 工具调用 | token(in/out) | 审批' : ''} |`,
+  );
+  lines.push(
+    `|------|------|------|----------${summary.mode === 'live' ? '|------|----------|----------------|------' : ''}|`,
+  );
   for (const r of records) {
     const extra =
       summary.mode === 'live'
-        ? ` | ${r.steps ?? '-'} | ${r.toolCalls ?? '-'} | ${(r.usage?.inputTokens ?? 0)}/${(r.usage?.outputTokens ?? 0)} | ${r.approvals ?? 0}`
+        ? ` | ${r.steps ?? '-'} | ${r.toolCalls ?? '-'} | ${r.usage?.inputTokens ?? 0}/${r.usage?.outputTokens ?? 0} | ${r.approvals ?? 0}`
         : '';
-    lines.push(`| ${r.id} | ${r.level} | ${r.status === 'pass' ? '✅' : '❌'} | ${r.durationMs}${extra} |`);
+    lines.push(
+      `| ${r.id} | ${r.level} | ${r.status === 'pass' ? '✅' : '❌'} | ${r.durationMs}${extra} |`,
+    );
   }
   lines.push('');
   for (const [lv, s] of Object.entries(summary.byLevel)) {
@@ -252,7 +275,9 @@ async function main() {
     console.error('未发现任何任务（检查 tasks/ 目录与过滤条件）');
     process.exit(1);
   }
-  console.log(`mozi benchmark：${tasks.length} 个任务，模式 ${MODE}${LEVEL_FILTER ? `，级别 ${LEVEL_FILTER}` : ''}${TASK_FILTER ? `，任务 ${TASK_FILTER}` : ''}\n`);
+  console.log(
+    `mozi benchmark：${tasks.length} 个任务，模式 ${MODE}${LEVEL_FILTER ? `，级别 ${LEVEL_FILTER}` : ''}${TASK_FILTER ? `，任务 ${TASK_FILTER}` : ''}\n`,
+  );
 
   const records = [];
   for (const task of tasks) {
@@ -272,7 +297,9 @@ async function main() {
   writeFileSync(jsonFile, JSON.stringify({ summary, tasks: records }, null, 2), 'utf8');
   writeMarkdown(summary, records, mdFile);
 
-  console.log(`\n成功率：${summary.passed}/${summary.total}（${(summary.successRate * 100).toFixed(1)}%）`);
+  console.log(
+    `\n成功率：${summary.passed}/${summary.total}（${(summary.successRate * 100).toFixed(1)}%）`,
+  );
   for (const [lv, s] of Object.entries(summary.byLevel)) {
     console.log(`  ${lv}: ${s.passed}/${s.total}`);
   }

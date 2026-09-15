@@ -2,13 +2,15 @@
  * JSON-RPC 2.0 客户端（M8）：请求/响应关联、通知分发、server→client 反向请求路由。
  * 与传输层解耦——只依赖 McpTransport.send / onMessage。
  */
-import type { Disposable, JsonRpcMessage, JsonRpcRequest, McpTransport } from './transport/types.js';
+import type {
+  Disposable,
+  JsonRpcMessage,
+  JsonRpcRequest,
+  McpTransport,
+} from './transport/types.js';
 
 /** server→client 反向请求处理（如 sampling/createMessage、elicitation/create、roots/list、ping）。 */
-export type ReverseRequestHandler = (
-  method: string,
-  params: unknown,
-) => Promise<unknown> | unknown;
+export type ReverseRequestHandler = (method: string, params: unknown) => Promise<unknown> | unknown;
 
 /** server→client 通知处理（如 notifications/tools/list_changed、progress、logging/message）。 */
 export type NotificationHandler = (method: string, params: unknown) => void;
@@ -35,18 +37,22 @@ export class JsonRpcClient {
 
   onReverseRequest(handler: ReverseRequestHandler): Disposable {
     this.reverseHandlers.push(handler);
-    return { dispose: () => {
-      const i = this.reverseHandlers.indexOf(handler);
-      if (i >= 0) this.reverseHandlers.splice(i, 1);
-    } };
+    return {
+      dispose: () => {
+        const i = this.reverseHandlers.indexOf(handler);
+        if (i >= 0) this.reverseHandlers.splice(i, 1);
+      },
+    };
   }
 
   onNotification(handler: NotificationHandler): Disposable {
     this.notifHandlers.push(handler);
-    return { dispose: () => {
-      const i = this.notifHandlers.indexOf(handler);
-      if (i >= 0) this.notifHandlers.splice(i, 1);
-    } };
+    return {
+      dispose: () => {
+        const i = this.notifHandlers.indexOf(handler);
+        if (i >= 0) this.notifHandlers.splice(i, 1);
+      },
+    };
   }
 
   /** 发起请求，返回 result；超时或失败抛错。 */
@@ -100,7 +106,10 @@ export class JsonRpcClient {
 
   private onMessage(msg: JsonRpcMessage): void {
     // 响应（含 result/error 且带 id）
-    if ('id' in msg && (msg as { result?: unknown }).result !== undefined || (msg as { error?: unknown }).error) {
+    if (
+      ('id' in msg && (msg as { result?: unknown }).result !== undefined) ||
+      (msg as { error?: unknown }).error
+    ) {
       const id = (msg as { id: number | string }).id;
       const p = this.pending.get(id);
       if (!p) return;
@@ -111,8 +120,17 @@ export class JsonRpcClient {
       return;
     }
     // 反向请求（带 method + id，无 result/error）
-    if ('method' in msg && 'id' in msg && !(msg as { result?: unknown }).result && !(msg as { error?: unknown }).error) {
-      const { method, params, id } = msg as { method: string; params: unknown; id: number | string };
+    if (
+      'method' in msg &&
+      'id' in msg &&
+      !(msg as { result?: unknown }).result &&
+      !(msg as { error?: unknown }).error
+    ) {
+      const { method, params, id } = msg as {
+        method: string;
+        params: unknown;
+        id: number | string;
+      };
       void this.handleReverse(method, params, id);
       return;
     }

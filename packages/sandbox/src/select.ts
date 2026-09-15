@@ -2,15 +2,10 @@
  * 沙箱选择链（M6 §6.4）：根据请求级别 + 平台支持矩阵，选出最终生效的隔离档位，
  * 并在无法满足时优雅降级（记录 degradedFrom / note，绝不静默失败）。
  */
-import type {
-  SandboxLevel,
-  SandboxOptions,
-  SandboxResult,
-  SandboxRunner,
-} from '@mozi/shared';
-import { detectSandboxSupport, type SandboxSupport } from './platform.js';
+import type { SandboxLevel, SandboxOptions, SandboxResult, SandboxRunner } from '@mozi/shared';
+import { KILLED_EXIT_CODE, execL0, execL1, execL2, execL3 } from './exec.js';
 import { mergeAllowNet } from './network.js';
-import { execL0, execL1, execL2, execL3, KILLED_EXIT_CODE } from './exec.js';
+import { type SandboxSupport, detectSandboxSupport } from './platform.js';
 
 /** 创建沙箱执行器时的可选配置。 */
 export interface SandboxConfig {
@@ -50,7 +45,7 @@ function toResult(
 export function createSandbox(cfg: SandboxConfig): SandboxRunner {
   const support = detectSandboxSupport();
   const image = cfg.dockerImage ?? DEFAULT_DOCKER_IMAGE;
-  const allowNet = cfg.allowNet && cfg.allowNet.length ? mergeAllowNet(cfg.allowNet) : mergeAllowNet();
+  const allowNet = cfg.allowNet?.length ? mergeAllowNet(cfg.allowNet) : mergeAllowNet();
 
   const requested = cfg.level;
 
@@ -66,7 +61,7 @@ export function createSandbox(cfg: SandboxConfig): SandboxRunner {
     const env = opts.env;
     const timeout = opts.timeoutMs;
     const netAllowed = opts.networkAllowed;
-    const allow = opts.allowNet && opts.allowNet.length ? mergeAllowNet(opts.allowNet) : allowNet;
+    const allow = opts.allowNet?.length ? mergeAllowNet(opts.allowNet) : allowNet;
 
     let raw: { stdout: string; stderr: string; exitCode: number | null; durationMs: number };
     switch (effective) {

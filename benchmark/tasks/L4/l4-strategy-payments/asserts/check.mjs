@@ -21,13 +21,17 @@ assert.deepEqual(processPayment({ method: 'card', amount: 100 }), {
   fee: 3,
   total: 103,
 });
-assert.deepEqual(processPayment({ method: 'card', amount: 5 }), {
-  ok: true,
-  method: 'card',
-  amount: 5,
-  fee: 0.3,
-  total: 5.3,
-}, '手续费下限 0.3');
+assert.deepEqual(
+  processPayment({ method: 'card', amount: 5 }),
+  {
+    ok: true,
+    method: 'card',
+    amount: 5,
+    fee: 0.3,
+    total: 5.3,
+  },
+  '手续费下限 0.3',
+);
 assert.deepEqual(processPayment({ method: 'card', amount: 10 }), {
   ok: true,
   method: 'card',
@@ -49,13 +53,21 @@ assert.deepEqual(processPayment({ method: 'bank', amount: 200 }), {
   fee: 1,
   total: 201,
 });
-assert.deepEqual(processPayment({ method: 'bank', amount: 99 }), {
-  ok: false,
-  reason: 'bank_requires_min_100',
-}, 'bank 下限 100');
-assert.deepEqual(processPayment({ method: 'crypto', amount: 1 }), {
-  ok: false,
-  reason: 'unsupported_method',
-}, '未注册方式拒绝');
+assert.deepEqual(
+  processPayment({ method: 'bank', amount: 99 }),
+  {
+    ok: false,
+    reason: 'bank_requires_min_100',
+  },
+  'bank 下限 100',
+);
+assert.deepEqual(
+  processPayment({ method: 'crypto', amount: 1 }),
+  {
+    ok: false,
+    reason: 'unsupported_method',
+  },
+  '未注册方式拒绝',
+);
 
 console.log('l4-strategy-payments: OK');

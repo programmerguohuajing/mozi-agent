@@ -1,10 +1,12 @@
-import zh from './locales/zh.js';
 import en from './locales/en.js';
+import zh from './locales/zh.js';
 
 const catalogs = { zh, en };
 
 function interpolate(template, params) {
-  return String(template).replace(/\{(\w+)\}/g, (m, key) => (key in params ? String(params[key]) : m));
+  return String(template).replace(/\{(\w+)\}/g, (m, key) =>
+    key in params ? String(params[key]) : m,
+  );
 }
 
 export function t(key, lang = 'zh', params = {}) {

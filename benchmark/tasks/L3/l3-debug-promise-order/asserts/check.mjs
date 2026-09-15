@@ -2,7 +2,11 @@
 import { spawnSync } from 'node:child_process';
 
 const dir = process.argv[2];
-const res = spawnSync(process.execPath, ['--test'], { cwd: dir, encoding: 'utf8', timeout: 60_000 });
+const res = spawnSync(process.execPath, ['--test'], {
+  cwd: dir,
+  encoding: 'utf8',
+  timeout: 60_000,
+});
 const out = res.stdout + res.stderr;
 
 if (res.status !== 0) {

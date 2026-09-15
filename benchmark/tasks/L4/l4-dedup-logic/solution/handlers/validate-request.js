@@ -1,6 +1,5 @@
 export function nonEmptyString(message) {
-  return (value) =>
-    typeof value === 'string' && value.trim() !== '' ? null : message;
+  return (value) => (typeof value === 'string' && value.trim() !== '' ? null : message);
 }
 
 export function validateRequest(body, schema) {

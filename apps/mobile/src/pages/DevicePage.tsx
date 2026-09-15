@@ -4,9 +4,9 @@
  */
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, spacing } from '../theme';
-import { fmtTime, useMoziClient } from '../hooks/useMoziClient';
 import type { DevicePageItem } from '../client';
+import { fmtTime, useMoziClient } from '../hooks/useMoziClient';
+import { colors, spacing } from '../theme';
 import { Badge, Btn, Card, CardTitle, Empty, Row, SectionLabel } from './ui';
 
 export function DevicePage(): React.ReactElement {
@@ -65,7 +65,10 @@ export function DevicePage(): React.ReactElement {
         <Card key={d.deviceId}>
           <View style={devStyles.head}>
             <View style={devStyles.titleWrap}>
-              <Text style={[devStyles.name, d.revokedAt ? devStyles.revokedName : null]} numberOfLines={1}>
+              <Text
+                style={[devStyles.name, d.revokedAt ? devStyles.revokedName : null]}
+                numberOfLines={1}
+              >
                 {d.name}
               </Text>
               <Text style={devStyles.sub} numberOfLines={1}>
@@ -90,7 +93,13 @@ export function DevicePage(): React.ReactElement {
                 placeholderTextColor={colors.textFaint}
                 autoFocus
               />
-              <Btn label="保存" kind="primary" small disabled={acting === d.deviceId} onPress={() => void doRename(d)} />
+              <Btn
+                label="保存"
+                kind="primary"
+                small
+                disabled={acting === d.deviceId}
+                onPress={() => void doRename(d)}
+              />
               <Btn label="取消" small onPress={() => setRenaming(null)} />
             </View>
           ) : (
@@ -106,7 +115,13 @@ export function DevicePage(): React.ReactElement {
                       setRenameDraft(d.name);
                     }}
                   />
-                  <Btn label="吊销" kind="danger" small disabled={acting === d.deviceId || !!d.revokedAt} onPress={() => void doRevoke(d)} />
+                  <Btn
+                    label="吊销"
+                    kind="danger"
+                    small
+                    disabled={acting === d.deviceId || !!d.revokedAt}
+                    onPress={() => void doRevoke(d)}
+                  />
                 </>
               ) : null}
             </View>
@@ -125,7 +140,12 @@ export function DevicePage(): React.ReactElement {
 }
 
 const devStyles = StyleSheet.create({
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  head: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   titleWrap: { flex: 1 },
   name: { color: colors.text, fontSize: 15, fontWeight: '700' },
   revokedName: { color: colors.textFaint, textDecorationLine: 'line-through' },

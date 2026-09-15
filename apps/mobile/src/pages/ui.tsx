@@ -1,11 +1,14 @@
 /**
  * 页面级共享小组件（卡片 / 徽标 / 按钮 / 空态）——深色金色主题。
  */
-import React from 'react';
+import type React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '../theme';
 
-export function Card({ children, style }: { children: React.ReactNode; style?: object }): React.ReactElement {
+export function Card({
+  children,
+  style,
+}: { children: React.ReactNode; style?: object }): React.ReactElement {
   return <View style={[uiStyles.card, style]}>{children}</View>;
 }
 
@@ -38,7 +41,10 @@ const BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
   gray: { bg: 'rgba(123,143,168,0.12)', fg: colors.textDim },
 };
 
-export function Badge({ label, tone = 'gray' }: { label: string; tone?: keyof typeof BADGE_COLORS }): React.ReactElement {
+export function Badge({
+  label,
+  tone = 'gray',
+}: { label: string; tone?: keyof typeof BADGE_COLORS }): React.ReactElement {
   const c = BADGE_COLORS[tone] ?? BADGE_COLORS.gray!;
   return (
     <View style={[uiStyles.badge, { backgroundColor: c.bg }]}>
@@ -63,14 +69,32 @@ export function Btn({
   small?: boolean;
 }): React.ReactElement {
   const kindStyle =
-    kind === 'primary' ? uiStyles.btnPrimary : kind === 'success' ? uiStyles.btnSuccess : kind === 'danger' ? uiStyles.btnDanger : uiStyles.btnGhost;
+    kind === 'primary'
+      ? uiStyles.btnPrimary
+      : kind === 'success'
+        ? uiStyles.btnSuccess
+        : kind === 'danger'
+          ? uiStyles.btnDanger
+          : uiStyles.btnGhost;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[uiStyles.btn, small ? uiStyles.btnSmall : null, kindStyle, disabled ? uiStyles.btnDisabled : null]}
+      style={[
+        uiStyles.btn,
+        small ? uiStyles.btnSmall : null,
+        kindStyle,
+        disabled ? uiStyles.btnDisabled : null,
+      ]}
     >
-      <Text style={[uiStyles.btnText, kind === 'ghost' ? uiStyles.btnTextGhost : null, small ? { fontSize: 12 } : null, disabled ? uiStyles.btnTextDisabled : null]}>
+      <Text
+        style={[
+          uiStyles.btnText,
+          kind === 'ghost' ? uiStyles.btnTextGhost : null,
+          small ? { fontSize: 12 } : null,
+          disabled ? uiStyles.btnTextDisabled : null,
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -125,13 +149,27 @@ export const uiStyles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
-  btnSuccess: { backgroundColor: 'rgba(52,211,153,0.16)', borderWidth: 1, borderColor: colors.emerald },
-  btnDanger: { backgroundColor: 'rgba(251,113,133,0.16)', borderWidth: 1, borderColor: colors.rose },
+  btnSuccess: {
+    backgroundColor: 'rgba(52,211,153,0.16)',
+    borderWidth: 1,
+    borderColor: colors.emerald,
+  },
+  btnDanger: {
+    backgroundColor: 'rgba(251,113,133,0.16)',
+    borderWidth: 1,
+    borderColor: colors.rose,
+  },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.cardBorder },
   btnText: { color: '#04121a', fontSize: 14, fontWeight: '700' },
   btnTextGhost: { color: colors.text },
   btnTextDisabled: { color: colors.textFaint },
   empty: { alignItems: 'center', padding: spacing.xl * 2 },
   emptyText: { color: colors.textFaint, fontSize: 13, textAlign: 'center' },
-  section: { color: colors.textFaint, fontSize: 12, fontWeight: '700', marginTop: spacing.md, marginBottom: spacing.sm },
+  section: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
 });

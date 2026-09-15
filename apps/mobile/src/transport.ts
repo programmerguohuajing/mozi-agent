@@ -8,7 +8,7 @@
  *   attach:  断线重连时发送 lastEventId，服务端重放历史。
  */
 import type { RemoteFrame, RemotePush } from '@mozi/protocol';
-import type { RemoteClient, ClientConnState } from './client';
+import type { ClientConnState, RemoteClient } from './client';
 
 export class WssTransport {
   private ws: WebSocket | null = null;
@@ -42,7 +42,7 @@ export class WssTransport {
       this.ws.onmessage = (ev) => {
         try {
           const frame = JSON.parse(String(ev.data)) as RemotePush;
-          this.pushHandlers.forEach((cb) => cb(frame));
+          for (const cb of this.pushHandlers) cb(frame);
         } catch {
           /* 非 JSON 帧：忽略 */
         }
@@ -68,7 +68,7 @@ export class WssTransport {
 
   private setState(s: ClientConnState): void {
     this.state = s;
-    this.stateHandlers.forEach((cb) => cb(s));
+    for (const cb of this.stateHandlers) cb(s);
   }
 
   close(): void {
@@ -178,7 +178,11 @@ export class MobileRemoteClient implements RemoteClient {
   }
 
   async attach(sessionId: string, lastEventId?: number): Promise<void> {
-    this.transport.send({ t: 'attach', sessionId, ...(lastEventId != null ? { lastEventId } : {}) });
+    this.transport.send({
+      t: 'attach',
+      sessionId,
+      ...(lastEventId != null ? { lastEventId } : {}),
+    });
   }
 
   close(): void {

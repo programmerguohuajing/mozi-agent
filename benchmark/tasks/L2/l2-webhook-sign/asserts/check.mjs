@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const { sign, verify, handleWebhook } = await import(pathToFileURL(join(process.argv[2], 'webhook.js')));
+const { sign, verify, handleWebhook } = await import(
+  pathToFileURL(join(process.argv[2], 'webhook.js'))
+);
 
 const secret = 'whsec_topsecret';
 const body = { event: 'order.paid', id: 42 };

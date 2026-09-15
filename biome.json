@@ -22,7 +22,14 @@
         "noExplicitAny": "error"
       },
       "style": {
-        "noNonNullAssertion": "error"
+        "noNonNullAssertion": "warn"
+      },
+      "a11y": {
+        "useButtonType": "warn",
+        "useKeyWithClickEvents": "warn",
+        "useSemanticElements": "warn",
+        "useFocusableInteractive": "warn",
+        "noSvgWithoutTitle": "warn"
       }
     }
   },

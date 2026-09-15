@@ -1,16 +1,19 @@
+import type { SessionState, SessionSummary } from '@mozi/protocol';
+import type { AgentEvent } from '@mozi/shared';
 /**
  * 会话页（M4.75 / M14 §14.8②③）：会话列表 → 会话视图（实时事件流）。
  * 列表项点击 attach 订阅（断线重连按 lastEventId 续传）；底部输入框 run:start 下发任务。
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import type { AgentEvent } from '@mozi/shared';
-import type { SessionState, SessionSummary } from '@mozi/protocol';
-import { colors, spacing } from '../theme';
 import { fmtTime, useMoziClient } from '../hooks/useMoziClient';
+import { colors, spacing } from '../theme';
 import { Badge, Btn, Card, Empty } from './ui';
 
-const STATE_LABEL: Record<SessionState, { label: string; tone: 'gold' | 'green' | 'red' | 'gray' | 'blue' }> = {
+const STATE_LABEL: Record<
+  SessionState,
+  { label: string; tone: 'gold' | 'green' | 'red' | 'gray' | 'blue' }
+> = {
   idle: { label: '空闲', tone: 'gray' },
   running: { label: '运行中', tone: 'gold' },
   pending_approval: { label: '待审批', tone: 'blue' },
@@ -86,7 +89,10 @@ export function SessionsPage(): React.ReactElement {
   );
 }
 
-function SessionRow({ summary, onOpen }: { summary: SessionSummary; onOpen: () => void }): React.ReactElement {
+function SessionRow({
+  summary,
+  onOpen,
+}: { summary: SessionSummary; onOpen: () => void }): React.ReactElement {
   const st = STATE_LABEL[summary.state] ?? STATE_LABEL.idle!;
   const tokens = summary.usage ? `${summary.usage.totalTokens.toLocaleString()} tok` : '';
   return (
@@ -102,7 +108,11 @@ function SessionRow({ summary, onOpen }: { summary: SessionSummary; onOpen: () =
           {[summary.model ?? '', summary.id].filter(Boolean).join(' · ')}
         </Text>
         <View style={sessStyles.rowFoot}>
-          {tokens ? <Text style={sessStyles.rowMeta}>{tokens}</Text> : <Text style={sessStyles.rowMeta}>—</Text>}
+          {tokens ? (
+            <Text style={sessStyles.rowMeta}>{tokens}</Text>
+          ) : (
+            <Text style={sessStyles.rowMeta}>—</Text>
+          )}
           <Text style={sessStyles.rowMeta}>{fmtTime(summary.updatedAt)}</Text>
         </View>
       </Card>
@@ -154,9 +164,15 @@ function EventBubble({ event }: { event: AgentEvent }): React.ReactElement | nul
         </Text>
       );
     case 'token.usage':
-      return <Text style={sessStyles.sysText}>tokens: {event.usage.totalTokens.toLocaleString()}</Text>;
+      return (
+        <Text style={sessStyles.sysText}>tokens: {event.usage.totalTokens.toLocaleString()}</Text>
+      );
     case 'turn.completed':
-      return <Text style={sessStyles.sysText}>轮次完成 · {event.usage.totalTokens.toLocaleString()} tok</Text>;
+      return (
+        <Text style={sessStyles.sysText}>
+          轮次完成 · {event.usage.totalTokens.toLocaleString()} tok
+        </Text>
+      );
     case 'task.completed':
       return (
         <View style={[sessStyles.bubble, sessStyles.doneBubble]}>
@@ -170,7 +186,11 @@ function EventBubble({ event }: { event: AgentEvent }): React.ReactElement | nul
     case 'session.terminated':
       return <Text style={sessStyles.sysText}>会话已终止（{event.reason}）</Text>;
     case 'context.compacted':
-      return <Text style={sessStyles.sysText}>上下文压缩：-{event.savedTokens.toLocaleString()} tok</Text>;
+      return (
+        <Text style={sessStyles.sysText}>
+          上下文压缩：-{event.savedTokens.toLocaleString()} tok
+        </Text>
+      );
     case 'cost.warning':
       return (
         <View style={[sessStyles.bubble, sessStyles.warnBubble]}>
@@ -186,7 +206,12 @@ function EventBubble({ event }: { event: AgentEvent }): React.ReactElement | nul
     case 'subagent.started':
       return <Text style={sessStyles.sysText}>🤖 子智能体启动（{event.agentType}）</Text>;
     case 'subagent.progress':
-      return <Text style={sessStyles.sysText}>🤖 子智能体 {event.step}/{event.maxSteps} {event.currentTool ? `· ${event.currentTool}` : ''}</Text>;
+      return (
+        <Text style={sessStyles.sysText}>
+          🤖 子智能体 {event.step}/{event.maxSteps}{' '}
+          {event.currentTool ? `· ${event.currentTool}` : ''}
+        </Text>
+      );
     case 'subagent.completed':
       return <Text style={sessStyles.sysText}>🤖 子智能体完成：{event.summary}</Text>;
     case 'subagent.failed':
@@ -229,7 +254,12 @@ const sessStyles = StyleSheet.create({
     fontSize: 13,
     maxHeight: 96,
   },
-  rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  rowHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   rowTitle: { color: colors.text, fontSize: 15, fontWeight: '700', flex: 1 },
   rowSub: { color: colors.textDim, fontSize: 12, marginTop: 4 },
   rowFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
@@ -237,9 +267,21 @@ const sessStyles = StyleSheet.create({
   bubble: { borderRadius: 10, padding: spacing.md, marginBottom: spacing.sm, maxWidth: '100%' },
   userBubble: { backgroundColor: 'rgba(0,229,199,0.10)', alignSelf: 'flex-end' },
   aiBubble: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder },
-  warnBubble: { backgroundColor: 'rgba(245,166,35,0.12)', borderWidth: 1, borderColor: colors.amber },
-  errBubble: { backgroundColor: 'rgba(251,113,133,0.12)', borderWidth: 1, borderColor: colors.danger },
-  doneBubble: { backgroundColor: 'rgba(52,211,153,0.12)', borderWidth: 1, borderColor: colors.success },
+  warnBubble: {
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    borderWidth: 1,
+    borderColor: colors.amber,
+  },
+  errBubble: {
+    backgroundColor: 'rgba(251,113,133,0.12)',
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  doneBubble: {
+    backgroundColor: 'rgba(52,211,153,0.12)',
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
   userText: { color: '#bfeef0', fontSize: 13 },
   aiText: { color: colors.text, fontSize: 13, lineHeight: 20 },
   aiTextDim: { color: colors.textDim, fontSize: 13, lineHeight: 20 },

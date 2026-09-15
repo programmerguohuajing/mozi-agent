@@ -4,8 +4,18 @@
  */
 export const PKG = '@mozi/mcp-client';
 
-export { McpBridge, type McpBridgeDeps, type McpServerEntry, type PromptCommand } from './bridge.js';
-export { McpServerConnection, type ConnectionDeps, type ElicitHandler, type RootsProvider } from './connection.js';
+export {
+  McpBridge,
+  type McpBridgeDeps,
+  type McpServerEntry,
+  type PromptCommand,
+} from './bridge.js';
+export {
+  McpServerConnection,
+  type ConnectionDeps,
+  type ElicitHandler,
+  type RootsProvider,
+} from './connection.js';
 export { JsonRpcClient, type ReverseRequestHandler, type NotificationHandler } from './jsonrpc.js';
 export { McpToolAdapter } from './tools.js';
 export { StdioTransport } from './transport/stdio.js';
@@ -23,6 +33,7 @@ export type {
   TransportKind,
   StdioServerConfig,
   HttpServerConfig,
+  McpServerConfig,
 } from './transport/types.js';
 export {
   OAuthFlow,

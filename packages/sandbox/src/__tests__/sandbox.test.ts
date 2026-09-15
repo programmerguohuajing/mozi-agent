@@ -2,14 +2,14 @@
  * @mozi/sandbox 单元测试（M6 §6.4）。
  * 覆盖：网络白名单匹配、选择链降级矩阵、L0/L1 实际执行、超时强杀。
  */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+  KILLED_EXIT_CODE,
+  createSandbox,
+  defaultAllowNet,
   isNetworkAllowed,
   mergeAllowNet,
-  defaultAllowNet,
-  createSandbox,
   previewLevel,
-  KILLED_EXIT_CODE,
 } from '../index.js';
 import type { SandboxSupport } from '../platform.js';
 
@@ -116,10 +116,7 @@ describe('execution (L0/L1)', () => {
   it('L1 超时强杀返回 KILLED 哨兵', async () => {
     const runner = createSandbox({ level: 1 });
     // Windows 用 timeout/sleep 无限挂起；用跨平台写法：node 死循环会更快被强杀。
-    const hang =
-      process.platform === 'win32'
-        ? 'ping -n 60 127.0.0.1 >nul'
-        : 'sleep 60';
+    const hang = process.platform === 'win32' ? 'ping -n 60 127.0.0.1 >nul' : 'sleep 60';
     const start = Date.now();
     const res = await runner.exec(hang, {
       cwd: process.cwd(),
@@ -132,10 +129,11 @@ describe('execution (L0/L1)', () => {
 
   it('非零退出码透传', async () => {
     const runner = createSandbox({ level: 1 });
-    const res = await runner.exec(
-      process.platform === 'win32' ? 'exit /b 7' : 'exit 7',
-      { cwd: process.cwd(), timeoutMs: 2000, networkAllowed: false },
-    );
+    const res = await runner.exec(process.platform === 'win32' ? 'exit /b 7' : 'exit 7', {
+      cwd: process.cwd(),
+      timeoutMs: 2000,
+      networkAllowed: false,
+    });
     expect(res.exitCode).toBe(7);
   });
 });

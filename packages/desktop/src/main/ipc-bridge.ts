@@ -101,6 +101,29 @@ export class IpcBridge {
     }
   }
 
+  /**
+   * provider 配置写盘的守卫包装。
+   *
+   * settings-store 的 setProvider/setApiKey 是同步 fs 写盘（含密钥加密），失败时抛错。
+   * 若异常直接冒泡：invoke 的 Promise 会 reject 到渲染进程 → 调用方（SettingsPanel 的
+   * handleAddProvider）的 `await` 中断，`setShowAddForm(false)` 不执行，表单既不关闭也不
+   * 报错，界面卡在「表单可见但已提交」的半死状态（用户主观感受即「点完之后就不对劲了」）。
+   * 这里统一转成 `{ ok:false, error }`，让上层能正常回显错误并复位表单。
+   */
+  private guardedWrite<T extends { ok: boolean; error?: string }>(
+    fn: () => T,
+    fallbackError: string,
+  ): T {
+    try {
+      return fn();
+    } catch (err) {
+      return {
+        ok: false,
+        error: `${fallbackError}：${err instanceof Error ? err.message : String(err)}`,
+      } as T;
+    }
+  }
+
   /** 注册全部 invoke handler。 */
   install(): void {
     const {
@@ -447,24 +470,35 @@ export class IpcBridge {
         // 允许：自动路由（model 空）—— 但必须显式确认 baseUrl 存在
         if (!req.baseUrl?.trim()) return { ok: false, error: '自动路由模式必须填写 Base URL' };
       }
-      settings.setProvider(id, {
-        model: req.model,
-        models: hasModels ? req.models : undefined,
-        baseUrl: req.baseUrl,
-        apiKeyEnv: req.apiKeyEnv,
-        apiFormat: req.apiFormat,
-        modelMap: req.modelMap,
-      });
-      if (req.apiKey) {
-        const result = settings.setApiKey(id, req.apiKey);
-        if (!result.ok) return { ok: false, error: result.error };
-      }
+      const written = this.guardedWrite<{ ok: boolean; error?: string }>(() => {
+        settings.setProvider(id, {
+          model: req.model,
+          models: hasModels ? req.models : undefined,
+          baseUrl: req.baseUrl,
+          apiKeyEnv: req.apiKeyEnv,
+          apiFormat: req.apiFormat,
+          modelMap: req.modelMap,
+        });
+        if (req.apiKey) {
+          const result = settings.setApiKey(id, req.apiKey);
+          if (!result.ok) return { ok: false, error: result.error };
+        }
+        return { ok: true };
+      }, '写入 provider 配置失败');
+      if (!written.ok) return written;
       this.providersChanged();
       return { ok: true };
     });
 
     channel.handle('provider:remove', (req: ProviderRemoveRequest) => {
-      settings.removeProvider(req.id);
+      const removed = this.guardedWrite<{ ok: boolean; error?: string }>(
+        () => {
+          settings.removeProvider(req.id);
+          return { ok: true };
+        },
+        '删除 provider 失败',
+      );
+      if (!removed.ok) return removed;
       this.providersChanged();
       return { ok: true };
     });
@@ -507,19 +541,23 @@ export class IpcBridge {
       ) {
         return { ok: false, error: '自动路由模式必须填写 Base URL' };
       }
-      settings.setProvider(id, {
-        model: nextModel,
-        models: nextModels,
-        baseUrl: req.baseUrl !== undefined ? req.baseUrl.trim() || undefined : existing.baseUrl,
-        apiKeyEnv:
-          req.apiKeyEnv !== undefined ? req.apiKeyEnv.trim() || undefined : existing.apiKeyEnv,
-        apiFormat: req.apiFormat ?? existing.apiFormat,
-        modelMap: nextMap,
-      });
-      if (req.apiKey) {
-        const result = settings.setApiKey(id, req.apiKey);
-        if (!result.ok) return { ok: false, error: result.error };
-      }
+      const written = this.guardedWrite<{ ok: boolean; error?: string }>(() => {
+        settings.setProvider(id, {
+          model: nextModel,
+          models: nextModels,
+          baseUrl: req.baseUrl !== undefined ? req.baseUrl.trim() || undefined : existing.baseUrl,
+          apiKeyEnv:
+            req.apiKeyEnv !== undefined ? req.apiKeyEnv.trim() || undefined : existing.apiKeyEnv,
+          apiFormat: req.apiFormat ?? existing.apiFormat,
+          modelMap: nextMap,
+        });
+        if (req.apiKey) {
+          const result = settings.setApiKey(id, req.apiKey);
+          if (!result.ok) return { ok: false, error: result.error };
+        }
+        return { ok: true };
+      }, '写入 provider 配置失败');
+      if (!written.ok) return written;
       this.providersChanged();
       return { ok: true };
     });

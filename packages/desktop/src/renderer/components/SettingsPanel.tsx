@@ -237,6 +237,25 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
   const [newBaseUrl, setNewBaseUrl] = React.useState('');
   const [newApiKey, setNewApiKey] = React.useState('');
   const [newApiFormat, setNewApiFormat] = React.useState<ApiFormat>('openai');
+  /**
+   * 新增表单展开后自动聚焦。
+   *
+   * 这里刻意**不用** `autoFocus`：react-dom 的 autoFocus 会在 setState 之后**同步**
+   * 调 focus()（见 ReactDOMHostConfig.commitMount / commitUpdate 的 autoFocus 分支）。
+   * 用户点击「+ 添加 Provider」时按钮正处于 focused 状态，我们 setState 展开表单 → 同步
+   * focus 在按钮自身的 click 事件派发**期间**发生 → 焦点先移到输入框，随后浏览器把
+   * 「click 默认动作」的焦点派发回被点按钮，把焦点偷走。结果表单已展开、输入框却是
+   * 未聚焦状态，用户敲字无任何反应（表现为「点击后无法输入」）。
+   * setTimeout(0) 把 focus 推迟到当前事件派发结束之后，可稳定躲开这次焦点回收。
+   */
+  const addIdRef = React.useRef<HTMLInputElement | null>(null);
+  React.useEffect(() => {
+    if (!showAddForm) return undefined;
+    const timer = setTimeout(() => {
+      addIdRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [showAddForm]);
   const [addError, setAddError] = React.useState('');
   /** 勾选的模型（该提供商提供的模型列表；不勾 = 网关自动路由）。 */
   const [newSelectedModels, setNewSelectedModels] = React.useState<Record<string, boolean>>({});
@@ -324,20 +343,29 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
       setAddError('请至少勾选一个模型，或填写 Base URL（自动路由）');
       return;
     }
-    const result = await props.onAddProvider({
-      id: newId.trim(),
-      // model 存第一个模型名（默认/测试连接模型；空 = 自动路由）。
-      model: models[0] ?? '',
-      models,
-      baseUrl: newBaseUrl.trim() || undefined,
-      apiKey: newApiKey.trim() || undefined,
-      apiFormat: newApiFormat,
-    });
+    // 兜底：主进程写盘 / 重建注册表异常会让 invoke 直接 reject。
+    // 不接住的话表单既不关闭也不报错，界面停在半死状态（再无任何反馈）。
+    let result: { ok: boolean; error?: string };
+    try {
+      result = await props.onAddProvider({
+        id: newId.trim(),
+        // model 存第一个模型名（默认/测试连接模型；空 = 自动路由）。
+        model: models[0] ?? '',
+        models,
+        baseUrl: newBaseUrl.trim() || undefined,
+        apiKey: newApiKey.trim() || undefined,
+        apiFormat: newApiFormat,
+      });
+    } catch (err) {
+      result = { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
     if (result.ok) {
       resetAddForm();
       setShowAddForm(false);
     } else {
       setAddError(result.error ?? '添加失败');
+      // 失败时把焦点还给第一个输入框，用户可以直接改错重试。
+      addIdRef.current?.focus();
     }
   };
 
@@ -365,14 +393,19 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
       setEditError('请至少勾选一个模型，或填写 Base URL（自动路由）');
       return;
     }
-    const result = await props.onUpdateProvider({
-      id,
-      model: models[0] ?? '',
-      models,
-      baseUrl,
-      apiKey: editApiKey.trim() || undefined,
-      apiFormat: editApiFormat,
-    });
+    let result: { ok: boolean; error?: string };
+    try {
+      result = await props.onUpdateProvider({
+        id,
+        model: models[0] ?? '',
+        models,
+        baseUrl,
+        apiKey: editApiKey.trim() || undefined,
+        apiFormat: editApiFormat,
+      });
+    } catch (err) {
+      result = { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
     if (result.ok) setEditingId(null);
     else setEditError(result.error ?? '更新失败');
   };
@@ -430,6 +463,7 @@ export function SettingsPanel(props: SettingsPanelProps): React.ReactElement {
                 className="input-field"
                 placeholder="Provider ID（如 deepseek、openai）"
                 value={newId}
+                ref={addIdRef}
                 onChange={(e) => setNewId(e.target.value)}
               />
 

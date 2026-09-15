@@ -91,6 +91,12 @@ const zh: Dict = {
   'chat.workspace.pickNow': '立即选择',
   'chat.workspace.change': '更换',
   'chat.workspace.none': '未指定',
+  // 设置页：新增 Provider 表单的输入框提示（英文界面下避免中英混排）
+  'settings.provider.id.placeholder': 'Provider ID（如 deepseek、openai）',
+  'settings.provider.baseUrl.placeholder': 'Base URL',
+  'settings.provider.key.placeholder': 'API Key（可选，稍后也可在卡片中配置）',
+  'settings.provider.customModel.placeholder': '手动添加模型名（端点未列出时）',
+  'settings.provider.addModel': '添加',
   // @ 引用弹层
   'chat.mention.title': '引用文件 / 文件夹',
   'chat.mention.hint': '↑↓ 选择 · Enter 插入 · Esc 关闭',
@@ -382,6 +388,12 @@ const en: Dict = {
   'chat.workspace.pickNow': 'Choose now',
   'chat.workspace.change': 'Change',
   'chat.workspace.none': 'Not set',
+  // Settings: add-provider form placeholders
+  'settings.provider.id.placeholder': 'Provider ID (e.g. deepseek, openai)',
+  'settings.provider.baseUrl.placeholder': 'Base URL',
+  'settings.provider.key.placeholder': 'API key (optional — can be set later on the card)',
+  'settings.provider.customModel.placeholder': 'Add a model name manually (when not listed)',
+  'settings.provider.addModel': 'Add',
   // Mention popup
   'chat.mention.title': 'Mention files / folders',
   'chat.mention.hint': '↑↓ select · Enter insert · Esc close',

@@ -3169,6 +3169,7 @@ select {
 .browser-panel {
   flex: none;
   width: 480px;
+  height: 100%;
   border-left: 1px solid var(--border-light);
   background: var(--bg-2);
   display: flex;

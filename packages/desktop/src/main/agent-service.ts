@@ -105,6 +105,12 @@ export interface AgentServiceOptions {
    * 注入引擎后 agent 的 browser 工具与用户看到的 webview 操作同一页面。
    */
   browserFor?: (sessionId: string) => BrowserAccess | undefined;
+  /**
+   * 会话级临时放行（「本会话一律允许」）：该会话内此工具已获用户批准。
+   * 事件流中出现审批请求时，命中的工具由主进程直接放行，不再弹 UI ——
+   * 使勾选后在**同一轮** run 内立即生效（config.rules 注入只对下一轮生效）。
+   */
+  sessionAllowsTool?: (sessionId: string, tool: string) => boolean;
 }
 
 /** 会话项目名：取 workspace 末段。 */
@@ -392,6 +398,12 @@ export class AgentService {
       for await (const ev of entry.engine.engine.run(input)) {
         this.opts.emit(this.stamp(sid, ev));
         if (ev.type === 'tool.approval.required') {
+          // 会话级临时放行（「本会话一律允许」）：主进程直接批准，不进票据、不弹 UI。
+          // 引擎在放行后会自行产出 tool.approval.resolved（经同一事件流流出）。
+          if (ev.call?.name && this.opts.sessionAllowsTool?.(sid, ev.call.name)) {
+            entry.engine.engine.resolveApproval(sid, ev.call.id, 'allow');
+            continue;
+          }
           this.setState(entry, 'pending_approval');
           if (!entry.pendingApprovals.some((p) => p.callId === ev.call.id)) {
             entry.pendingApprovals.push({
@@ -431,20 +443,24 @@ export class AgentService {
     }
   }
 
-  /** 裁决审批（§10.3 approval:resolve）。子智能体审批同样经此路由。 */
+  /**
+   * 裁决审批（§10.3 approval:resolve）。子智能体审批同样经此路由。
+   * 返回被放行/拒绝工具的名称（供「本会话一律允许」按工具追加临时规则）。
+   */
   resolveApproval(req: {
     sessionId: string;
     callId: string;
     decision: 'allow' | 'deny';
     onceForSession?: boolean;
-  }): { ok: boolean } {
+  }): { ok: boolean; toolName?: string } {
     const entry = this.pool.get(req.sessionId);
     if (!entry) return { ok: false };
+    const toolName = entry.pendingApprovals.find((p) => p.callId === req.callId)?.call?.name;
     entry.engine.engine.resolveApproval(req.sessionId, req.callId, req.decision);
     // 不再手动 emit `tool.approval.resolved`：引擎在 executeOne 放行后会自行
     // 产出该事件（经宿主通道实时上抛 + 生成器），此处重复发会导致 UI 收到双份。
     entry.pendingApprovals = entry.pendingApprovals.filter((p) => p.callId !== req.callId);
-    return { ok: true };
+    return { ok: true, toolName };
   }
 
   /**

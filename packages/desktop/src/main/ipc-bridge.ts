@@ -179,7 +179,11 @@ export class IpcBridge {
 
     channel.handle('session:list', () => service.list());
 
-    channel.handle('session:delete', (req) => service.delete(req.sessionId));
+    channel.handle('session:delete', (req) => {
+      // 会话级临时 allow 规则一并清理（「本会话一律允许」不跨会话残留）。
+      settings.clearSessionAllows(req.sessionId);
+      return service.delete(req.sessionId);
+    });
 
     // ── 更换会话项目文件夹（输入栏「+」→ 选择项目文件夹）──────────
     channel.handle('session:setWorkspace', async (req) => {
@@ -196,7 +200,8 @@ export class IpcBridge {
         ...(req.overrides ?? {}),
         policy: req.overrides?.policy ?? {
           mode: settings.policyMode(),
-          rules: settings.policyRules(),
+          // 会话级临时规则在前（优先命中），持久化用户规则在后。
+          rules: [...settings.sessionAllowRules(req.sessionId), ...settings.policyRules()],
         },
       };
       const res = service.start({ ...req, overrides });
@@ -218,9 +223,14 @@ export class IpcBridge {
     });
 
     channel.handle('approval:resolve', (req) => {
-      const ok = service.resolveApproval(req).ok;
-      if (ok && req.onceForSession) settings.appendAllowRule(req.sessionId, req.callId);
-      return { ok };
+      const res = service.resolveApproval(req);
+      // 「本会话一律允许」：按**工具名**追加会话级临时规则（内存、去重、
+      // 不持久化）。旧实现按 callId 写 match:{"tool":"*"} 到全局规则表 ——
+      // 字面匹配永不命中（死规则）且每次审批堆积一条重复项。
+      if (res.ok && req.onceForSession && res.toolName) {
+        settings.appendSessionAllow(req.sessionId, res.toolName);
+      }
+      return { ok: res.ok };
     });
 
     channel.handle('engine:abort', (req) => service.abort(req));

@@ -35,6 +35,23 @@ interface CredentialRecord {
 /** 关闭应用窗口时的行为（基础设置 §10.7）。 */
 export type CloseBehavior = 'quit' | 'tray';
 
+/**
+ * 策略规则清洗：丢弃 `once-` 前缀的历史会话级规则（现已迁入内存管理），
+ * 并对 match+action 完全相同的重复规则去重（保留首条，UI 不再显示成排重复项）。
+ */
+export function dedupePolicyRules(rules: PolicyRule[]): PolicyRule[] {
+  const seen = new Set<string>();
+  const out: PolicyRule[] = [];
+  for (const r of rules) {
+    if (r.id.startsWith('once-')) continue;
+    const key = `${JSON.stringify(r.match)}|${r.action}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
 interface SettingsShape {
   policyMode: PolicyMode;
   policyRules: PolicyRule[];
@@ -85,10 +102,33 @@ export interface SettingsStoreOptions {
 export class SettingsStore {
   private data: SettingsShape;
   private readonly filePath: string;
+  /**
+   * 会话级临时 allow 规则（「本会话一律允许」）：**只存内存、不持久化** ——
+   * 生命周期 = 应用进程存活期（重启天然失效，符合"本会话"语义）。
+   * 每会话一个稳定数组实例，追加规则时原地 push。
+   */
+  private readonly sessionAllows = new Map<string, PolicyRule[]>();
 
   constructor(private readonly opts: SettingsStoreOptions) {
     this.filePath = opts.filePath;
     this.data = this.load();
+    this.migratePolicyRules();
+  }
+
+  /**
+   * 历史数据迁移（一次性）：早期版本把「本会话一律允许」规则持久化进
+   * policyRules（id 以 `once-` 开头、match 恒为 {"tool":"*"}），每审批一次
+   * 追加一条、永不清理 —— 策略规则面板因此堆满重复项。会话级临时规则现已
+   * 改为内存管理（appendSessionAllow），此处把存量垃圾清掉，并对剩余完全
+   * 重复的规则（match+action 相同）去重。
+   */
+  private migratePolicyRules(): void {
+    const before = this.data.policyRules;
+    const cleaned = dedupePolicyRules(before);
+    if (cleaned.length !== before.length) {
+      this.data.policyRules = cleaned;
+      this.persist();
+    }
   }
 
   private load(): SettingsShape {
@@ -159,14 +199,38 @@ export class SettingsStore {
     this.persist();
   }
 
-  /** 「本次会话一律允许」：追加一条 allow 规则（approval:resolve onceForSession）。 */
-  appendAllowRule(sessionId: string, callId: string): void {
-    this.data.policyRules.push({
-      id: `once-${sessionId}-${callId}`,
-      match: { tool: '*' },
-      action: 'allow',
-    });
-    this.persist();
+  /**
+   * 「本会话一律允许」：为该会话追加一条针对**该工具**的 allow 规则。
+   * - 会话隔离：只影响此会话（run:start 时合并进该会话的 policy.rules）；
+   * - 同会话同工具只保留一条（去重，不再堆积重复项）；
+   * - match 用具体工具名而非 `'*'` —— 引擎的 ruleMatches 对 tool 是字面匹配，
+   *   旧实现的 `{"tool":"*"}` 是永不命中的死规则。
+   */
+  appendSessionAllow(sessionId: string, tool: string): void {
+    let rules = this.sessionAllows.get(sessionId);
+    if (!rules) {
+      rules = [];
+      this.sessionAllows.set(sessionId, rules);
+    }
+    const id = `once-${sessionId}:${tool}`;
+    if (rules.some((r) => r.id === id)) return;
+    rules.push({ id, match: { tool }, action: 'allow' });
+  }
+
+  /** 该会话的临时 allow 规则（run:start 注入用；其他会话不可见）。 */
+  sessionAllowRules(sessionId: string): PolicyRule[] {
+    return this.sessionAllows.get(sessionId) ?? [];
+  }
+
+  /** 该会话是否已放行某工具（审批流自动放行判断用）。 */
+  isSessionAllowed(sessionId: string, tool: string): boolean {
+    const id = `once-${sessionId}:${tool}`;
+    return this.sessionAllows.get(sessionId)?.some((r) => r.id === id) ?? false;
+  }
+
+  /** 会话删除时清理其临时规则。 */
+  clearSessionAllows(sessionId: string): void {
+    this.sessionAllows.delete(sessionId);
   }
 
   // ── 密钥（§10.6）────────────────────────────────────────────────

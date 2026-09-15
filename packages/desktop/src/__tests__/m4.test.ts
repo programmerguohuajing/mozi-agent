@@ -621,10 +621,50 @@ describe('§10.6 设置中心 + 密钥安全', () => {
     expect(p.autoRoute).toBeUndefined();
   });
 
-  it('appendAllowRule：写回会话级 allow 规则（onceForSession）', () => {
+  it('appendSessionAllow：会话级 allow 规则只进内存、按工具去重', () => {
     const s = new SettingsStore({ filePath: settingsFile });
-    s.appendAllowRule('s1', 'c1');
-    expect(s.policyRules().some((r) => r.action === 'allow')).toBe(true);
+    s.appendSessionAllow('s1', 'shell');
+    s.appendSessionAllow('s1', 'shell'); // 同会话同工具 → 幂等
+    s.appendSessionAllow('s1', 'write_file');
+    s.appendSessionAllow('s2', 'shell'); // 其他会话不可见
+    const rules = s.sessionAllowRules('s1');
+    expect(rules.length).toBe(2);
+    expect(rules[0]).toEqual({
+      id: 'once-s1:shell',
+      match: { tool: 'shell' },
+      action: 'allow',
+    });
+    expect(s.isSessionAllowed('s1', 'shell')).toBe(true);
+    expect(s.isSessionAllowed('s1', 'browser')).toBe(false);
+    expect(s.isSessionAllowed('s2', 'write_file')).toBe(false);
+    // 不污染持久化规则表（旧实现会把 once-* 堆进 policyRules）
+    expect(s.policyRules().some((r) => r.id.startsWith('once-'))).toBe(false);
+    s.clearSessionAllows('s1');
+    expect(s.sessionAllowRules('s1')).toEqual([]);
+    expect(s.isSessionAllowed('s1', 'shell')).toBe(false);
+  });
+
+  it('迁移清洗：历史 once-* 规则丢弃，完全重复规则去重', () => {
+    const legacy = path.join(dir, 'settings-legacy-rules.json');
+    fs.writeFileSync(
+      legacy,
+      JSON.stringify({
+        policyRules: [
+          { id: 'once-sess-a-1-tc_0', match: { tool: '*' }, action: 'allow' },
+          { id: 'once-sess-a-2-tc_0', match: { tool: '*' }, action: 'allow' },
+          { id: 'user-rule', match: { tool: 'shell' }, action: 'ask' },
+          { id: 'user-rule-dup', match: { tool: 'shell' }, action: 'ask' },
+          { id: 'user-unique', match: { pathGlob: '.env*' }, action: 'ask' },
+        ],
+      }),
+    );
+    const s = new SettingsStore({ filePath: legacy });
+    const rules = s.policyRules();
+    // once-* 全部清掉；同 match+action 的重复只留首条
+    expect(rules.map((r) => r.id)).toEqual(['user-rule', 'user-unique']);
+    // 清洗结果回写磁盘（下次启动不再重复迁移）
+    const onDisk = JSON.parse(fs.readFileSync(legacy, 'utf8')) as { policyRules: unknown[] };
+    expect(onDisk.policyRules.length).toBe(2);
   });
 
   it('testProvider：未配置密钥 → ok:false', async () => {

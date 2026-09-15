@@ -421,6 +421,8 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
     mcpServers: () => (mcp.config() ?? []).map((spec) => ({ config: toMcpTransportConfig(spec) })),
     // 任务浏览器面板：会话引擎的 browser 工具路由到用户打开的 webview。
     browserFor: (sessionId) => browserRegistry.for(sessionId),
+    // 「本会话一律允许」：审批流中命中会话临时规则的工具由主进程直接放行。
+    sessionAllowsTool: (sessionId, tool) => settings.isSessionAllowed(sessionId, tool),
   });
 
   /**

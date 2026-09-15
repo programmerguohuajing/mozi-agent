@@ -18,6 +18,13 @@ export class ProviderRegistry {
     return this;
   }
 
+  /** 清空全部注册与别名（设置变更后整体重建用）。 */
+  clear(): this {
+    this.byModel.clear();
+    this.aliases.clear();
+    return this;
+  }
+
   /** 注册别名（如把 deepseek-chat 同时映射到某个 provider 的 id）。 */
   alias(alias: string, modelId: string): this {
     this.aliases.set(alias, modelId);

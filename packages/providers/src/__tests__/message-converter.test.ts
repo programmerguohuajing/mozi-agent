@@ -1,19 +1,19 @@
+import {
+  extractAnthropicText,
+  extractAnthropicToolCalls,
+  toAnthropicMessages,
+  toGeminiMessages,
+  toOpenAiChatMessages,
+  toOpenAiResponsesRequest,
+} from '@mozi/providers';
+import type { AnthropicContentBlock } from '@mozi/providers';
+import type { ChatMessage } from '@mozi/shared';
 /**
  * 消息格式转换器测试（T2 扩展）：
  * 验证内部 ChatMessage -> 四种 Provider 格式的转换正确性。
  * 零 API 成本，纯确定性测试。
  */
 import { describe, expect, it } from 'vitest';
-import {
-  toAnthropicMessages,
-  toOpenAiChatMessages,
-  toOpenAiResponsesRequest,
-  toGeminiMessages,
-  extractAnthropicText,
-  extractAnthropicToolCalls,
-} from '@mozi/providers';
-import type { ChatMessage } from '@mozi/shared';
-import type { AnthropicContentBlock } from '@mozi/providers';
 
 // ---------------------------------------------------------------------------
 // 测试数据
@@ -21,7 +21,10 @@ import type { AnthropicContentBlock } from '@mozi/providers';
 
 const systemMsg = { role: 'system' as const, content: 'You are a helpful assistant.' };
 const userTextMsg = { role: 'user' as const, content: [{ type: 'text' as const, text: 'Hello' }] };
-const userImageMsg = { role: 'user' as const, content: [{ type: 'image' as const, dataUrl: 'data:image/png;base64,ABC123' }] };
+const userImageMsg = {
+  role: 'user' as const,
+  content: [{ type: 'image' as const, dataUrl: 'data:image/png;base64,ABC123' }],
+};
 const userMultiMsg = {
   role: 'user' as const,
   content: [
@@ -29,15 +32,24 @@ const userMultiMsg = {
     { type: 'image' as const, dataUrl: 'data:image/jpeg;base64,XYZ' },
   ],
 } as ChatMessage;
-const assistantTextMsg = { role: 'assistant' as const, content: 'Hi there!', toolCalls: undefined } as ChatMessage;
+const assistantTextMsg = {
+  role: 'assistant' as const,
+  content: 'Hi there!',
+  toolCalls: undefined,
+} as ChatMessage;
 const assistantToolMsg = {
   role: 'assistant' as const,
   content: null,
   toolCalls: [
-    { id: 'tc1', name: 'read_file', arguments: '{\"path\":\"test.txt\"}', riskLevel: 'read' as const },
+    { id: 'tc1', name: 'read_file', arguments: '{"path":"test.txt"}', riskLevel: 'read' as const },
   ],
 } as ChatMessage;
-const toolResultMsg = { role: 'tool' as const, callId: 'tc1', content: 'file contents...', isError: false } as ChatMessage;
+const toolResultMsg = {
+  role: 'tool' as const,
+  callId: 'tc1',
+  content: 'file contents...',
+  isError: false,
+} as ChatMessage;
 
 describe('消息格式转换器', () => {
   describe('Anthropic Messages 转换', () => {
@@ -59,14 +71,16 @@ describe('消息格式转换器', () => {
       const result = toAnthropicMessages([userMultiMsg]);
       expect(result.system).toEqual([{ type: 'text', text: '' }]);
       expect(result.messages).toHaveLength(1);
-      expect(result.messages[0]!.content).toHaveLength(2);
+      expect(result.messages[0]?.content).toHaveLength(2);
     });
 
     it('转换 assistant tool_use 消息', () => {
       const result = toAnthropicMessages([userTextMsg, assistantToolMsg]);
       const assistantBlock = result.messages[1]!;
       expect(assistantBlock.role).toBe('assistant');
-      const toolBlock = assistantBlock.content.find((b: AnthropicContentBlock) => b.type === 'tool_use');
+      const toolBlock = assistantBlock.content.find(
+        (b: AnthropicContentBlock) => b.type === 'tool_use',
+      );
       expect(toolBlock).toBeTruthy();
       if (!toolBlock) return;
       expect(toolBlock.type).toBe('tool_use');
@@ -89,7 +103,7 @@ describe('消息格式转换器', () => {
 
     it('转换图片消息', () => {
       const result = toAnthropicMessages([userImageMsg]);
-      const imgBlock = result.messages[0]!.content[0]!;
+      const imgBlock = result.messages[0]?.content[0]!;
       expect(imgBlock.type).toBe('image');
       if (imgBlock.type === 'image') {
         expect(imgBlock.source.type).toBe('base64');
@@ -99,10 +113,16 @@ describe('消息格式转换器', () => {
     });
 
     it('转换工具定义', () => {
-      const tools = [{ name: 'shell', description: 'Run shell command', parameters: { type: 'object', properties: { command: { type: 'string' } } } }];
+      const tools = [
+        {
+          name: 'shell',
+          description: 'Run shell command',
+          parameters: { type: 'object', properties: { command: { type: 'string' } } },
+        },
+      ];
       const result = toAnthropicMessages([userTextMsg], { tools });
       expect(result.tools).toHaveLength(1);
-      const t = result.tools![0]!;
+      const t = result.tools?.[0]!;
       expect(t.name).toBe('shell');
       expect(t.description).toBe('Run shell command');
       expect(t.input_schema.type).toBe('object');
@@ -176,10 +196,16 @@ describe('消息格式转换器', () => {
     });
 
     it('转换工具定义', () => {
-      const tools = [{ name: 'read_file', description: 'Read a file', parameters: { type: 'object', properties: { path: { type: 'string' } } } }];
+      const tools = [
+        {
+          name: 'read_file',
+          description: 'Read a file',
+          parameters: { type: 'object', properties: { path: { type: 'string' } } },
+        },
+      ];
       const result = toOpenAiResponsesRequest([userTextMsg], { tools });
       expect(result.tools).toHaveLength(1);
-      const t = result.tools![0]!;
+      const t = result.tools?.[0]!;
       expect(t.name).toBe('read_file');
       expect(t.description).toBe('Read a file');
     });
@@ -192,9 +218,9 @@ describe('消息格式转换器', () => {
       const si = result.systemInstruction!;
       expect(si.role).toBe('system');
       expect(si.parts).toHaveLength(1);
-      expect(si.parts[0]!.type).toBe('text');
-      if (si.parts[0]!.type === 'text') {
-        expect(si.parts[0]!.text).toBe('You are a helpful assistant.');
+      expect(si.parts[0]?.type).toBe('text');
+      if (si.parts[0]?.type === 'text') {
+        expect(si.parts[0]?.text).toBe('You are a helpful assistant.');
       }
     });
 
@@ -204,9 +230,9 @@ describe('消息格式转换器', () => {
       const c0 = result.contents[0]!;
       expect(c0.role).toBe('user');
       expect(c0.parts).toHaveLength(1);
-      expect(c0.parts[0]!.type).toBe('text');
-      if (c0.parts[0]!.type === 'text') {
-        expect(c0.parts[0]!.text).toBe('Hello');
+      expect(c0.parts[0]?.type).toBe('text');
+      if (c0.parts[0]?.type === 'text') {
+        expect(c0.parts[0]?.text).toBe('Hello');
       }
     });
 
@@ -214,7 +240,7 @@ describe('消息格式转换器', () => {
       const result = toGeminiMessages([userTextMsg, assistantToolMsg]);
       const model = result.contents[1]!;
       expect(model.role).toBe('model');
-      const fc = model.parts.find((p: any) => p.type === 'function_call');
+      const fc = model.parts.find((p) => p.type === 'function_call');
       expect(fc).toBeTruthy();
       if (fc && fc.type === 'function_call') {
         expect(fc.functionCall.name).toBe('read_file');
@@ -237,7 +263,7 @@ describe('消息格式转换器', () => {
 
     it('转换图片消息', () => {
       const result = toGeminiMessages([userImageMsg]);
-      const part = result.contents[0]!.parts[0]!;
+      const part = result.contents[0]?.parts[0]!;
       expect(part.type).toBe('inline_data');
       if (part.type === 'inline_data') {
         expect(part.mime_type).toBe('image/png');
@@ -249,7 +275,7 @@ describe('消息格式转换器', () => {
       const tools = [{ name: 'glob', description: 'Glob files', parameters: { type: 'object' } }];
       const result = toGeminiMessages([userTextMsg], { tools });
       expect(result.tools).toHaveLength(1);
-      const decl = result.tools![0]!.functionDeclarations[0]!;
+      const decl = result.tools?.[0]?.functionDeclarations[0]!;
       expect(decl.name).toBe('glob');
     });
   });

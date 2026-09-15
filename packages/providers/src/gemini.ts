@@ -17,8 +17,12 @@ import type {
 } from './types.js';
 
 export interface GeminiConfig {
-  apiKey: () => string;
+  /** API Key（可选）：本地 Gemini 兼容代理无鉴权时可不提供。 */
+  apiKey?: () => string | undefined;
+  /** 上游模型名。可为空（网关自动路由），此时 URL 不带模型段。 */
   model: string;
+  /** 注册名（registry key）；默认取 model。 */
+  id?: string;
   baseUrl?: string; // default: https://generativelanguage.googleapis.com
   extra?: Record<string, unknown>;
 }
@@ -28,7 +32,7 @@ export class GeminiProvider implements LLMProvider {
   private readonly baseUrl: string;
 
   constructor(private readonly cfg: GeminiConfig) {
-    this.id = cfg.model;
+    this.id = cfg.id ?? cfg.model;
     this.baseUrl = cfg.baseUrl ?? 'https://generativelanguage.googleapis.com';
   }
 
@@ -60,16 +64,18 @@ export class GeminiProvider implements LLMProvider {
     body.stream = true;
 
     let res: Response;
+    const apiKey = this.cfg.apiKey?.();
+    // model 为空（网关自动路由）：走无模型段的 URL。
+    const modelSeg = this.cfg.model ? `models/${this.cfg.model}:` : '';
+    // 本地无鉴权端点：无 key 时不拼 ?key= 查询参数。
+    const url = `${this.baseUrl}/v1beta/${modelSeg}streamGenerateContent${apiKey ? `?key=${apiKey}` : ''}`;
     try {
-      res = await fetch(
-        `${this.baseUrl}/v1beta/models/${this.cfg.model}:streamGenerateContent?key=${this.cfg.apiKey()}`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: req.signal,
-        },
-      );
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: req.signal,
+      });
     } catch (e) {
       throw new MoziError(ErrorCodes.ERR_PROVIDER_UNAVAILABLE, `fetch failed: ${String(e)}`, true);
     }

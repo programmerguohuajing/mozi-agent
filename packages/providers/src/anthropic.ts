@@ -26,8 +26,12 @@ import type {
 } from './types.js';
 
 export interface AnthropicConfig {
-  apiKey: () => string;
+  /** API Key（可选）：本地 Anthropic 兼容代理无鉴权时可不提供。 */
+  apiKey?: () => string | undefined;
+  /** 上游模型名。可为空（网关自动路由），此时请求体不带 model 字段。 */
   model: string;
+  /** 注册名（registry key）；默认取 model。 */
+  id?: string;
   baseUrl?: string; // default: https://api.anthropic.com
   extra?: Record<string, unknown>;
 }
@@ -37,7 +41,7 @@ export class AnthropicProvider implements LLMProvider {
   private readonly baseUrl: string;
 
   constructor(private readonly cfg: AnthropicConfig) {
-    this.id = cfg.model;
+    this.id = cfg.id ?? cfg.model;
     this.baseUrl = cfg.baseUrl ?? 'https://api.anthropic.com';
   }
 
@@ -62,7 +66,8 @@ export class AnthropicProvider implements LLMProvider {
       tools: req.tools,
       parallelToolCalls: req.tools?.length ? true : undefined,
     });
-    body.model = this.cfg.model;
+    // model 为空（网关自动路由）：不带 model 字段。
+    if (this.cfg.model) body.model = this.cfg.model;
     body.max_tokens = req.maxOutputTokens ?? 4096;
     body.stream = true;
     body.temperature = req.temperature ?? 0;
@@ -70,12 +75,14 @@ export class AnthropicProvider implements LLMProvider {
     body.extra_body = this.cfg.extra;
 
     let res: Response;
+    const apiKey = this.cfg.apiKey?.();
     try {
       res = await fetch(`${this.baseUrl}/v1/messages`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-api-key': this.cfg.apiKey(),
+          // 本地无鉴权端点：无 key 时不带 x-api-key。
+          ...(apiKey ? { 'x-api-key': apiKey } : {}),
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify(body),

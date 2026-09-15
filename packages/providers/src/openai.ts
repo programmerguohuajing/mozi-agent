@@ -16,8 +16,18 @@ import type {
 
 export interface OpenAIConfig {
   baseUrl: string; // e.g. https://api.deepseek.com/v1
-  apiKey: () => string;
+  /**
+   * API Key（可选）：本地 OpenAI 兼容服务（如 FreeLLMAPI / Ollama / LM Studio）
+   * 无需鉴权时可不提供，请求将不带 Authorization 头。
+   */
+  apiKey?: () => string | undefined;
+  /**
+   * 上游模型名。可为空 —— 由网关自动路由（FreeLLMAPI 智能路由），
+   * 此时请求体不带 model 字段。
+   */
   model: string;
+  /** 注册名（registry key）；默认取 model，自动路由时应传 provider id。 */
+  id?: string;
   extra?: Record<string, unknown>;
 }
 
@@ -51,7 +61,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
   readonly id: string;
 
   constructor(private readonly cfg: OpenAIConfig) {
-    this.id = cfg.model;
+    this.id = cfg.id ?? cfg.model;
   }
 
   capabilities(): ProviderCapabilities {
@@ -72,7 +82,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
   private async *run(req: ChatRequest, agg: StreamAggregator): AsyncGenerator<StreamEvent> {
     const body = {
-      model: this.cfg.model,
+      // model 为空（网关自动路由，如 FreeLLMAPI）：不带 model 字段，由网关选模型。
+      ...(this.cfg.model ? { model: this.cfg.model } : {}),
       messages: toOpenAiMessages(req.messages),
       tools: req.tools?.length ? req.tools.map(toOpenAiTool) : undefined,
       stream: true,
@@ -82,12 +93,14 @@ export class OpenAICompatibleProvider implements LLMProvider {
     };
 
     let res: Response;
+    const apiKey = this.cfg.apiKey?.();
     try {
       res = await fetch(`${this.cfg.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: `Bearer ${this.cfg.apiKey()}`,
+          // 本地无鉴权端点（FreeLLMAPI / Ollama 等）：无 key 时不带 Authorization。
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify(body),
         signal: req.signal,
@@ -115,19 +128,28 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
+    let head = ''; // 响应体开头快照（零事件时用于错误预览）
+    let sawChunk = false; // 是否收到过任何合法 SSE data 分片
+    let sawDone = false;
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buf += decoder.decode(value, { stream: true });
+        const decoded = decoder.decode(value, { stream: true });
+        if (head.length < 200) head += decoded;
+        buf += decoded;
         for (let nl = buf.indexOf('\n'); nl >= 0; nl = buf.indexOf('\n')) {
           const line = buf.slice(0, nl).replace(/\r$/, '');
           buf = buf.slice(nl + 1);
           if (!line.startsWith('data:')) continue;
           const data = line.slice(5).trim();
-          if (data === '[DONE]') return;
+          if (data === '[DONE]') {
+            sawDone = true;
+            return;
+          }
           try {
             const json = JSON.parse(data) as OpenAiChunk;
+            sawChunk = true;
             for (const ev of this.handleChunk(json)) {
               agg.feed(ev);
               yield ev;
@@ -139,6 +161,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
       }
     } finally {
       reader.releaseLock();
+    }
+    // 零事件检测（修复"发完即完成、不报错"）：端点返回 200 但整个流没有
+    // 任何合法 SSE 分片 —— 说明响应体不是 SSE（JSON 错误对象 / HTML 页面 /
+    // 空白）。此时必须抛错，否则聚合器产出空消息，引擎静默 task.completed。
+    if (!sawChunk && !sawDone) {
+      const preview = head.slice(0, 120).replace(/\s+/g, ' ').trim();
+      throw new MoziError(
+        ErrorCodes.ERR_PROVIDER_UNAVAILABLE,
+        `端点未返回有效的流式响应${preview ? `（内容开头：${preview}）` : '（响应为空）'}。请检查 Base URL / API 格式是否正确、模型名是否存在，或该服务是否支持流式输出。`,
+      );
     }
   }
 

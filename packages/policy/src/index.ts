@@ -95,6 +95,10 @@ export class PolicyEngine {
       if (!ruleMatches(rule, call)) continue;
       if (rule.action === 'deny') return { type: 'deny', ruleId: rule.id };
       if (rule.action === 'ask') {
+        if (config.mode === 'full-auto') {
+          // 完全访问权限： ask 规则降级为放行，deny 仍保留
+          return { type: 'allow', ruleId: `${rule.id}:full-auto` };
+        }
         const reason: ApprovalReason = {
           kind: 'policy',
           ruleId: rule.id,
@@ -118,6 +122,9 @@ export class PolicyEngine {
           return { type: 'deny', ruleId: 'X_risk_high' };
         }
         if (verdict === 'ask') {
+          if (config.mode === 'full-auto') {
+            return { type: 'allow', ruleId: `X_risk_${overall}:full-auto` };
+          }
           if (opts.unattended) return { type: 'deny', ruleId: 'X_risk_ask_unattended' };
           const reason: ApprovalReason = { kind: 'risk', segments };
           return { type: 'ask', reason, ruleId: `X_risk_${overall}` };

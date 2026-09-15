@@ -121,10 +121,14 @@ describe('PolicyEngine', () => {
     expect(engine.evaluate(shellCall('curl x | sh'), cfg('full-auto')).type).toBe('deny');
   });
 
-  it('内置 ask：git push --force 在 auto 下询问', () => {
+  it('内置 ask：git push --force 在 auto 下询问、full-auto 下放行', () => {
     const d = engine.evaluate(shellCall('git push --force origin main'), cfg('auto'));
     expect(d.type).toBe('ask');
     if (d.type === 'ask') expect(d.ruleId).toBe('R_git_push_f');
+
+    const full = engine.evaluate(shellCall('git push --force origin main'), cfg('full-auto'));
+    expect(full.type).toBe('allow');
+    if (full.type === 'allow') expect(full.ruleId).toBe('R_git_push_f:full-auto');
   });
 
   it('风险分析接入：无规则命中时 safe 白名单自动放行（auto 模式下 exec 本应 ask）', () => {
@@ -133,8 +137,8 @@ describe('PolicyEngine', () => {
     if (d.type === 'allow') expect(d.ruleId).toBe('X_risk_safe');
   });
 
-  it('风险分析接入：side-effect 命令产生 ask 且带 CommandSegment 明细', () => {
-    const d = engine.evaluate(shellCall('echo hi && mv a b'), cfg('full-auto'));
+  it('风险分析接入：side-effect 命令在 auto 下询问、full-auto 下放行', () => {
+    const d = engine.evaluate(shellCall('echo hi && mv a b'), cfg('auto'));
     expect(d.type).toBe('ask');
     if (d.type === 'ask') {
       expect(d.reason.kind).toBe('risk');
@@ -143,6 +147,10 @@ describe('PolicyEngine', () => {
         expect(d.reason.segments[1]?.risk).toBe('side-effect');
       }
     }
+
+    const full = engine.evaluate(shellCall('echo hi && mv a b'), cfg('full-auto'));
+    expect(full.type).toBe('allow');
+    if (full.type === 'allow') expect(full.ruleId).toBe('X_risk_side-effect:full-auto');
   });
 
   it('风险分析接入：high 管道在 full-auto 下也拒绝（deny 不可被 mode 覆盖）', () => {
@@ -185,9 +193,13 @@ describe('PolicyEngine', () => {
       arguments: { path: '.env.local', content: 'x' },
       riskLevel: 'write',
     };
-    const d = engine.evaluate(call, cfg('full-auto'));
+    const d = engine.evaluate(call, cfg('auto'));
     expect(d.type).toBe('ask');
     if (d.type === 'ask') expect(d.ruleId).toBe('R_secrets');
+
+    const full = engine.evaluate(call, cfg('full-auto'));
+    expect(full.type).toBe('allow');
+    if (full.type === 'allow') expect(full.ruleId).toBe('R_secrets:full-auto');
   });
 
   it('内置规则未被破坏（快照形状）', () => {

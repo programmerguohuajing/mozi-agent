@@ -307,8 +307,10 @@ export async function boot(opts: BootOptions): Promise<BootedApp> {
         ...(spec.timeoutMs ? { timeoutMs: spec.timeoutMs } : {}),
       };
     }
+    // sse：旧版 HTTP+SSE 协议（GET 流 + endpoint 事件下发 POST 地址），
+    // Figma Dev Mode 等 streamable HTTP 不稳定的服务走这条备用路径。
     return {
-      kind: 'http',
+      kind: spec.transport === 'sse' ? 'http-sse-legacy' : 'http',
       id: spec.id,
       url: spec.url ?? '',
       ...(spec.headers ? { headers: spec.headers } : {}),

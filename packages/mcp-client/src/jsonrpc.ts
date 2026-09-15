@@ -63,7 +63,9 @@ export class JsonRpcClient {
   ): Promise<T> {
     const id = this.nextId++;
     const req: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
+    let rejectPending!: (err: Error) => void;
     const p = new Promise<T>((resolve, reject) => {
+      rejectPending = reject;
       const pending: Pending = { resolve: resolve as (v: unknown) => void, reject };
       if (opts.timeoutMs && opts.timeoutMs > 0) {
         pending.timer = setTimeout(
@@ -88,14 +90,23 @@ export class JsonRpcClient {
         );
       }
     });
-    await this.transport.send(req, opts.signal);
+    // 不 await send：Streamable HTTP 下服务器可能对 POST 回以 SSE 流且不主动关流
+    // （响应消息在流中先行到达），阻塞 send 会把 request 拖到超时。send 失败时
+    // 立即 reject 对应 pending（顺带修复原实现在 send 抛错后 pending 泄漏的问题）。
+    void this.transport.send(req, opts.signal).catch((err: unknown) => {
+      this.clearPending(id);
+      rejectPending(err instanceof Error ? err : new Error(String(err)));
+    });
     return p;
   }
 
-  /** 发送通知（无响应等待）。 */
+  /** 发送通知（无响应等待）。通知是 fire-and-forget：不阻塞在 send 上
+   *  （服务器可能对 notification POST 回以不关流的 SSE），投递失败也不影响主流程。 */
   async notify(method: string, params?: unknown): Promise<void> {
     const msg: JsonRpcMessage = { jsonrpc: '2.0', method, params };
-    await this.transport.send(msg);
+    void this.transport.send(msg).catch(() => {
+      /* 通知投递失败不阻塞调用方 */
+    });
   }
 
   private clearPending(id: number | string): void {

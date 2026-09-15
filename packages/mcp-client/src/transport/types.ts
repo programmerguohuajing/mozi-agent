@@ -44,9 +44,9 @@ export interface StdioServerConfig {
   lazy?: boolean;
 }
 
-/** 远程 Streamable HTTP / 旧版 SSE server 配置。 */
+/** 远程 Streamable HTTP / 旧版 SSE server 配置。kind='http-sse-legacy' 走旧版 HTTP+SSE 协议。 */
 export interface HttpServerConfig {
-  kind: 'http';
+  kind: 'http' | 'http-sse-legacy';
   id: string;
   url: string;
   auth?: { mode: 'none' | 'bearer' | 'oauth'; bearerEnv?: string };

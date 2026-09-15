@@ -17,7 +17,7 @@ import {
 } from './oauth.js';
 import { McpToolAdapter } from './tools.js';
 import { StdioTransport } from './transport/stdio.js';
-import { StreamableHttpTransport } from './transport/streamable-http.js';
+import { HttpSseLegacyTransport, StreamableHttpTransport } from './transport/streamable-http.js';
 import type { McpServerConfig } from './transport/types.js';
 import type { McpServerOptions, McpToolDef, PromptGetResult } from './types.js';
 
@@ -46,6 +46,12 @@ export class McpBridge {
   private toolsByServer = new Map<string, Map<string, McpToolAdapter>>();
   private promptsByServer = new Map<string, PromptCommand[]>();
   private readResourceTool?: ReadResourceTool;
+  /**
+   * 最近一次 connectAll 逐条失败原因（id → 错误消息）。
+   * connectAll 刻意不抛错（错误隔离，单 server 失败不影响其他），
+   * 但调用方（桌面端管理中心）需要拿到真实原因展示给用户。
+   */
+  private connectErrors = new Map<string, string>();
 
   constructor(
     private servers: McpServerEntry[],
@@ -53,14 +59,17 @@ export class McpBridge {
   ) {}
 
   async connectAll(): Promise<void> {
+    this.connectErrors.clear();
     // 顺序连接以避免一次性过多子进程；单 server 失败不影响其他（错误隔离，§8.14）。
     for (const entry of this.servers) {
       try {
         await this.connectOne(entry);
       } catch (err) {
+        const msg = (err as Error).message || String(err);
+        this.connectErrors.set(entry.config.id, msg);
         this.deps.emit?.({
           type: 'internal.debug',
-          message: `mcp connect failed: ${entry.config.id}: ${(err as Error).message}`,
+          message: `mcp connect failed: ${entry.config.id}: ${msg}`,
           ts: new Date().toISOString(),
         });
       }
@@ -107,6 +116,10 @@ export class McpBridge {
         : undefined;
       return new StdioTransport({ ...cfg, env });
     }
+    // http-sse-legacy：旧版 HTTP+SSE 协议（GET 流 + endpoint 事件）。
+    if (cfg.kind === 'http-sse-legacy') {
+      return new HttpSseLegacyTransport(cfg);
+    }
     // http：OAuth 时提供懒加载 token 供应器。
     if (cfg.auth?.mode === 'oauth') {
       const store = this.deps.tokenStore ?? new MemoryTokenStore();
@@ -141,6 +154,11 @@ export class McpBridge {
       this.deps.registry.register(adapter);
     }
     this.toolsByServer.set(serverId, map);
+  }
+
+  /** 最近一次 connectAll 中某 server 的失败原因（成功或未连接返回 undefined）。 */
+  connectError(id: string): string | undefined {
+    return this.connectErrors.get(id);
   }
 
   /** 当前所有 MCP 工具（供引擎 schema 导出）。 */

@@ -221,7 +221,12 @@ export class McpServerConnection {
   // ---- 能力调用 API（供 registry / 适配器使用）----
 
   async listTools(): Promise<McpToolDef[]> {
-    const res = (await this.requireRpc().request<{ tools: McpToolDef[] }>('tools/list')) as {
+    const res = (await this.requireRpc().request<{ tools: McpToolDef[] }>(
+      'tools/list',
+      undefined,
+      // 连接/热更新路径不允许无限等待：服务器不给响应时按超时失败，状态如实变 offline。
+      { timeoutMs: 30_000 },
+    )) as {
       tools: McpToolDef[];
     };
     return res.tools ?? [];
@@ -268,7 +273,11 @@ export class McpServerConnection {
   }
 
   async listPrompts(): Promise<McpPromptDef[]> {
-    const res = (await this.requireRpc().request<{ prompts: McpPromptDef[] }>('prompts/list')) as {
+    const res = (await this.requireRpc().request<{ prompts: McpPromptDef[] }>(
+      'prompts/list',
+      undefined,
+      { timeoutMs: 30_000 },
+    )) as {
       prompts: McpPromptDef[];
     };
     return res.prompts ?? [];

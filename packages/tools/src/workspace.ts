@@ -60,7 +60,7 @@ export class Workspace {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    const tmp = abs + '.tmp';
+    const tmp = `${abs}.tmp`;
     fs.writeFileSync(tmp, content, 'utf-8');
     fs.renameSync(tmp, abs);
   }

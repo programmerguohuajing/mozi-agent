@@ -33,15 +33,18 @@ export const taskTool: AgentTool<TaskInput> = {
     properties: {
       agent: {
         type: 'string',
-        description: "Template name: 'explore' | 'general' | 'reviewer' | a custom template from .mozi/agents/*.md.",
+        description:
+          "Template name: 'explore' | 'general' | 'reviewer' | a custom template from .mozi/agents/*.md.",
       },
       prompt: {
         type: 'string',
-        description: 'Self-contained instruction for the sub-agent (it cannot see this conversation).',
+        description:
+          'Self-contained instruction for the sub-agent (it cannot see this conversation).',
       },
       contextFiles: {
         type: 'array',
-        description: 'Optional files whose contents are pre-injected into the sub-agent (each truncated to 2k).',
+        description:
+          'Optional files whose contents are pre-injected into the sub-agent (each truncated to 2k).',
         items: { type: 'string' },
       },
       timeoutMs: {
@@ -53,7 +56,10 @@ export const taskTool: AgentTool<TaskInput> = {
   },
   async execute(input: TaskInput, ctx: ToolContext) {
     if (!ctx.supervisor) {
-      return fail('task tool is not available in this session (no sub-agent supervisor injected)', 'unsupported');
+      return fail(
+        'task tool is not available in this session (no sub-agent supervisor injected)',
+        'unsupported',
+      );
     }
     if (!input.agent || !input.prompt) {
       return fail('task requires both `agent` and `prompt`', 'bad-args');

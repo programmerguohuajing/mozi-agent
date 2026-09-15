@@ -38,7 +38,8 @@ export const memoryWriteTool: AgentTool<MemoryWriteInput> = {
       type: { type: 'string', enum: ['fact', 'preference', 'decision'] },
       content: {
         type: 'string',
-        description: 'A single, atomic, verifiable statement. Do not include secrets or credentials.',
+        description:
+          'A single, atomic, verifiable statement. Do not include secrets or credentials.',
       },
       evidence: {
         type: 'string',

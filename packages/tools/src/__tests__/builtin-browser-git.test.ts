@@ -1,10 +1,10 @@
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gitTool, browserTool, type BrowserAccess } from '@mozi/tools';
+import { type BrowserAccess, browserTool, gitTool } from '@mozi/tools';
 import { Workspace } from '@mozi/tools';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * 内置 Git 工具测试：结构化 Git 操作（status/diff/log/branch/add/commit/show）。
@@ -56,7 +56,7 @@ describe('内置 Git 工具', () => {
     );
     const data = JSON.parse(result.content) as { untracked: { path: string }[] };
     expect(data.untracked.length).toBe(1);
-    expect(data.untracked[0]!.path).toBe('a.txt');
+    expect(data.untracked[0]?.path).toBe('a.txt');
   });
 
   it('add + commit + log：完整提交流程', async () => {
@@ -76,8 +76,8 @@ describe('内置 Git 工具', () => {
     );
     const entries = JSON.parse(logResult.content) as { message: string; author: string }[];
     expect(entries.length).toBe(1);
-    expect(entries[0]!.message).toBe('initial commit');
-    expect(entries[0]!.author).toBe('Test');
+    expect(entries[0]?.message).toBe('initial commit');
+    expect(entries[0]?.author).toBe('Test');
   });
 
   it('diff：显示未暂存变更', async () => {
@@ -102,7 +102,7 @@ describe('内置 Git 工具', () => {
     );
     const branches = JSON.parse(result.content) as { name: string; current: boolean }[];
     expect(branches.length).toBe(1);
-    expect(branches[0]!.current).toBe(true);
+    expect(branches[0]?.current).toBe(true);
   });
 
   it('show：查看指定提交', async () => {
@@ -185,7 +185,12 @@ describe('内置浏览器工具', () => {
   it('navigate：导航并返回页面信息', async () => {
     const result = await browserTool.execute(
       { action: 'navigate', url: 'https://example.com' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     const data = JSON.parse(result.content) as { title: string; url: string; status: number };
@@ -196,7 +201,12 @@ describe('内置浏览器工具', () => {
   it('get_text：提取文本', async () => {
     const result = await browserTool.execute(
       { action: 'get_text' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('Hello from mock page');
@@ -205,7 +215,12 @@ describe('内置浏览器工具', () => {
   it('get_html：获取 HTML', async () => {
     const result = await browserTool.execute(
       { action: 'get_html' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('<html>');
@@ -214,7 +229,12 @@ describe('内置浏览器工具', () => {
   it('click：成功点击', async () => {
     const result = await browserTool.execute(
       { action: 'click', selector: '#btn' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('Clicked: #btn');
@@ -223,7 +243,12 @@ describe('内置浏览器工具', () => {
   it('click：元素不存在', async () => {
     const result = await browserTool.execute(
       { action: 'click', selector: '.not-found' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBe(true);
   });
@@ -231,7 +256,12 @@ describe('内置浏览器工具', () => {
   it('fill：填充表单', async () => {
     const result = await browserTool.execute(
       { action: 'fill', selector: '#input', value: 'test value' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('Filled #input');
@@ -240,7 +270,12 @@ describe('内置浏览器工具', () => {
   it('eval：执行 JavaScript', async () => {
     const result = await browserTool.execute(
       { action: 'eval', script: '1 + 1' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('eval result');
@@ -249,18 +284,28 @@ describe('内置浏览器工具', () => {
   it('list_tabs：列出标签页', async () => {
     const result = await browserTool.execute(
       { action: 'list_tabs' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     const tabs = JSON.parse(result.content) as { id: string; active: boolean }[];
     expect(tabs.length).toBe(1);
-    expect(tabs[0]!.active).toBe(true);
+    expect(tabs[0]?.active).toBe(true);
   });
 
   it('close：关闭浏览器', async () => {
     const result = await browserTool.execute(
       { action: 'close' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBeFalsy();
     expect(result.content).toContain('Browser closed');
@@ -269,7 +314,12 @@ describe('内置浏览器工具', () => {
   it('navigate 缺 url → 错误', async () => {
     const result = await browserTool.execute(
       { action: 'navigate' },
-      { workspace: ws, signal: new AbortController().signal, sessionId: 's1', browser: mockBrowser() },
+      {
+        workspace: ws,
+        signal: new AbortController().signal,
+        sessionId: 's1',
+        browser: mockBrowser(),
+      },
     );
     expect(result.isError).toBe(true);
     expect(result.content).toContain('requires a url');

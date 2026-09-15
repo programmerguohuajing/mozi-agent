@@ -39,7 +39,10 @@ export const screenshotTool: AgentTool<ScreenshotInput> = {
           title: { type: 'string', description: 'Window title (kind="window").' },
           url: { type: 'string', description: 'Page URL (kind="browser").' },
           waitMs: { type: 'integer', description: 'Wait before capture (kind="browser").' },
-          fullPage: { type: 'boolean', description: 'Capture full scrollable page (kind="browser").' },
+          fullPage: {
+            type: 'boolean',
+            description: 'Capture full scrollable page (kind="browser").',
+          },
         },
         required: ['kind'],
       },

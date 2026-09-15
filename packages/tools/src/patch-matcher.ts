@@ -7,8 +7,8 @@ import type { PatchFile, PatchHunk } from './patch-parser.js';
 export interface MatchLocation {
   file: string;
   hunkIdx: number;
-  start: number;  // 匹配起始行（包含）
-  end: number;    // 匹配结束行（不包含）
+  start: number; // 匹配起始行（包含）
+  end: number; // 匹配结束行（不包含）
 }
 
 export interface MatchDiagnostic {
@@ -86,7 +86,7 @@ export function matchHunk(
   // 降级：前缀匹配（只用前 3 行作为锚点）
   const prefixLen = Math.min(3, L);
   const prefix = sig.slice(0, prefixLen);
-  let nearestDist = Infinity;
+  let nearestDist = Number.POSITIVE_INFINITY;
   let nearestLine = -1;
   let nearestFound: string[] = [];
 

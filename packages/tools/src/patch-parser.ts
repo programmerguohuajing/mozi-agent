@@ -7,15 +7,15 @@ import { ErrorCodes, MoziError } from '@mozi/shared';
 export type FileOpType = 'update' | 'add' | 'delete';
 
 export interface PatchHunk {
-  signature: string[];    // context + delete 行（去前缀），用于匹配定位
-  additions: string[];    // + 行（去前缀）
+  signature: string[]; // context + delete 行（去前缀），用于匹配定位
+  additions: string[]; // + 行（去前缀）
 }
 
 export interface PatchFile {
   op: FileOpType;
   path: string;
-  hunks?: PatchHunk[];   // Update
-  body?: string[];        // Add（去 + 前缀）
+  hunks?: PatchHunk[]; // Update
+  body?: string[]; // Add（去 + 前缀）
 }
 
 export interface Patch {
@@ -60,7 +60,10 @@ export function parsePatch(text: string): Patch {
   while (i < endIdx) {
     const line = lines[i] ?? '';
     const trimmed = line.trim();
-    if (trimmed === '') { i++; continue; }
+    if (trimmed === '') {
+      i++;
+      continue;
+    }
 
     const fileOpMatch = FILE_OP_RE.exec(trimmed);
     if (!fileOpMatch) {
@@ -68,8 +71,7 @@ export function parsePatch(text: string): Patch {
     }
 
     const opName = fileOpMatch[1]!;
-    const op: FileOpType =
-      opName === 'Update' ? 'update' : opName === 'Add' ? 'add' : 'delete';
+    const op: FileOpType = opName === 'Update' ? 'update' : opName === 'Add' ? 'add' : 'delete';
     const path = fileOpMatch[2]!.trim();
     i++;
 

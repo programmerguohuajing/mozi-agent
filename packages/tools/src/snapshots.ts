@@ -20,7 +20,11 @@ export function saveSnapshot(
   fs.mkdirSync(snapshotDir, { recursive: true });
   const ts = Date.now();
   const manifest = { ts, files: Object.keys(entries) };
-  fs.writeFileSync(path.join(snapshotDir, `${ts}.manifest.json`), JSON.stringify(manifest), 'utf-8');
+  fs.writeFileSync(
+    path.join(snapshotDir, `${ts}.manifest.json`),
+    JSON.stringify(manifest),
+    'utf-8',
+  );
   for (const [p, content] of Object.entries(entries)) {
     const safe = p.replace(/[\\/]/g, '__');
     if (content == null) {

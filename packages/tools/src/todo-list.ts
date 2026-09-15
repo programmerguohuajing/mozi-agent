@@ -92,8 +92,11 @@ export const todoListTool: AgentTool<TodoInput> = {
     required: ['operation'],
   },
   async execute(input: TodoInput, ctx: ToolContext) {
-    if ([ 'list', 'update' ].indexOf(input.operation) === -1) {
-      return fail(`invalid operation: ${String(input.operation)} (expected list|update)`, 'bad-args');
+    if (['list', 'update'].indexOf(input.operation) === -1) {
+      return fail(
+        `invalid operation: ${String(input.operation)} (expected list|update)`,
+        'bad-args',
+      );
     }
     if (input.operation === 'list') {
       return ok(`<todo_list>\n${renderTodos(readTodos(ctx))}\n</todo_list>`);

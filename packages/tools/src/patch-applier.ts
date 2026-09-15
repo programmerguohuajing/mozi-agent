@@ -1,12 +1,12 @@
 /**
  * Patch applier —— 事务型应用器，带快照回滚（M3 §3.5.4）。
  */
-import { mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ErrorCodes, MoziError } from '@mozi/shared';
-import type { Workspace } from './workspace.js';
+import { PatchMatchError, applyLocations, matchFile } from './patch-matcher.js';
 import type { PatchFile } from './patch-parser.js';
-import { PatchMatchError, matchFile, applyLocations } from './patch-matcher.js';
+import type { Workspace } from './workspace.js';
 
 export interface ApplyResult {
   /** path -> 修改前内容（Add 文件为空串） */
@@ -23,7 +23,7 @@ export function applyPatch(
   snapshotDir?: string,
 ): ApplyResult {
   const snapshots = new Map<string, string>(); // path -> before content
-  const results = new Map<string, string>();   // path -> new content
+  const results = new Map<string, string>(); // path -> new content
   let applied = false;
 
   try {

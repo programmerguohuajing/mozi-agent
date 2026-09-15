@@ -1,12 +1,12 @@
+import path from 'node:path';
+import type { ToolResult } from '@mozi/shared';
+import { applyPatch } from './patch-applier.js';
+import { parsePatch } from './patch-parser.js';
+import { saveSnapshot } from './snapshots.js';
 /**
  * edit_file 工具 —— 基于 PatchEngine 的结构化编辑（M3 §3.5）。
  */
 import type { AgentTool, ToolContext } from './types.js';
-import { parsePatch } from './patch-parser.js';
-import { applyPatch } from './patch-applier.js';
-import { saveSnapshot } from './snapshots.js';
-import type { ToolResult } from '@mozi/shared';
-import path from 'node:path';
 
 const TOOL_NAME = 'edit_file';
 const TOOL_VERSION = '1.0.0';

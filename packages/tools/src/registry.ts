@@ -2,8 +2,8 @@
  * ToolRegistry：注册 / 查询 / 导出 schema / 安全分组调度（M3 §3.2）。
  */
 import type { ToolCall } from '@mozi/shared';
-import { editFileTool } from './edit-file.js';
 import { browserTool } from './browser.js';
+import { editFileTool } from './edit-file.js';
 import { gitTool } from './git.js';
 import { globTool } from './glob.js';
 import { grepTool } from './grep.js';

@@ -8,16 +8,28 @@
  */
 import { spawn } from 'node:child_process';
 import type { AgentTool, ToolContext } from './types.js';
-import { ok, fail, truncate } from './types.js';
+import { fail, ok, truncate } from './types.js';
 
 // ── 类型 ────────────────────────────────────────────────────────────
 
 type GitAction =
-  | 'status' | 'diff' | 'log' | 'show' | 'branch'
-  | 'add' | 'commit' | 'restore' | 'stash'
-  | 'push' | 'pull' | 'fetch'
-  | 'checkout' | 'merge' | 'rebase'
-  | 'remote' | 'init';
+  | 'status'
+  | 'diff'
+  | 'log'
+  | 'show'
+  | 'branch'
+  | 'add'
+  | 'commit'
+  | 'restore'
+  | 'stash'
+  | 'push'
+  | 'pull'
+  | 'fetch'
+  | 'checkout'
+  | 'merge'
+  | 'rebase'
+  | 'remote'
+  | 'init';
 
 interface GitInput {
   action: GitAction;
@@ -56,32 +68,49 @@ function runGit(args: string[], cwd: string, timeoutMs: number): Promise<GitResu
     const child = spawn('git', args, { cwd, windowsHide: true });
     let stdout = '';
     let stderr = '';
-    child.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
-    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+    child.stdout?.on('data', (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.stderr?.on('data', (d: Buffer) => {
+      stderr += d.toString();
+    });
     const timer = setTimeout(() => {
-      try { child.kill('SIGKILL'); } catch { /* ignore */ }
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* ignore */
+      }
     }, timeoutMs);
-    child.on('error', () => { clearTimeout(timer); resolve({ stdout, stderr, exitCode: null }); });
-    child.on('close', (code) => { clearTimeout(timer); resolve({ stdout, stderr, exitCode: code ?? 0 }); });
+    child.on('error', () => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode: null });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode: code ?? 0 });
+    });
   });
 }
 
 // ── 结构化解析 ──────────────────────────────────────────────────────
 
 interface GitStatusEntry {
-  index: string;      // 暂存区状态字母
-  working: string;    // 工作区状态字母
+  index: string; // 暂存区状态字母
+  working: string; // 工作区状态字母
   path: string;
   staged: boolean;
 }
 
 function parseStatus(porcelain: string): GitStatusEntry[] {
-  return porcelain.split('\n').filter((line) => line && !line.startsWith('##')).map((line) => {
-    const index = line[0] ?? ' ';
-    const working = line[1] ?? ' ';
-    const path = line.slice(3);
-    return { index, working, path, staged: index !== ' ' && index !== '?' };
-  });
+  return porcelain
+    .split('\n')
+    .filter((line) => line && !line.startsWith('##'))
+    .map((line) => {
+      const index = line[0] ?? ' ';
+      const working = line[1] ?? ' ';
+      const path = line.slice(3);
+      return { index, working, path, staged: index !== ' ' && index !== '?' };
+    });
 }
 
 interface GitLogEntry {
@@ -95,10 +124,20 @@ interface GitLogEntry {
 
 function parseLog(log: string): GitLogEntry[] {
   // 格式：%H%x09%an%x09%ae%x09%aI%x09%s%x09%D（tab 分隔）
-  return log.split('\n').filter(Boolean).map((line) => {
-    const [hash, author, email, date, message, refs] = line.split('\t');
-    return { hash: hash ?? '', author: author ?? '', email: email ?? '', date: date ?? '', message: message ?? '', refs: refs ?? '' };
-  });
+  return log
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, author, email, date, message, refs] = line.split('\t');
+      return {
+        hash: hash ?? '',
+        author: author ?? '',
+        email: email ?? '',
+        date: date ?? '',
+        message: message ?? '',
+        refs: refs ?? '',
+      };
+    });
 }
 
 interface BranchInfo {
@@ -109,13 +148,16 @@ interface BranchInfo {
 }
 
 function parseBranches(output: string): BranchInfo[] {
-  return output.split('\n').filter(Boolean).map((line) => {
-    const current = line.startsWith('*');
-    const trimmed = current ? line.slice(2) : line;
-    const [hash, ...rest] = trimmed.split(' ');
-    const name = rest.join(' ');
-    return { name, current, remote: name.includes('/'), hash: hash ?? '' };
-  });
+  return output
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const current = line.startsWith('*');
+      const trimmed = current ? line.slice(2) : line;
+      const [hash, ...rest] = trimmed.split(' ');
+      const name = rest.join(' ');
+      return { name, current, remote: name.includes('/'), hash: hash ?? '' };
+    });
 }
 
 // ── 工具实现 ────────────────────────────────────────────────────────
@@ -136,8 +178,25 @@ export const gitTool: AgentTool<GitInput> = {
     properties: {
       action: {
         type: 'string',
-        enum: ['status', 'diff', 'log', 'show', 'branch', 'add', 'commit', 'restore',
-               'stash', 'push', 'pull', 'fetch', 'checkout', 'merge', 'rebase', 'remote', 'init'],
+        enum: [
+          'status',
+          'diff',
+          'log',
+          'show',
+          'branch',
+          'add',
+          'commit',
+          'restore',
+          'stash',
+          'push',
+          'pull',
+          'fetch',
+          'checkout',
+          'merge',
+          'rebase',
+          'remote',
+          'init',
+        ],
         description: 'Git action to perform.',
       },
       files: {
@@ -147,7 +206,8 @@ export const gitTool: AgentTool<GitInput> = {
       },
       message: {
         type: 'string',
-        description: 'Commit message (commit), branch name (checkout/branch), or remote name (push/pull/fetch).',
+        description:
+          'Commit message (commit), branch name (checkout/branch), or remote name (push/pull/fetch).',
       },
       branch: {
         type: 'string',
@@ -208,14 +268,21 @@ export const gitTool: AgentTool<GitInput> = {
         const untracked = entries.filter((e) => e.index === '?' && e.working === '?');
         // 提取分支信息行
         const branchLine = r.stdout.split('\n')[0] ?? '';
-        return ok(JSON.stringify({ branch: branchLine, staged, modified, untracked, total: entries.length }, null, 2));
+        return ok(
+          JSON.stringify(
+            { branch: branchLine, staged, modified, untracked, total: entries.length },
+            null,
+            2,
+          ),
+        );
       }
 
       case 'diff': {
         const args = ['diff'];
         if (input.ref === 'staged') args.push('--cached');
-        else if (input.ref === 'unstaged') { /* default */ }
-        else if (input.ref) args.push(input.ref);
+        else if (input.ref === 'unstaged') {
+          /* default */
+        } else if (input.ref) args.push(input.ref);
         if (input.files?.length) args.push('--', ...input.files);
         const r = await runGit(args, cwd, timeoutMs);
         if (r.exitCode !== 0) return fail(r.stderr || 'git diff failed', 'git_error');
@@ -245,28 +312,44 @@ export const gitTool: AgentTool<GitInput> = {
           // 创建或删除分支
           const args = input.force ? ['branch', '-D', input.branch] : ['branch', input.branch];
           const r = await runGit(args, cwd, timeoutMs);
-          if (r.exitCode !== 0) return fail(r.stderr || `git branch ${input.branch} failed`, 'git_error');
+          if (r.exitCode !== 0)
+            return fail(r.stderr || `git branch ${input.branch} failed`, 'git_error');
           return ok(`Branch ${input.force ? 'deleted' : 'created'}: ${input.branch}`);
         }
         // 列出分支
-        const r = await runGit(['branch', '--list', '--format=%(objectname:short) %(refname:short)'], cwd, timeoutMs);
+        const r = await runGit(
+          ['branch', '--list', '--format=%(objectname:short) %(refname:short)'],
+          cwd,
+          timeoutMs,
+        );
         if (r.exitCode !== 0) return fail(r.stderr || 'git branch failed', 'git_error');
         // current branch 需要单独获取
         const cur = await runGit(['branch', '--show-current'], cwd, 5000);
-        const branches = r.stdout.split('\n').filter(Boolean).map((line) => {
-          const [hash, name] = line.split(' ');
-          return { name: name ?? '', current: name === cur.stdout.trim(), remote: (name ?? '').includes('/'), hash: hash ?? '' };
-        });
+        const branches = r.stdout
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => {
+            const [hash, name] = line.split(' ');
+            return {
+              name: name ?? '',
+              current: name === cur.stdout.trim(),
+              remote: (name ?? '').includes('/'),
+              hash: hash ?? '',
+            };
+          });
         return ok(JSON.stringify(branches, null, 2));
       }
 
       case 'remote': {
         const r = await runGit(['remote', '-v'], cwd, timeoutMs);
         if (r.exitCode !== 0) return fail(r.stderr || 'git remote failed', 'git_error');
-        const remotes = r.stdout.split('\n').filter(Boolean).map((line) => {
-          const [name, url] = line.split('\t');
-          return { name: name ?? '', url: (url ?? '').replace(/\s\((fetch|push)\)/, '') };
-        });
+        const remotes = r.stdout
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => {
+            const [name, url] = line.split('\t');
+            return { name: name ?? '', url: (url ?? '').replace(/\s\((fetch|push)\)/, '') };
+          });
         return ok(JSON.stringify(remotes, null, 2));
       }
 
@@ -298,9 +381,13 @@ export const gitTool: AgentTool<GitInput> = {
       case 'stash': {
         const sub = input.stashAction ?? 'push';
         const args = ['stash'];
-        if (sub === 'list') { args.push('list'); }
-        else if (sub === 'pop') { args.push('pop'); }
-        else if (sub === 'drop') { args.push('drop', `stash@{${input.stashIndex ?? 0}}`); }
+        if (sub === 'list') {
+          args.push('list');
+        } else if (sub === 'pop') {
+          args.push('pop');
+        } else if (sub === 'drop') {
+          args.push('drop', `stash@{${input.stashIndex ?? 0}}`);
+        }
         // push: no extra args needed
         const r = await runGit(args, cwd, timeoutMs);
         if (r.exitCode !== 0) return fail(r.stderr || `git stash ${sub} failed`, 'git_error');
@@ -315,7 +402,8 @@ export const gitTool: AgentTool<GitInput> = {
         if (!input.branch) return fail('checkout requires a branch name', 'missing_branch');
         const args = input.force ? ['checkout', '-f', input.branch] : ['checkout', input.branch];
         const r = await runGit(args, cwd, timeoutMs);
-        if (r.exitCode !== 0) return fail(r.stderr || `git checkout ${input.branch} failed`, 'git_error');
+        if (r.exitCode !== 0)
+          return fail(r.stderr || `git checkout ${input.branch} failed`, 'git_error');
         return ok(`Switched to branch: ${input.branch}`);
       }
 
@@ -326,7 +414,7 @@ export const gitTool: AgentTool<GitInput> = {
         if (branch) args.push(branch);
         const r = await runGit(args, cwd, timeoutMs);
         if (r.exitCode !== 0) return fail(r.stderr || 'git push failed', 'git_error');
-        return ok(`Pushed to ${remote}${branch ? '/' + branch : ''}\n${r.stdout.trim()}`);
+        return ok(`Pushed to ${remote}${branch ? `/${branch}` : ''}\n${r.stdout.trim()}`);
       }
 
       case 'pull': {
@@ -336,7 +424,7 @@ export const gitTool: AgentTool<GitInput> = {
         if (branch) args.push(branch);
         const r = await runGit(args, cwd, timeoutMs);
         if (r.exitCode !== 0) return fail(r.stderr || 'git pull failed', 'git_error');
-        return ok(`Pulled from ${remote}${branch ? '/' + branch : ''}\n${r.stdout.trim()}`);
+        return ok(`Pulled from ${remote}${branch ? `/${branch}` : ''}\n${r.stdout.trim()}`);
       }
 
       case 'fetch': {
@@ -349,14 +437,16 @@ export const gitTool: AgentTool<GitInput> = {
       case 'merge': {
         if (!input.branch) return fail('merge requires a branch name', 'missing_branch');
         const r = await runGit(['merge', input.branch], cwd, timeoutMs);
-        if (r.exitCode !== 0) return fail(r.stderr || `git merge ${input.branch} failed`, 'git_error');
+        if (r.exitCode !== 0)
+          return fail(r.stderr || `git merge ${input.branch} failed`, 'git_error');
         return ok(`Merged: ${input.branch}\n${r.stdout.trim()}`);
       }
 
       case 'rebase': {
         if (!input.branch) return fail('rebase requires a branch name', 'missing_branch');
         const r = await runGit(['rebase', input.branch], cwd, timeoutMs);
-        if (r.exitCode !== 0) return fail(r.stderr || `git rebase ${input.branch} failed`, 'git_error');
+        if (r.exitCode !== 0)
+          return fail(r.stderr || `git rebase ${input.branch} failed`, 'git_error');
         return ok(`Rebased onto: ${input.branch}\n${r.stdout.trim()}`);
       }
 

@@ -36,7 +36,10 @@ export interface MemoryAccess {
   search(
     query: string,
     opts?: { layer?: 'user' | 'project' | 'semantic'; limit?: number },
-  ): Array<{ entry: { id: string; layer: string; type: string; content: string; source: string }; score: number }>;
+  ): Array<{
+    entry: { id: string; layer: string; type: string; content: string; source: string };
+    score: number;
+  }>;
   /** 删除条目（memory_forget 工具）。 */
   forget(id: string): boolean;
 }
@@ -87,7 +90,10 @@ export interface ToolContext {
 /** 内置浏览器访问契约：由桌面端 Electron BrowserView 或 CLI HTTP fetch 实现。 */
 export interface BrowserAccess {
   /** 导航到 URL，返回页面基本信息。 */
-  navigate(url: string, opts?: { waitMs?: number }): Promise<{ title: string; url: string; status: number }>;
+  navigate(
+    url: string,
+    opts?: { waitMs?: number },
+  ): Promise<{ title: string; url: string; status: number }>;
   /** 截取当前页面截图（base64 PNG）。 */
   screenshot(opts?: { fullPage?: boolean }): Promise<{ contentId: string; base64: string }>;
   /** 提取页面纯文本内容。 */

@@ -1,16 +1,16 @@
 /**
  * PatchEngine 测试：parser / matcher / applier / edit_file 三明治测试 + fuzz（M3 §3.7）。
  */
-import { mkdtempSync, readFileSync, rmSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { editFileTool } from '../edit-file.js';
 import { applyPatch } from '../patch-applier.js';
 import { applyLocations, matchFile } from '../patch-matcher.js';
 import { parsePatch } from '../patch-parser.js';
-import { editFileTool } from '../edit-file.js';
-import { Workspace } from '../workspace.js';
 import type { ToolContext } from '../types.js';
+import { Workspace } from '../workspace.js';
 
 let dir: string;
 let ws: Workspace;
@@ -52,7 +52,7 @@ describe('parsePatch', () => {
     expect(f.op).toBe('update');
     expect(f.path).toBe('a.ts');
     expect(f.hunks).toHaveLength(1);
-    const h = f.hunks![0]!;
+    const h = f.hunks?.[0]!;
     expect(h.signature).toEqual(['const x = 1;', 'const y = 2;']);
     expect(h.additions).toEqual(['const y = 3;']);
   });
@@ -69,9 +69,9 @@ describe('parsePatch', () => {
       ].join('\n'),
     );
     expect(patch.files).toHaveLength(2);
-    expect(patch.files[0]!.op).toBe('add');
-    expect(patch.files[0]!.body).toEqual(['export const a = 1;', 'export const b = 2;']);
-    expect(patch.files[1]!.op).toBe('delete');
+    expect(patch.files[0]?.op).toBe('add');
+    expect(patch.files[0]?.body).toEqual(['export const a = 1;', 'export const b = 2;']);
+    expect(patch.files[1]?.op).toBe('delete');
   });
 
   it('一个 patch 包含多个文件操作', () => {
@@ -91,9 +91,7 @@ describe('parsePatch', () => {
   });
 
   it('缺少 End 标记 → ERR_PATCH_PARSE', () => {
-    expect(() =>
-      parsePatch('*** Begin Patch\n*** Add File: x.ts\n+hi'),
-    ).toThrowError(/End Patch/);
+    expect(() => parsePatch('*** Begin Patch\n*** Add File: x.ts\n+hi')).toThrowError(/End Patch/);
   });
 
   it('缺少 Begin 标记 → ERR_PATCH_PARSE', () => {
@@ -101,9 +99,7 @@ describe('parsePatch', () => {
   });
 
   it('无文件操作 → ERR_PATCH_PARSE', () => {
-    expect(() => parsePatch('*** Begin Patch\n*** End Patch')).toThrowError(
-      /no file operations/,
-    );
+    expect(() => parsePatch('*** Begin Patch\n*** End Patch')).toThrowError(/no file operations/);
   });
 
   it('超过 10 个文件 → ERR_PATCH_PARSE', () => {
@@ -119,22 +115,26 @@ describe('parsePatch', () => {
 describe('matchFile / applyLocations', () => {
   it('精确匹配并替换', () => {
     const content = ['line1', 'line2', 'line3', 'line4'].join('\n');
-    const result = matchFile(
-      'a.ts',
-      content,
-      [{ signature: ['line2', 'line3'], additions: ['LINE2', 'LINE3'] }],
-    );
+    const result = matchFile('a.ts', content, [
+      { signature: ['line2', 'line3'], additions: ['LINE2', 'LINE3'] },
+    ]);
     if ('error' in result) throw new Error('should match');
-    expect(result.locations[0]!.start).toBe(1);
-    const out = applyLocations(content.split('\n'), [{ signature: ['line2', 'line3'], additions: ['LINE2', 'LINE3'] }], result.locations);
+    expect(result.locations[0]?.start).toBe(1);
+    const out = applyLocations(
+      content.split('\n'),
+      [{ signature: ['line2', 'line3'], additions: ['LINE2', 'LINE3'] }],
+      result.locations,
+    );
     expect(out.join('\n')).toBe(['line1', 'LINE2', 'LINE3', 'line4'].join('\n'));
   });
 
   it('忽略行尾空白差异', () => {
     const content = 'line1  \nline2\t\n';
-    const result = matchFile('a.ts', content, [{ signature: ['line1', 'line2'], additions: ['x'] }]);
+    const result = matchFile('a.ts', content, [
+      { signature: ['line1', 'line2'], additions: ['x'] },
+    ]);
     if ('error' in result) throw new Error('should match (trailing ws ignored)');
-    expect(result.locations[0]!.start).toBe(0);
+    expect(result.locations[0]?.start).toBe(0);
   });
 
   it('多个 hunk 依序匹配（后一 hunk 从前一尾部搜索）', () => {
@@ -144,8 +144,8 @@ describe('matchFile / applyLocations', () => {
       { signature: ['b', 'c'], additions: ['B2'] },
     ]);
     if ('error' in result) throw new Error('should match');
-    expect(result.locations[0]!.start).toBe(1);
-    expect(result.locations[1]!.start).toBe(3);
+    expect(result.locations[0]?.start).toBe(1);
+    expect(result.locations[1]?.start).toBe(3);
   });
 
   it('不匹配 → 返回诊断（期望内容 + 最近行）', () => {
@@ -186,7 +186,12 @@ describe('applyPatch', () => {
   it('Add：新文件写入（含父目录）', () => {
     applyPatch(
       parsePatch(
-        ['*** Begin Patch', '*** Add File: src/deep/new.ts', '+export const q = 1;', '*** End Patch'].join('\n'),
+        [
+          '*** Begin Patch',
+          '*** Add File: src/deep/new.ts',
+          '+export const q = 1;',
+          '*** End Patch',
+        ].join('\n'),
       ),
       ws,
     );
@@ -197,7 +202,9 @@ describe('applyPatch', () => {
     write('exists.ts', 'x');
     expect(() =>
       applyPatch(
-        parsePatch(['*** Begin Patch', '*** Add File: exists.ts', '+y', '*** End Patch'].join('\n')),
+        parsePatch(
+          ['*** Begin Patch', '*** Add File: exists.ts', '+y', '*** End Patch'].join('\n'),
+        ),
         ws,
       ),
     ).toThrowError(/already exists/);
@@ -257,7 +264,7 @@ describe('applyPatch', () => {
       snapDir,
     );
     expect(existsSync(snapDir)).toBe(true);
-    const files = require('fs').readdirSync(snapDir) as string[];
+    const files = require('node:fs').readdirSync(snapDir) as string[];
     expect(files.length).toBe(1);
     const snapContent = readFileSync(join(snapDir, files[0]!), 'utf-8');
     expect(snapContent).toBe('v1\n');
@@ -272,13 +279,9 @@ describe('edit_file tool', () => {
     const ctx = makeCtx();
     const result = await editFileTool.execute(
       {
-        patch: [
-          '*** Begin Patch',
-          '*** Update File: a.ts',
-          '-two',
-          '+TWO',
-          '*** End Patch',
-        ].join('\n'),
+        patch: ['*** Begin Patch', '*** Update File: a.ts', '-two', '+TWO', '*** End Patch'].join(
+          '\n',
+        ),
       },
       ctx,
     );
@@ -301,7 +304,13 @@ describe('edit_file tool', () => {
     write('a.ts', 'real content\n');
     const result = await editFileTool.execute(
       {
-        patch: ['*** Begin Patch', '*** Update File: a.ts', '-no such line', '+x', '*** End Patch'].join('\n'),
+        patch: [
+          '*** Begin Patch',
+          '*** Update File: a.ts',
+          '-no such line',
+          '+x',
+          '*** End Patch',
+        ].join('\n'),
       },
       makeCtx(),
     );

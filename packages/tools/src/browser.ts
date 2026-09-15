@@ -10,11 +10,19 @@
  *   click/fill/eval 操作仍需策略审批（在工具描述中标注交互性）。
  */
 import type { AgentTool, ToolContext } from './types.js';
-import { ok, fail, truncate } from './types.js';
+import { fail, ok, truncate } from './types.js';
 
 type BrowserAction =
-  | 'navigate' | 'screenshot' | 'annotate' | 'get_text' | 'get_html'
-  | 'click' | 'fill' | 'eval' | 'close' | 'list_tabs';
+  | 'navigate'
+  | 'screenshot'
+  | 'annotate'
+  | 'get_text'
+  | 'get_html'
+  | 'click'
+  | 'fill'
+  | 'eval'
+  | 'close'
+  | 'list_tabs';
 
 interface BrowserInput {
   action: BrowserAction;
@@ -54,7 +62,18 @@ export const browserTool: AgentTool<BrowserInput> = {
     properties: {
       action: {
         type: 'string',
-        enum: ['navigate', 'screenshot', 'annotate', 'get_text', 'get_html', 'click', 'fill', 'eval', 'close', 'list_tabs'],
+        enum: [
+          'navigate',
+          'screenshot',
+          'annotate',
+          'get_text',
+          'get_html',
+          'click',
+          'fill',
+          'eval',
+          'close',
+          'list_tabs',
+        ],
         description: 'Browser action to perform.',
       },
       url: {
@@ -109,16 +128,24 @@ export const browserTool: AgentTool<BrowserInput> = {
           const result = await browser.navigate(input.url, { waitMs: input.waitMs ?? 2000 });
           return ok(JSON.stringify(result, null, 2));
         } catch (e) {
-          return fail(`Navigation failed: ${e instanceof Error ? e.message : String(e)}`, 'nav_error');
+          return fail(
+            `Navigation failed: ${e instanceof Error ? e.message : String(e)}`,
+            'nav_error',
+          );
         }
       }
 
       case 'screenshot': {
         try {
           const result = await browser.screenshot({ fullPage: input.fullPage ?? false });
-          return ok(`Screenshot captured: ${result.contentId} (${result.base64.length} bytes base64)`);
+          return ok(
+            `Screenshot captured: ${result.contentId} (${result.base64.length} bytes base64)`,
+          );
         } catch (e) {
-          return fail(`Screenshot failed: ${e instanceof Error ? e.message : String(e)}`, 'screenshot_error');
+          return fail(
+            `Screenshot failed: ${e instanceof Error ? e.message : String(e)}`,
+            'screenshot_error',
+          );
         }
       }
 
@@ -145,13 +172,18 @@ export const browserTool: AgentTool<BrowserInput> = {
             await browser.eval(`document.getElementById('__mozi_highlight__')?.remove()`);
           }
           const highlightInfo = input.highlight ? ` (highlight: ${input.highlight})` : '';
-          const selectorInfo = input.highlightSelector ? ` (selector: ${input.highlightSelector})` : '';
+          const selectorInfo = input.highlightSelector
+            ? ` (selector: ${input.highlightSelector})`
+            : '';
           return ok(
             `Annotated screenshot captured: ${result.contentId} (${result.base64.length} bytes base64)${highlightInfo}${selectorInfo}`,
             { kind: 'image', contentId: result.contentId, base64: result.base64 } as never,
           );
         } catch (e) {
-          return fail(`Annotate failed: ${e instanceof Error ? e.message : String(e)}`, 'annotate_error');
+          return fail(
+            `Annotate failed: ${e instanceof Error ? e.message : String(e)}`,
+            'annotate_error',
+          );
         }
       }
 
@@ -161,7 +193,10 @@ export const browserTool: AgentTool<BrowserInput> = {
           const { text, truncated } = truncate(result.text, 200, 50);
           return ok(text, { kind: 'text', truncated } as never);
         } catch (e) {
-          return fail(`Get text failed: ${e instanceof Error ? e.message : String(e)}`, 'get_text_error');
+          return fail(
+            `Get text failed: ${e instanceof Error ? e.message : String(e)}`,
+            'get_text_error',
+          );
         }
       }
 
@@ -171,7 +206,10 @@ export const browserTool: AgentTool<BrowserInput> = {
           const { text, truncated } = truncate(result.html, 200, 50);
           return ok(text, { kind: 'text', truncated } as never);
         } catch (e) {
-          return fail(`Get HTML failed: ${e instanceof Error ? e.message : String(e)}`, 'get_html_error');
+          return fail(
+            `Get HTML failed: ${e instanceof Error ? e.message : String(e)}`,
+            'get_html_error',
+          );
         }
       }
 
@@ -188,7 +226,8 @@ export const browserTool: AgentTool<BrowserInput> = {
 
       case 'fill': {
         if (!input.selector) return fail('fill requires a selector parameter', 'missing_selector');
-        if (input.value === undefined) return fail('fill requires a value parameter', 'missing_value');
+        if (input.value === undefined)
+          return fail('fill requires a value parameter', 'missing_value');
         try {
           const result = await browser.fill(input.selector, input.value);
           if (!result.ok) return fail(`Fill failed: ${result.error ?? 'unknown'}`, 'fill_error');
@@ -203,9 +242,10 @@ export const browserTool: AgentTool<BrowserInput> = {
         try {
           const result = await browser.eval(input.script);
           if (result.error) return fail(`Eval error: ${result.error}`, 'eval_error');
-          const resultStr = typeof result.result === 'string'
-            ? result.result
-            : JSON.stringify(result.result, null, 2);
+          const resultStr =
+            typeof result.result === 'string'
+              ? result.result
+              : JSON.stringify(result.result, null, 2);
           const { text, truncated } = truncate(resultStr || '(undefined)', 200, 50);
           return ok(text, { kind: 'text', truncated } as never);
         } catch (e) {
@@ -227,7 +267,10 @@ export const browserTool: AgentTool<BrowserInput> = {
           const tabs = await browser.listTabs();
           return ok(JSON.stringify(tabs, null, 2));
         } catch (e) {
-          return fail(`List tabs failed: ${e instanceof Error ? e.message : String(e)}`, 'list_tabs_error');
+          return fail(
+            `List tabs failed: ${e instanceof Error ? e.message : String(e)}`,
+            'list_tabs_error',
+          );
         }
       }
 

@@ -1,3 +1,4 @@
+import type { SessionState, SessionSummary } from '@mozi/protocol';
 /**
  * 渲染进程状态（M10 §10.2 / §10.5）。
  *
@@ -7,8 +8,7 @@
  * React 侧用 `useSyncExternalStore` 订阅本 store。
  */
 import type { AgentEvent, TokenUsage } from '@mozi/shared';
-import type { SessionState, SessionSummary } from '@mozi/protocol';
-import { eventToRenderItems, type RenderItem } from './render-item.js';
+import { type RenderItem, eventToRenderItems } from './render-item.js';
 
 export interface SubAgentNode {
   subSessionId: string;
@@ -29,6 +29,9 @@ export interface SessionView {
   subagents: SubAgentNode[];
   pendingApprovals: RenderItem[];
   usage?: TokenUsage;
+  /** 上下文占用（context.usage 事件实时更新；右侧面板真实数据源）。 */
+  contextUsed?: number;
+  contextBudget?: number;
   /** 流式缓冲区（跟随模式）：最后一条 assistant 是否在流式。 */
   streaming: boolean;
 }
@@ -67,7 +70,13 @@ export function applyEngineEvent(state: UiState, sessionId: string, event: Agent
     if (last && last.kind === 'assistant' && last.streaming) {
       next.items[next.items.length - 1] = { ...last, text: last.text + event.text };
     } else {
-      next.items.push({ kind: 'assistant', id: `stream-${next.items.length}`, text: event.text, streaming: true, ts: event.ts });
+      next.items.push({
+        kind: 'assistant',
+        id: `stream-${next.items.length}`,
+        text: event.text,
+        streaming: true,
+        ts: event.ts,
+      });
     }
     next.streaming = true;
     return commit(state, sessionId, next);
@@ -115,13 +124,13 @@ export function applyEngineEvent(state: UiState, sessionId: string, event: Agent
   if (event.type === 'tool.approval.required' || event.type === 'subagent.approval.required') {
     // 去重：审批事件同时经宿主实时通道与生成器送达，按 callId 幂等。
     const callId = event.type === 'tool.approval.required' ? event.call.id : event.callId;
-    const dup = next.pendingApprovals.some(
-      (it) => it.kind === 'approval' && it.callId === callId,
-    );
+    const dup = next.pendingApprovals.some((it) => it.kind === 'approval' && it.callId === callId);
     if (!dup) next.pendingApprovals.push(...eventToRenderItems(event).map((it) => ({ ...it })));
   }
   if (event.type === 'tool.approval.resolved') {
-    next.pendingApprovals = next.pendingApprovals.filter((it) => it.kind !== 'approval' || it.callId !== event.callId);
+    next.pendingApprovals = next.pendingApprovals.filter(
+      (it) => it.kind !== 'approval' || it.callId !== event.callId,
+    );
   }
 
   // ── 子智能体树归并 ──
@@ -131,10 +140,7 @@ export function applyEngineEvent(state: UiState, sessionId: string, event: Agent
       agentType: event.agentType,
       state: 'started',
     });
-  } else if (
-    event.type === 'subagent.progress' ||
-    event.type === 'subagent.queued'
-  ) {
+  } else if (event.type === 'subagent.progress' || event.type === 'subagent.queued') {
     const node = next.subagents.find((s) => s.subSessionId === event.subSessionId);
     if (node) {
       const state = event.type === 'subagent.queued' ? 'queued' : 'progress';
@@ -169,6 +175,12 @@ export function applyEngineEvent(state: UiState, sessionId: string, event: Agent
     next.state = 'idle';
   } else if (event.type === 'token.usage') {
     next.usage = event.usage;
+  }
+
+  // ── 上下文占用（右侧面板真实数据源：每轮 step 开始时刷新）──
+  if (event.type === 'context.usage') {
+    next.contextUsed = event.usedTokens;
+    next.contextBudget = event.budgetTokens;
   }
 
   const produced = eventToRenderItems(event);

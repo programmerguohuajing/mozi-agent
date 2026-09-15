@@ -38,7 +38,8 @@ export function generateIdentityKeys(): IdentityKeys {
   const encPriv = enc.privateKey.export({ format: 'jwk' }) as { d?: string };
   const sigPub = sig.publicKey.export({ format: 'jwk' }) as { x?: string };
   const sigPriv = sig.privateKey.export({ format: 'jwk' }) as { d?: string };
-  if (!encPub.x || !encPub.y || !encPriv.d || !sigPub.x || !sigPriv.d) throw new Error('failed to export identity keys');
+  if (!encPub.x || !encPub.y || !encPriv.d || !sigPub.x || !sigPriv.d)
+    throw new Error('failed to export identity keys');
   return {
     encPubX: encPub.x,
     encPubY: encPub.y,
@@ -52,13 +53,22 @@ function deriveAesKey(encPrivRaw: string, peerEncPubX: string, peerEncPubY: stri
   const ecdh = createECDH('prime256v1');
   ecdh.setPrivateKey(Buffer.from(encPrivRaw, 'base64url')); // P-256 私钥即 32B 标量
   // JWK.x/y 是无 0x04 前缀的 32B 坐标；组装标准 65B 未压缩公钥（0x04 || X || Y）
-  const peerPub = Buffer.concat([Buffer.from([0x04]), Buffer.from(peerEncPubX, 'base64url'), Buffer.from(peerEncPubY, 'base64url')]);
+  const peerPub = Buffer.concat([
+    Buffer.from([0x04]),
+    Buffer.from(peerEncPubX, 'base64url'),
+    Buffer.from(peerEncPubY, 'base64url'),
+  ]);
   const secret = ecdh.computeSecret(peerPub);
   return createHash('sha256').update(secret).digest(); // 32B AES key
 }
 
 /** 密封（发起方用自己的私钥 + 对端公钥 X/Y）。 */
-export function sealTo(encPrivRaw: string, peerEncPubX: string, peerEncPubY: string, plaintext: string | Buffer): SealedBox {
+export function sealTo(
+  encPrivRaw: string,
+  peerEncPubX: string,
+  peerEncPubY: string,
+  plaintext: string | Buffer,
+): SealedBox {
   const aesKey = deriveAesKey(encPrivRaw, peerEncPubX, peerEncPubY);
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', aesKey, iv);
@@ -69,7 +79,12 @@ export function sealTo(encPrivRaw: string, peerEncPubX: string, peerEncPubY: str
 }
 
 /** 开启（接收方用自己的私钥 + 对端公钥 X/Y）。篡改会抛错。 */
-export function openFrom(encPrivRaw: string, peerEncPubX: string, peerEncPubY: string, box: SealedBox): Buffer {
+export function openFrom(
+  encPrivRaw: string,
+  peerEncPubX: string,
+  peerEncPubY: string,
+  box: SealedBox,
+): Buffer {
   const aesKey = deriveAesKey(encPrivRaw, peerEncPubX, peerEncPubY);
   const decipher = createDecipheriv('aes-256-gcm', aesKey, Buffer.from(box.iv, 'base64'));
   decipher.setAuthTag(Buffer.from(box.tag, 'base64'));
@@ -107,6 +122,11 @@ export interface Envelope {
   len: number;
 }
 
-export function packEnvelope(from: string, to: string, box: SealedBox, plaintextLen: number): Envelope {
+export function packEnvelope(
+  from: string,
+  to: string,
+  box: SealedBox,
+  plaintextLen: number,
+): Envelope {
   return { from, to, ts: Date.now(), box, len: plaintextLen };
 }

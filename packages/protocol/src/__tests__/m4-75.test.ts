@@ -12,12 +12,14 @@ import {
   signMessage,
   verifySignature,
 } from '@mozi/protocol';
-import { RelayRouter } from '@mozi/relay-server';
 import { describe, expect, it } from 'vitest';
 /**
  * M4.75 移动端与远程访问测试（M14 §14.2-14.13）：
  * 设备权限矩阵 / 配对（TTL·单次·暴力锁定）/ 设备注册表 / E2E 加密（P-256+Ed25519）/
- * 中继路由（零内容信封）/ 节点协议全链路（认证、门禁、幂等、事件重放、附件外置、吊销）。
+ * 节点协议全链路（认证、门禁、幂等、事件重放、附件外置、吊销）。
+ *
+ * 注：中继路由（RelayRouter）测试在 @mozi/relay-server 包内 —— 此处引用会形成
+ * protocol ⇄ relay-server 环依赖（turbo 拒绝构建）。
  */
 
 const DEFAULT_PERMS = {
@@ -80,13 +82,29 @@ describe('M4.75 设备注册表（§14.4）', () => {
   it('tokenHash 校验不存明文 + 吊销 + rename', () => {
     const reg = memRegistry();
     const token = 'dev-token-abc';
-    reg.register({ deviceId: 'dev-1', name: 'iPhone', platform: 'ios', pubKey: 'pk', tokenHash: hashToken(token), permissions: DEFAULT_PERMS, pairedAt: new Date().toISOString() });
+    reg.register({
+      deviceId: 'dev-1',
+      name: 'iPhone',
+      platform: 'ios',
+      pubKey: 'pk',
+      tokenHash: hashToken(token),
+      permissions: DEFAULT_PERMS,
+      pairedAt: new Date().toISOString(),
+    });
     expect(reg.verifyToken('dev-1', hashToken(token))).toBe(true);
     expect(reg.verifyToken('dev-1', hashToken('x'))).toBe(false);
     reg.revoke('dev-1');
     expect(reg.verifyToken('dev-1', hashToken(token))).toBe(false);
     const r2 = memRegistry();
-    r2.register({ deviceId: 'd', name: 'A', platform: 'p', pubKey: 'k', tokenHash: 'h', permissions: DEFAULT_PERMS, pairedAt: 'now' });
+    r2.register({
+      deviceId: 'd',
+      name: 'A',
+      platform: 'p',
+      pubKey: 'k',
+      tokenHash: 'h',
+      permissions: DEFAULT_PERMS,
+      pairedAt: 'now',
+    });
     expect(r2.rename('d', 'B')).toBe(true);
     expect(r2.get('d').name).toBe('B');
   });
@@ -99,7 +117,12 @@ describe('M4.75 E2E 加密（P-256 + AES-GCM + Ed25519）', () => {
     const plain = '{"channel":"run:start","params":{"sessionId":"s1"}}';
     const box = sealTo(node.encPriv, device.encPubX, device.encPubY, plain);
     expect(openFrom(device.encPriv, node.encPubX, node.encPubY, box).toString('utf8')).toBe(plain);
-    expect(() => openFrom(device.encPriv, node.encPubX, node.encPubY, { ...box, ct: box.ct.slice(0, -4) + 'AAAA' })).toThrow();
+    expect(() =>
+      openFrom(device.encPriv, node.encPubX, node.encPubY, {
+        ...box,
+        ct: `${box.ct.slice(0, -4)}AAAA`,
+      }),
+    ).toThrow();
     const env = packEnvelope('node-1', 'dev-1', box, plain.length);
     expect(env.len).toBe(plain.length);
     expect(JSON.stringify(env)).not.toContain('run:start');
@@ -107,25 +130,6 @@ describe('M4.75 E2E 加密（P-256 + AES-GCM + Ed25519）', () => {
     expect(verifySignature(node.sigPub, 'hello', sig)).toBe(true);
     expect(verifySignature(node.sigPub, 'hello!', sig)).toBe(false);
     expect(verifySignature(node.sigPub, 'hello', 'bad')).toBe(false);
-  });
-});
-
-describe('M4.75 中继路由（§14.9）', () => {
-  it('在线转发 / 离线未交付 / 日志只记路由头', () => {
-    const router = new RelayRouter({ logging: false });
-    const got: unknown[] = [];
-    router.register({ id: 'node-1', deliver: (e) => got.push(e) });
-    const env = { from: 'dev-1', to: 'node-1', ts: 1, box: { iv: 'i', tag: 't', ct: 'c' }, len: 3 };
-    expect(router.route(env).delivered).toBe(true);
-    expect(got.length).toBe(1);
-    expect(router.entries().length).toBe(0);
-    expect(router.route({ ...env, to: 'ghost' }).delivered).toBe(false);
-    const r2 = new RelayRouter({ logging: true });
-    r2.register({ id: 'n', deliver: () => {} });
-    r2.route({ from: 'a', to: 'n', ts: 1, box: { iv: 'i', tag: 't', ct: 'c' }, len: 10 });
-    const e = r2.entries()[0];
-    expect(e.len).toBe(10);
-    expect(JSON.stringify(e)).not.toContain('cipher');
   });
 });
 
@@ -152,30 +156,63 @@ describe('M4.75 RemoteNode 协议全链路', () => {
     node.handle('approval:resolve', () => ({ ok: true }));
     node.handle('task:run', () => ({ ok: true }));
 
-    const last = () => out[out.length - 1] as { t: string; error?: { code: string }; ok?: unknown; deviceId?: string; token?: string };
+    const last = () =>
+      out[out.length - 1] as {
+        t: string;
+        error?: { code: string };
+        ok?: unknown;
+        deviceId?: string;
+        token?: string;
+      };
 
     await node.onFrame({ t: 'invoke', id: 'i0', channel: 'run:start', params: {} });
-    expect(last().error!.code).toBe('ERR_AUTH');
+    expect(last().error?.code).toBe('ERR_AUTH');
 
     await node.onFrame({ t: 'pair', code, deviceName: 'iPhone', platform: 'ios', pubKey: 'pk' });
     const pairOk = last();
     expect(pairOk.t).toBe('pair-ok');
-    await node.onFrame({ t: 'auth', deviceId: pairOk.deviceId!, tokenHash: hashToken(pairOk.token!) });
+    await node.onFrame({
+      t: 'auth',
+      deviceId: pairOk.deviceId!,
+      tokenHash: hashToken(pairOk.token!),
+    });
     expect(last().t).toBe('auth-ok');
     await node.onFrame({ t: 'invoke', id: 'i1', channel: 'run:start', params: {} });
     expect((last().ok as { runId: string }).runId).toBe('r1');
 
     await node.onFrame({ t: 'invoke', id: 'i2', channel: 'config:set', params: {} });
-    expect(last().error!.code).toBe('ERR_FORBIDDEN');
-    await node.onFrame({ t: 'invoke', id: 'i3', channel: 'approval:resolve', params: { risk: 'high', decision: 'allow' } });
-    expect(last().error!.code).toBe('ERR_DEFER');
-    await node.onFrame({ t: 'invoke', id: 'i4', channel: 'approval:resolve', params: { risk: 'safe', decision: 'allow' } });
+    expect(last().error?.code).toBe('ERR_FORBIDDEN');
+    await node.onFrame({
+      t: 'invoke',
+      id: 'i3',
+      channel: 'approval:resolve',
+      params: { risk: 'high', decision: 'allow' },
+    });
+    expect(last().error?.code).toBe('ERR_DEFER');
+    await node.onFrame({
+      t: 'invoke',
+      id: 'i4',
+      channel: 'approval:resolve',
+      params: { risk: 'safe', decision: 'allow' },
+    });
     expect((last().ok as { ok: boolean }).ok).toBe(true);
 
     const before = calls.runStart;
-    await node.onFrame({ t: 'invoke', id: 'i5', channel: 'run:start', params: {}, requestId: 'rid-1' });
+    await node.onFrame({
+      t: 'invoke',
+      id: 'i5',
+      channel: 'run:start',
+      params: {},
+      requestId: 'rid-1',
+    });
     const first = out.length - 1;
-    await node.onFrame({ t: 'invoke', id: 'i6', channel: 'run:start', params: {}, requestId: 'rid-1' });
+    await node.onFrame({
+      t: 'invoke',
+      id: 'i6',
+      channel: 'run:start',
+      params: {},
+      requestId: 'rid-1',
+    });
     // 去重：响应帧 id 随当前请求推进（i6），但 ok 负载与首次（i5）相同、且只执行一次
     expect((out[out.length - 1] as { id: string }).id).toBe('i6');
     expect((out[first] as { ok: unknown }).ok).toEqual((out[out.length - 1] as { ok: unknown }).ok);
@@ -190,14 +227,19 @@ describe('M4.75 RemoteNode 协议全链路', () => {
     await node.onFrame({ t: 'attach', sessionId: 's1', lastEventId: firstSeq });
     expect(out.length).toBe(replayBefore + 1);
 
-    const big = externalizeAttachment({ content: 'y'.repeat(9_000) }, (data, kind) => ({ contentId: 'att_1', kind, totalChunks: 2, chunkSize: 8_000 }));
+    const big = externalizeAttachment({ content: 'y'.repeat(9_000) }, (data, kind) => ({
+      contentId: 'att_1',
+      kind,
+      totalChunks: 2,
+      chunkSize: 8_000,
+    }));
     expect(big.externalized).toBe(true);
-    expect(big.ref!.kind).toBe('content');
+    expect(big.ref?.kind).toBe('content');
     const small = externalizeAttachment({ content: 'hi' }, () => null);
     expect(small.externalized).toBe(false);
 
     node.revokeCurrent();
     await node.onFrame({ t: 'invoke', id: 'i7', channel: 'session:list', params: {} });
-    expect(last().error!.code).toBe('ERR_AUTH');
+    expect(last().error?.code).toBe('ERR_AUTH');
   });
 });

@@ -14,21 +14,44 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  type CreatedEngine,
-  type Session,
-  SessionStore,
-  createEngineAsync,
-} from '@mozi/core';
-import type { ProviderRegistry } from '@mozi/providers';
-import type { AgentEvent, CostLimits, PolicyMode, RunInput, SessionConfig } from '@mozi/shared';
+import { type CreatedEngine, type Session, SessionStore, createEngineAsync } from '@mozi/core';
+import type { McpServerEntry } from '@mozi/mcp-client';
 import type {
   ApprovalTicketView,
   DashboardStats,
   RunStartResponse,
   SessionState,
   SessionSummary,
+  WorkspaceEntry,
+  WorkspaceListEntriesRequest,
+  WorkspaceListEntriesResponse,
 } from '@mozi/protocol';
+import type { ProviderRegistry } from '@mozi/providers';
+import type { AgentEvent, CostLimits, PolicyMode, RunInput, SessionConfig } from '@mozi/shared';
+import type { BrowserAccess } from '@mozi/tools';
+
+/** 目录浏览 / @ 搜索时跳过的噪声目录（依赖产物 / VCS 元数据）。 */
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  '.hg',
+  '.svn',
+  '.turbo',
+  '.workbuddy',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '__pycache__',
+  '.venv',
+  'venv',
+  'target',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '.mozi',
+  '.trash',
+]);
 
 /** 每会话池条目。 */
 interface PoolEntry {
@@ -72,6 +95,16 @@ export interface AgentServiceOptions {
   enableSubAgents?: boolean;
   /** 成本上限（注入后引擎每 turn.completed 评估并发出 cost.warning）。 */
   costLimits?: CostLimits;
+  /**
+   * MCP server 配置源（会话引擎构造时读取，注入引擎的 McpBridge）。
+   * 每次创建引擎前调用 —— 配置编辑后新会话即刻用上最新的 MCP 工具。
+   */
+  mcpServers?: () => McpServerEntry[];
+  /**
+   * 会话级浏览器访问（任务浏览器面板）：按 sessionId 取 BrowserService，
+   * 注入引擎后 agent 的 browser 工具与用户看到的 webview 操作同一页面。
+   */
+  browserFor?: (sessionId: string) => BrowserAccess | undefined;
 }
 
 /** 会话项目名：取 workspace 末段。 */
@@ -103,6 +136,8 @@ export class AgentService {
         updatedAt: s.updatedAt,
         model: s.model,
         state: 'idle',
+        // 渲染端 @ 引用需要 workspace 绝对路径（meta.json；writeWorkspaceMeta 修复后可靠）。
+        workspace: this.workspaceOf(s.id),
         project: this.projectOf(s.id),
       });
     }
@@ -118,9 +153,7 @@ export class AgentService {
         usage: entry.engine.engine.getSnapshot(id)?.usage,
       });
     }
-    return [...byId.values()].sort((a, b) =>
-      (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''),
-    );
+    return [...byId.values()].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
   }
 
   private projectOf(sessionId: string): string | undefined {
@@ -133,14 +166,15 @@ export class AgentService {
     }
   }
 
-  /** 创建会话（§10.3 session:create）。 */
+  /** 创建会话（§10.3 session:create）。workspaceRoot 可省略（新建任务不再先选文件夹）。 */
   async create(req: {
     sessionId?: string;
-    workspaceRoot: string;
+    workspaceRoot?: string;
     config?: Partial<SessionConfig>;
   }): Promise<SessionSummary> {
     const sessionId = req.sessionId ?? `sess-${Date.now().toString(36)}-${++this.sessionSeq}`;
-    const entry = await this.ensurePool(sessionId, req.workspaceRoot, req.config);
+    const workspaceRoot = req.workspaceRoot?.trim() || os.homedir();
+    const entry = await this.ensurePool(sessionId, workspaceRoot, req.config);
     return {
       id: sessionId,
       workspace: entry.workspaceRoot,
@@ -185,6 +219,18 @@ export class AgentService {
     };
   }
 
+  /**
+   * 历史事件回放（session:resume）：把会话 events.jsonl 全量重放给渲染端，
+   * 重建消息列表 / 上下文占用 / 子智能体树（恢复窗口后右侧面板不丢数据）。
+   */
+  replayEvents(sessionId: string): void {
+    const events = readEvents(path.join(this.sessionDir, sessionId, 'events.jsonl'));
+    for (const ev of events) {
+      const stamped = { ...ev, sessionId } as AgentEvent;
+      this.opts.emit(stamped);
+    }
+  }
+
   /** 删除会话（§10.3 session:delete）。 */
   async delete(sessionId: string): Promise<{ ok: boolean }> {
     const entry = this.pool.get(sessionId);
@@ -201,8 +247,117 @@ export class AgentService {
     }
   }
 
+  /**
+   * 更换会话的项目文件夹（输入栏「+」→ 选择项目文件夹）。
+   *
+   * 引擎的 workspace / 记忆 / 钩子都在构造时绑定目录，因此采用
+   * 「销毁旧引擎 → 以新 workspace 重建」的方式；历史对话在 events.jsonl，
+   * 重建后 resume 重放不会丢。任务运行中拒绝切换（避免中断进行中的轮次）。
+   */
+  async setWorkspace(
+    sessionId: string,
+    workspaceRoot: string,
+  ): Promise<{ ok: boolean; summary?: SessionSummary; error?: string }> {
+    const root = workspaceRoot.trim();
+    if (!root) return { ok: false, error: 'workspace 路径不能为空' };
+    let stat: fs.Stats | null = null;
+    try {
+      stat = fs.statSync(root);
+    } catch {
+      return { ok: false, error: `目录不存在: ${root}` };
+    }
+    if (!stat.isDirectory()) return { ok: false, error: `不是目录: ${root}` };
+
+    const entry = this.pool.get(sessionId);
+    if (entry) {
+      if (entry.running) {
+        return { ok: false, error: '任务运行中，无法切换项目文件夹（可先中止）' };
+      }
+      if (path.resolve(entry.workspaceRoot) === path.resolve(root)) {
+        return {
+          ok: true,
+          summary: {
+            id: sessionId,
+            workspace: entry.workspaceRoot,
+            project: projectName(entry.workspaceRoot),
+            state: entry.state,
+          },
+        };
+      }
+      await entry.engine.dispose();
+      this.pool.delete(sessionId);
+    }
+    const updated = await this.ensurePool(sessionId, root);
+    const summary: SessionSummary = {
+      id: sessionId,
+      workspace: updated.workspaceRoot,
+      project: projectName(updated.workspaceRoot),
+      state: updated.state,
+      updatedAt: new Date().toISOString(),
+    };
+    return { ok: true, summary };
+  }
+
+  /**
+   * 会话的 workspace（池内优先，其次读 meta.json）。
+   * @ 引用弹层 / skills:list 等需要按会话定位目录。
+   */
+  workspaceOf(sessionId: string): string | undefined {
+    const entry = this.pool.get(sessionId);
+    if (entry) return entry.workspaceRoot;
+    try {
+      const meta = JSON.parse(
+        fs.readFileSync(path.join(this.sessionDir, sessionId, 'meta.json'), 'utf8'),
+      );
+      return typeof meta.workspace === 'string' ? meta.workspace : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * 列出 workspace 内的条目（输入框 @ 引用弹层）。
+   * - 浏览模式（dir）：列某一级子目录内容，目录在前、字母序；
+   * - 搜索模式（query）：递归匹配文件/文件夹名，跳过 node_modules 等噪声目录。
+   */
+  listEntries(req: WorkspaceListEntriesRequest): WorkspaceListEntriesResponse {
+    const root = this.workspaceOf(req.sessionId);
+    if (!root) return { ok: false, entries: [], error: '会话不存在或尚未指定 workspace' };
+    const query = req.query?.trim();
+    if (query) {
+      const entries = searchEntries(root, query);
+      return { ok: true, entries, workspaceRoot: root };
+    }
+    const rel = (req.dir ?? '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    const target = rel ? path.resolve(root, rel) : path.resolve(root);
+    // 越界保护：只允许列 workspace 内的目录。
+    if (!isInside(root, target)) return { ok: false, entries: [], error: '路径越界' };
+    let names: fs.Dirent[];
+    try {
+      names = fs.readdirSync(target, { withFileTypes: true });
+    } catch {
+      return { ok: false, entries: [], error: `无法读取目录: ${rel || '.'}` };
+    }
+    const entries: WorkspaceEntry[] = [];
+    for (const d of names) {
+      if (d.name.startsWith('.') || IGNORED_DIRS.has(d.name)) continue;
+      const isDir = d.isDirectory();
+      entries.push({
+        name: d.name,
+        path: toPosix(path.posix.join(rel, d.name)),
+        isDir,
+      });
+    }
+    entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
+    return { ok: true, entries: entries.slice(0, 500), workspaceRoot: root };
+  }
+
   /** 启动一轮任务（§10.3 run:start）：立即返回 runId，事件后台推送。 */
-  start(req: { sessionId: string; text: string; overrides?: Partial<SessionConfig> }): RunStartResponse {
+  start(req: {
+    sessionId: string;
+    text: string;
+    overrides?: Partial<SessionConfig>;
+  }): RunStartResponse {
     const entry = this.pool.get(req.sessionId);
     if (!entry) {
       return {
@@ -292,11 +447,21 @@ export class AgentService {
     return { ok: true };
   }
 
-  /** 中止（§10.3 engine:abort）：级联取消子智能体子树。 */
+  /**
+   * 中止（§10.3 engine:abort）：级联取消子智能体子树。
+   * 引擎侧 abort 信号会中断 LLM 流、工具执行与审批等待；
+   * 此处同步清空待审批票据（中止后票据已失效，UI 不应再显示）。
+   */
   abort(req: { sessionId: string; reason?: string }): { ok: boolean } {
     const entry = this.pool.get(req.sessionId);
     if (!entry) return { ok: false };
     entry.engine.engine.abort(req.sessionId, req.reason ?? 'user_interrupt');
+    if (entry.pendingApprovals.length > 0) {
+      entry.pendingApprovals = [];
+      // 状态从 pending_approval 回落：最终态由事件流（task.completed）确认，
+      // 但先解除"等待审批"锁定，UI 立即可交互。
+      if (entry.state === 'pending_approval') this.setState(entry, 'running');
+    }
     return { ok: true };
   }
 
@@ -316,7 +481,10 @@ export class AgentService {
   }
 
   /** 注册窗口（多窗口共享会话，§10.4）。返回是否需要聚焦已有窗口。 */
-  attachWindow(sessionId: string, windowId: string): { alreadyOpen: boolean; focus: string | null } {
+  attachWindow(
+    sessionId: string,
+    windowId: string,
+  ): { alreadyOpen: boolean; focus: string | null } {
     const entry = this.pool.get(sessionId);
     if (!entry) return { alreadyOpen: false, focus: null };
     const existed = entry.windows.size > 0;
@@ -338,6 +506,15 @@ export class AgentService {
     if (entry) entry.background = enabled;
   }
 
+  /**
+   * 动态更新默认策略模式（§10.5 权限模式切换即时生效）。
+   * 影响后续新建引擎的兜底 policy；已有会话由 run:start 注入的
+   * overrides.policy 覆盖，无需重建引擎。
+   */
+  setPolicyMode(mode: PolicyMode): void {
+    (this.opts as { policyMode?: PolicyMode }).policyMode = mode;
+  }
+
   /** 仪表盘聚合（§10.5⑤）：从所有会话事件流统计。 */
   dashboard(): DashboardStats {
     const tokensByDay = new Map<string, { input: number; output: number }>();
@@ -354,7 +531,10 @@ export class AgentService {
           acc.output += ev.usage?.outputTokens ?? 0;
           tokensByDay.set(day, acc);
           if (ev.usage?.costUsd) {
-            costByModel.set(ev.usage.model, (costByModel.get(ev.usage.model) ?? 0) + ev.usage.costUsd);
+            costByModel.set(
+              ev.usage.model,
+              (costByModel.get(ev.usage.model) ?? 0) + ev.usage.costUsd,
+            );
           }
         } else if (ev.type === 'tool.requested') {
           toolCalls.set(ev.call.name, (toolCalls.get(ev.call.name) ?? 0) + 1);
@@ -395,7 +575,9 @@ export class AgentService {
       decision: 'allow' | 'deny';
       by: 'user' | 'policy';
     }> = [];
-    const sessions = req.filters?.sessionId ? [req.filters.sessionId] : this.store.list().map((s) => s.id);
+    const sessions = req.filters?.sessionId
+      ? [req.filters.sessionId]
+      : this.store.list().map((s) => s.id);
     for (const sid of sessions) {
       const events = readEvents(path.join(this.sessionDir, sid, 'events.jsonl'));
       const callNames = new Map<string, string>();
@@ -407,7 +589,14 @@ export class AgentService {
           if (req.filters?.decision && ev.decision !== req.filters.decision) continue;
           const tool = callNames.get(ev.callId) ?? '?';
           if (req.filters?.tool && tool !== req.filters.tool) continue;
-          out.push({ ts: ev.ts, sessionId: sid, tool, callId: ev.callId, decision: ev.decision, by: ev.by });
+          out.push({
+            ts: ev.ts,
+            sessionId: sid,
+            tool,
+            callId: ev.callId,
+            decision: ev.decision,
+            by: ev.by,
+          });
         }
       }
     }
@@ -469,6 +658,11 @@ export class AgentService {
       sandboxLevel: this.opts.sandboxLevel,
       enableSubAgents: this.opts.enableSubAgents,
       costLimits: this.opts.costLimits,
+      // MCP：会话引擎启动即连接配置的全部 server（配置源实时读取）。
+      mcpServers: this.opts.mcpServers?.(),
+      // 任务浏览器面板（BrowserPanel 的 webview）：引擎侧 browser 工具
+      // 路由到用户所见页面（browserRegistry.for(sessionId)）。
+      browserAccess: this.opts.browserFor?.(sessionId),
       // 子智能体桥接事件 / 审批事件经宿主通道即时送达（M12 §12.8）。
       // 审批事件在 executeOne 阻塞前上抛，此处立刻登记 pending，
       // 使 UI 能在生成器仍在等待审批时调用 resolveApproval。
@@ -502,6 +696,9 @@ export class AgentService {
       },
     });
     void config;
+    // 把真实 workspace 写入 meta.json：core 的 SessionStore.writeMeta 会把
+    // workspace 硬编码为 process.cwd()，导致重启 resume 后目录丢失、侧栏分组错乱。
+    this.writeWorkspaceMeta(sessionId, workspaceRoot);
     const entry: PoolEntry = {
       sessionId,
       workspaceRoot,
@@ -526,6 +723,25 @@ export class AgentService {
   sessionOf(sessionId: string): Session | undefined {
     return this.store.loadOrCreate(sessionId);
   }
+
+  /** 把真实 workspace 合并写入会话 meta.json（resume / setWorkspace 后仍能恢复）。 */
+  private writeWorkspaceMeta(sessionId: string, workspaceRoot: string): void {
+    try {
+      const p = path.join(this.sessionDir, sessionId, 'meta.json');
+      let raw: Record<string, unknown> = {};
+      try {
+        raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+      } catch {
+        /* 首次创建：meta.json 可能尚不存在 */
+      }
+      raw.workspace = workspaceRoot;
+      raw.updatedAt = new Date().toISOString();
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, JSON.stringify(raw, null, 2));
+    } catch {
+      /* best-effort：meta 损坏不影响会话运行 */
+    }
+  }
 }
 
 function readEvents(file: string): AgentEvent[] {
@@ -536,4 +752,52 @@ function readEvents(file: string): AgentEvent[] {
   } catch {
     return [];
   }
+}
+
+/** 统一路径分隔符为 `/`（mention 插入与展示的一致性）。 */
+function toPosix(p: string): string {
+  return p.replace(/\\/g, '/');
+}
+
+/** target 是否位于 root 内（含 root 自身）；防目录穿越。 */
+function isInside(root: string, target: string): boolean {
+  const rel = path.relative(path.resolve(root), path.resolve(target));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+/**
+ * 递归搜索文件/文件夹名（@xxx 全局搜索模式）。
+ * BFS + 噪声目录剪枝；命中上限 MAX_RESULTS 即停，避免大目录卡顿。
+ */
+function searchEntries(root: string, query: string): WorkspaceEntry[] {
+  const q = query.toLowerCase();
+  const MAX_RESULTS = 50;
+  const MAX_DIRS = 2000;
+  const results: WorkspaceEntry[] = [];
+  const queue: Array<{ abs: string; rel: string }> = [{ abs: path.resolve(root), rel: '' }];
+  let visited = 0;
+  while (queue.length > 0 && results.length < MAX_RESULTS && visited < MAX_DIRS) {
+    const { abs, rel } = queue.shift()!;
+    visited++;
+    let names: fs.Dirent[];
+    try {
+      names = fs.readdirSync(abs, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const d of names) {
+      if (d.name.startsWith('.') || IGNORED_DIRS.has(d.name)) continue;
+      const childRel = rel ? `${rel}/${d.name}` : d.name;
+      if (d.name.toLowerCase().includes(q)) {
+        results.push({ name: d.name, path: toPosix(childRel), isDir: d.isDirectory() });
+        if (results.length >= MAX_RESULTS) break;
+      }
+      if (d.isDirectory()) {
+        queue.push({ abs: path.join(abs, d.name), rel: childRel });
+      }
+    }
+  }
+  // 目录优先、浅层优先（BFS 天然按深度有序）。
+  results.sort((a, b) => (a.isDir === b.isDir ? a.path.localeCompare(b.path) : a.isDir ? -1 : 1));
+  return results;
 }

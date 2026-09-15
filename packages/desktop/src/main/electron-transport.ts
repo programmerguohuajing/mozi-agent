@@ -95,6 +95,7 @@ export const ALLOWED_INVOKE: InvokeChannel[] = [
   'session:fork',
   'session:list',
   'session:delete',
+  'session:setWorkspace',
   'run:start',
   'approval:resolve',
   'engine:abort',
@@ -102,15 +103,32 @@ export const ALLOWED_INVOKE: InvokeChannel[] = [
   'config:set',
   'config:listProviders',
   'config:testProvider',
+  'provider:add',
+  'provider:remove',
+  'provider:update',
+  'provider:models',
+  'provider:discoverLocal',
   'mcp:list',
   'mcp:add',
   'mcp:remove',
   'mcp:restart',
+  'mcp:getConfig',
+  'mcp:setConfig',
   'audit:query',
   'dashboard:stats',
   'diff:applyPartial',
   'browser:capture',
   'browser:saveAnnotated',
+  'browser:attach',
+  'browser:detach',
+  'workspace:pick',
+  'workspace:listEntries',
+  'skills:list',
+  'schedule:list',
+  'schedule:create',
+  'schedule:toggle',
+  'schedule:delete',
+  'schedule:runNow',
 ];
 
 export const ALLOWED_SEND: SendChannel[] = [
@@ -118,6 +136,7 @@ export const ALLOWED_SEND: SendChannel[] = [
   'session:status',
   'updater:status',
   'updater:download-progress',
+  'schedule:changed',
 ];
 
 /**

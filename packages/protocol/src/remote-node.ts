@@ -4,9 +4,10 @@
  */
 import type { DevicePermissions } from './remote.js';
 import {
-  DeviceRegistry,
+  type ApprovalRisk,
+  type DeviceRegistry,
   EventLog,
-  PairingService,
+  type PairingService,
   RequestDeduper,
   approvalPermitted,
   externalizeAttachment,
@@ -14,7 +15,6 @@ import {
   isIdempotentChannel,
   randomDeviceId,
   randomDeviceToken,
-  type ApprovalRisk,
 } from './remote.js';
 import type { AttachmentRef } from './remote.js';
 
@@ -90,7 +90,10 @@ export class RemoteNode {
   private readonly attachments: Map<string, { kind: string; data: string; chunkSize: number }>;
   private readonly deduper = new RequestDeduper();
   private readonly events = new EventLog();
-  private readonly handlers = new Map<string, (params: unknown, ctx: InvokeHandlerContext) => unknown | Promise<unknown>>();
+  private readonly handlers = new Map<
+    string,
+    (params: unknown, ctx: InvokeHandlerContext) => unknown | Promise<unknown>
+  >();
   private authenticated = false;
   private deviceId: string | null = null;
 
@@ -101,7 +104,10 @@ export class RemoteNode {
     this.attachments = opts.attachments ?? new Map();
   }
 
-  handle(channel: string, handler: (params: unknown, ctx: InvokeHandlerContext) => unknown | Promise<unknown>): void {
+  handle(
+    channel: string,
+    handler: (params: unknown, ctx: InvokeHandlerContext) => unknown | Promise<unknown>,
+  ): void {
     this.handlers.set(channel, handler);
   }
 
@@ -188,19 +194,32 @@ export class RemoteNode {
     this.authenticated = true;
     this.deviceId = frame.deviceId;
     this.registry.touch(frame.deviceId);
-    this.transport.send({ t: 'auth-ok', permissions: this.registry.get(frame.deviceId)?.permissions });
+    this.transport.send({
+      t: 'auth-ok',
+      permissions: this.registry.get(frame.deviceId)?.permissions,
+    });
   }
 
   private async handleInvoke(frame: Extract<RemoteFrame, { t: 'invoke' }>): Promise<void> {
     if (!this.authenticated) {
-      this.transport.send({ t: 'res', id: frame.id, ok: undefined as never, error: { code: 'ERR_AUTH', message: 'not authenticated' } });
+      this.transport.send({
+        t: 'res',
+        id: frame.id,
+        ok: undefined as never,
+        error: { code: 'ERR_AUTH', message: 'not authenticated' },
+      });
       return;
     }
     const perms = this.registry.get(this.deviceId!)?.permissions ?? DEFAULT_PERMISSIONS();
     const need = CHANNEL_PERMISSION[frame.channel] ?? 'viewSessions';
     const allowed = perms[need as keyof typeof perms];
     if (need !== 'approval' && typeof allowed === 'boolean' && !allowed) {
-      this.transport.send({ t: 'res', id: frame.id, ok: undefined as never, error: { code: 'ERR_FORBIDDEN', message: `device lacks ${need}` } });
+      this.transport.send({
+        t: 'res',
+        id: frame.id,
+        ok: undefined as never,
+        error: { code: 'ERR_FORBIDDEN', message: `device lacks ${need}` },
+      });
       return;
     }
     if (need === 'approval') {
@@ -211,7 +230,10 @@ export class RemoteNode {
           t: 'res',
           id: frame.id,
           ok: undefined as never,
-          error: { code: action === 'reject' ? 'ERR_FORBIDDEN' : 'ERR_DEFER', message: 'high-risk approval must be deferred to desktop' },
+          error: {
+            code: action === 'reject' ? 'ERR_FORBIDDEN' : 'ERR_DEFER',
+            message: 'high-risk approval must be deferred to desktop',
+          },
         });
         return;
       }
@@ -219,7 +241,12 @@ export class RemoteNode {
 
     const handler = this.handlers.get(frame.channel);
     if (!handler) {
-      this.transport.send({ t: 'res', id: frame.id, ok: undefined as never, error: { code: 'ERR_NO_HANDLER', message: `unknown channel ${frame.channel}` } });
+      this.transport.send({
+        t: 'res',
+        id: frame.id,
+        ok: undefined as never,
+        error: { code: 'ERR_NO_HANDLER', message: `unknown channel ${frame.channel}` },
+      });
       return;
     }
 
@@ -236,27 +263,49 @@ export class RemoteNode {
         this.transport.send({ t: 'res', id: frame.id, ok: await run() });
       }
     } catch (e) {
-      this.transport.send({ t: 'res', id: frame.id, ok: undefined as never, error: { code: 'ERR_INVOKE', message: String((e as Error).message ?? e) } });
+      this.transport.send({
+        t: 'res',
+        id: frame.id,
+        ok: undefined as never,
+        error: { code: 'ERR_INVOKE', message: String((e as Error).message ?? e) },
+      });
     }
   }
 
   private handleAttach(frame: Extract<RemoteFrame, { t: 'attach' }>): void {
     if (!this.authenticated) return;
     for (const rec of this.events.replaySince(frame.sessionId, frame.lastEventId)) {
-      this.transport.send({ t: 'push', channel: 'engine:event', payload: this.externalize(rec.event), seq: rec.seq, sessionId: frame.sessionId });
+      this.transport.send({
+        t: 'push',
+        channel: 'engine:event',
+        payload: this.externalize(rec.event),
+        seq: rec.seq,
+        sessionId: frame.sessionId,
+      });
     }
   }
 
   private handleFetch(frame: Extract<RemoteFrame, { t: 'fetch' }>): void {
     const store = this.attachments.get(frame.attachment);
     if (!store) {
-      this.transport.send({ t: 'attachment', contentId: frame.attachment, chunk: frame.chunk, totalChunks: 0 });
+      this.transport.send({
+        t: 'attachment',
+        contentId: frame.attachment,
+        chunk: frame.chunk,
+        totalChunks: 0,
+      });
       return;
     }
     const totalChunks = Math.ceil(store.data.length / store.chunkSize);
     const start = frame.chunk * store.chunkSize;
     const data = store.data.slice(start, start + store.chunkSize);
-    this.transport.send({ t: 'attachment', contentId: frame.attachment, chunk: frame.chunk, totalChunks, data });
+    this.transport.send({
+      t: 'attachment',
+      contentId: frame.attachment,
+      chunk: frame.chunk,
+      totalChunks,
+      data,
+    });
   }
 
   private externalize(event: unknown): unknown {
@@ -265,7 +314,12 @@ export class RemoteNode {
     const result = externalizeAttachment(ev.display, (data, kind) => {
       const contentId = `att_${Math.random().toString(36).slice(2, 10)}`;
       this.attachments.set(contentId, { kind, data, chunkSize: 8_000 });
-      return { contentId, kind, totalChunks: Math.ceil(data.length / 8_000), chunkSize: 8_000 } satisfies AttachmentRef;
+      return {
+        contentId,
+        kind,
+        totalChunks: Math.ceil(data.length / 8_000),
+        chunkSize: 8_000,
+      } satisfies AttachmentRef;
     });
     return result.externalized ? { ...ev, display: result.payload } : event;
   }

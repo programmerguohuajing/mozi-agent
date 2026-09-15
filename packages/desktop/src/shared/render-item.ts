@@ -4,17 +4,69 @@
  * 「渲染模型与 M9/M10 共享同一 RenderItem 语义」——CLI、桌面、移动端
  * 消费同一份事件流，产出同一份 RenderItem 列表，只是渲染器不同。
  */
-import type { AgentEvent, ApprovalReason, DisplayPayload, ToolCall, TokenUsage } from '@mozi/shared';
+import type {
+  AgentEvent,
+  ApprovalReason,
+  DisplayPayload,
+  TokenUsage,
+  ToolCall,
+} from '@mozi/shared';
 
 export type RenderItem =
   | { kind: 'user'; id: string; text: string; ts: string }
   | { kind: 'assistant'; id: string; text: string; streaming: boolean; ts: string }
   | { kind: 'reasoning'; id: string; text: string; ts: string }
-  | { kind: 'tool'; id: string; callId: string; name: string; args: unknown; state: 'requested' | 'running' | 'done' | 'error'; summary?: string; display?: DisplayPayload; durationMs?: number; ts: string }
-  | { kind: 'approval'; id: string; callId: string; sessionId: string; call: ToolCall; reason: ApprovalReason; resolved?: 'allow' | 'deny'; agentType?: string; subSessionId?: string; ts: string }
-  | { kind: 'todo'; id: string; tasks: Array<{ id: string; title: string; status: string }>; ts: string }
-  | { kind: 'compacted'; id: string; removedTurns: number; savedTokens: number; summary: string; ts: string }
-  | { kind: 'subagent'; id: string; subSessionId: string; agentType: string; state: 'started' | 'queued' | 'progress' | 'completed' | 'failed'; step?: number; maxSteps?: number; currentTool?: string; summary?: string; error?: string; ts: string }
+  | {
+      kind: 'tool';
+      id: string;
+      callId: string;
+      name: string;
+      args: unknown;
+      state: 'requested' | 'running' | 'done' | 'error';
+      summary?: string;
+      display?: DisplayPayload;
+      durationMs?: number;
+      ts: string;
+    }
+  | {
+      kind: 'approval';
+      id: string;
+      callId: string;
+      sessionId: string;
+      call: ToolCall;
+      reason: ApprovalReason;
+      resolved?: 'allow' | 'deny';
+      agentType?: string;
+      subSessionId?: string;
+      ts: string;
+    }
+  | {
+      kind: 'todo';
+      id: string;
+      tasks: Array<{ id: string; title: string; status: string }>;
+      ts: string;
+    }
+  | {
+      kind: 'compacted';
+      id: string;
+      removedTurns: number;
+      savedTokens: number;
+      summary: string;
+      ts: string;
+    }
+  | {
+      kind: 'subagent';
+      id: string;
+      subSessionId: string;
+      agentType: string;
+      state: 'started' | 'queued' | 'progress' | 'completed' | 'failed';
+      step?: number;
+      maxSteps?: number;
+      currentTool?: string;
+      summary?: string;
+      error?: string;
+      ts: string;
+    }
   | { kind: 'notice'; id: string; level: 'info' | 'warn' | 'error'; text: string; ts: string }
   | { kind: 'usage'; id: string; usage: TokenUsage; steps?: number; ts: string };
 
@@ -82,7 +134,9 @@ export function eventToRenderItems(event: AgentEvent): RenderItem[] {
           state: event.result.isError ? 'error' : 'done',
           summary: event.result.content.slice(0, 300),
           ...(event.result.display ? { display: event.result.display } : {}),
-          ...(event.result.meta?.durationMs != null ? { durationMs: event.result.meta.durationMs } : {}),
+          ...(event.result.meta?.durationMs != null
+            ? { durationMs: event.result.meta.durationMs }
+            : {}),
           ts,
         },
       ];
@@ -205,7 +259,13 @@ export function eventToRenderItems(event: AgentEvent): RenderItem[] {
       ];
     case 'error':
       return [
-        { kind: 'notice', id: nextId('err'), level: 'error', text: `${event.error.code}: ${event.error.message}`, ts },
+        {
+          kind: 'notice',
+          id: nextId('err'),
+          level: 'error',
+          text: `${event.error.code}: ${event.error.message}`,
+          ts,
+        },
       ];
     default:
       return [];

@@ -37,7 +37,10 @@ export type ApprovalAction = 'approve' | 'defer' | 'reject';
  *  - standard：safe/side-effect/network 可 approve；high 只 defer（暂缓/转交桌面）
  *  - all：全 approve（节点侧仍需生物识别 + 冷静期，由调用方约束）
  */
-export function approvalPermitted(permissions: DevicePermissions, risk: ApprovalRisk): ApprovalAction {
+export function approvalPermitted(
+  permissions: DevicePermissions,
+  risk: ApprovalRisk,
+): ApprovalAction {
   if (permissions.approveRequests === 'none') return 'reject';
   if (permissions.approveRequests === 'all') return 'approve';
   return risk === 'high' ? 'defer' : 'approve';
